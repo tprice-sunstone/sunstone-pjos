@@ -1,0 +1,746 @@
+// ============================================================================
+// Events Page — with Permission Guards + Product Type Filtering
+// ============================================================================
+// Destination: src/app/dashboard/events/page.tsx (REPLACES existing)
+// ============================================================================
+
+'use client';
+
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { useTenant } from '@/hooks/use-tenant';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import Link from 'next/link';
+import { generateQRData } from '@/lib/utils';
+import type { Event, TaxProfile, ProductType } from '@/types';
+import {
+  Button,
+  Card,
+  CardContent,
+  Badge,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Input,
+  Select,
+  Textarea,
+} from '@/components/ui';
+import { QRCode, FullScreenQR } from '@/components/QRCode';
+
+export default function EventsPage() {
+  const { tenant, can } = useTenant();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [taxProfiles, setTaxProfiles] = useState<TaxProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Event | null>(null);
+  const [qrEvent, setQrEvent] = useState<Event | null>(null);
+  const [fullScreenQR, setFullScreenQR] = useState(false);
+  const supabase = createClient();
+
+  const fetchData = async () => {
+    if (!tenant) return;
+    const [eventsRes, taxRes] = await Promise.all([
+      supabase
+        .from('events')
+        .select('*, tax_profiles(*)')
+        .eq('tenant_id', tenant.id)
+        .order('start_time', { ascending: false }),
+      supabase
+        .from('tax_profiles')
+        .select('*')
+        .eq('tenant_id', tenant.id),
+    ]);
+    setEvents((eventsRes.data || []) as Event[]);
+    setTaxProfiles((taxRes.data || []) as TaxProfile[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [tenant]);
+
+  // ─── handleSave now accepts product type filter data ───
+  const handleSave = async (
+    data: Partial<Event> & {
+      _productTypeFilter?: {
+        limitProducts: boolean;
+        selectedProductTypeIds: string[];
+      };
+    }
+  ) => {
+    if (!tenant) return;
+
+    // Separate product filter data from event data
+    const { _productTypeFilter, ...eventData } = data;
+    let savedEventId: string | null = null;
+
+    if (editing) {
+      const { error } = await supabase
+        .from('events')
+        .update(eventData)
+        .eq('id', editing.id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      savedEventId = editing.id;
+      toast.success('Event updated');
+    } else {
+      const { data: newEvent, error } = await supabase
+        .from('events')
+        .insert({ ...eventData, tenant_id: tenant.id })
+        .select('id')
+        .single();
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      savedEventId = newEvent.id;
+      toast.success('Event created');
+    }
+
+    // Save product type filtering (after event exists)
+    if (_productTypeFilter && savedEventId) {
+      // Always delete existing rows first
+      await supabase
+        .from('event_product_types')
+        .delete()
+        .eq('event_id', savedEventId);
+
+      // If limiting, insert new selections
+      if (
+        _productTypeFilter.limitProducts &&
+        _productTypeFilter.selectedProductTypeIds.length > 0
+      ) {
+        const { error: ptError } = await supabase
+          .from('event_product_types')
+          .insert(
+            _productTypeFilter.selectedProductTypeIds.map((ptId: string) => ({
+              event_id: savedEventId,
+              product_type_id: ptId,
+              tenant_id: tenant.id,
+            }))
+          );
+        if (ptError) {
+          toast.error('Event saved but product filtering failed: ' + ptError.message);
+        }
+      }
+    }
+
+    setShowForm(false);
+    setEditing(null);
+    fetchData();
+  };
+
+  // Categorize events: active (happening now), upcoming (future), past (ended)
+  const now = new Date();
+  const active: Event[] = [];
+  const upcoming: Event[] = [];
+  const past: Event[] = [];
+
+  for (const e of events) {
+    const start = new Date(e.start_time);
+    const end = e.end_time ? new Date(e.end_time) : null;
+
+    if (start <= now && (!end || end >= now)) {
+      active.push(e);
+    } else if (start > now) {
+      upcoming.push(e);
+    } else {
+      past.push(e);
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-text-primary">Events</h1>
+          <p className="text-text-tertiary text-sm mt-1">
+            {events.length} total event{events.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/pos">
+            <Button variant="secondary">
+              Store Mode
+            </Button>
+          </Link>
+          {/* ─── PERMISSION GUARD: New Event ─── */}
+          {can('events:edit') && (
+            <Button
+              variant="primary"
+              onClick={() => {
+                setEditing(null);
+                setShowForm(true);
+              }}
+            >
+              + New Event
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <div className="py-16 text-center">
+          <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
+          <p className="text-text-tertiary mt-3 text-sm">Loading events…</p>
+        </div>
+      ) : events.length === 0 ? (
+        <Card className="py-16 text-center">
+          <CardContent>
+            <div className="text-4xl mb-3">📅</div>
+            <p className="text-text-tertiary mb-4">No events yet</p>
+            {can('events:edit') && (
+              <Button
+                variant="primary"
+                onClick={() => setShowForm(true)}
+              >
+                Create Your First Event
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-8">
+          {/* Active Events (happening now) */}
+          {active.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
+                Live Now
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                </span>
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {active.map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    status="active"
+                    canEdit={can('events:edit')}
+                    onEdit={() => {
+                      setEditing(event);
+                      setShowForm(true);
+                    }}
+                    onShowQR={() => setQrEvent(event)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Upcoming Events */}
+          {upcoming.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-text-primary mb-4">
+                Upcoming
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {upcoming.map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    status="upcoming"
+                    canEdit={can('events:edit')}
+                    onEdit={() => {
+                      setEditing(event);
+                      setShowForm(true);
+                    }}
+                    onShowQR={() => setQrEvent(event)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Past Events */}
+          {past.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-text-secondary mb-4">
+                Past Events
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {past.map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    status="past"
+                    canEdit={can('events:edit')}
+                    onEdit={() => {
+                      setEditing(event);
+                      setShowForm(true);
+                    }}
+                    onShowQR={() => setQrEvent(event)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+
+      {/* Create/Edit Modal */}
+      <EventFormModal
+        isOpen={showForm}
+        event={editing}
+        taxProfiles={taxProfiles}
+        tenantId={tenant?.id || ''}
+        onSave={handleSave}
+        onClose={() => {
+          setShowForm(false);
+          setEditing(null);
+        }}
+      />
+
+      {/* QR Code Modal */}
+      {qrEvent && tenant && !fullScreenQR && (
+        <Modal isOpen={true} onClose={() => setQrEvent(null)} size="lg">
+          <ModalHeader>
+            <h2 className="text-xl font-semibold text-text-primary">
+              Event QR Code
+            </h2>
+            <p className="text-sm text-text-tertiary mt-1">
+              Customers scan this to sign the waiver and join the queue.
+            </p>
+          </ModalHeader>
+          <ModalBody className="flex flex-col items-center py-6">
+            <QRCode
+              url={generateQRData(tenant.slug, qrEvent.id)}
+              size={280}
+              tenantName={tenant.name}
+              eventName={qrEvent.name}
+              showDownload
+              showPrint
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setFullScreenQR(true)}
+            >
+              Full Screen
+            </Button>
+            <Button variant="secondary" onClick={() => setQrEvent(null)}>
+              Close
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
+
+      {/* Full-Screen QR */}
+      {fullScreenQR && qrEvent && tenant && (
+        <FullScreenQR
+          url={generateQRData(tenant.slug, qrEvent.id)}
+          tenantName={tenant.name}
+          eventName={qrEvent.name}
+          onClose={() => setFullScreenQR(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ——— Event Card ——— */
+
+function EventCard({
+  event,
+  status,
+  canEdit,
+  onEdit,
+  onShowQR,
+}: {
+  event: Event;
+  status: 'active' | 'upcoming' | 'past';
+  canEdit: boolean;
+  onEdit: () => void;
+  onShowQR: () => void;
+}) {
+  return (
+    <Card
+      variant="interactive"
+      className={status === 'past' ? 'opacity-60' : status === 'active' ? 'ring-2 ring-green-400/50' : ''}
+    >
+      <CardContent className="p-5">
+        {/* Status Badge */}
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <h3 className="font-semibold text-text-primary text-lg leading-snug min-w-0 truncate">
+            {event.name}
+          </h3>
+          {status === 'active' ? (
+            <Badge variant="success" size="sm">Live</Badge>
+          ) : status === 'upcoming' ? (
+            <Badge variant="accent" size="sm">Upcoming</Badge>
+          ) : (
+            <Badge variant="default" size="sm">Past</Badge>
+          )}
+        </div>
+
+        {/* Details */}
+        <div className="space-y-1.5 text-sm text-text-secondary mb-4">
+          <div className="flex items-center gap-1.5">
+            <span className="text-text-tertiary">📅</span>
+            <span>{format(new Date(event.start_time), 'MMM d, yyyy · h:mm a')}</span>
+          </div>
+          {event.location && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-text-tertiary">📍</span>
+              <span className="truncate">{event.location}</span>
+            </div>
+          )}
+          {Number(event.booth_fee) > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-text-tertiary">💰</span>
+              <span>Booth: ${Number(event.booth_fee).toFixed(0)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 pt-2 border-t border-border-subtle">
+          {/* Event Mode — available for active AND upcoming events */}
+          {status !== 'past' && (
+            <Link
+              href={`/dashboard/events/event-mode?eventId=${event.id}`}
+              className="flex-1"
+            >
+              <Button variant="primary" size="sm" className="w-full">
+                {status === 'active' ? '⚡ Go Live' : 'Event Mode'}
+              </Button>
+            </Link>
+          )}
+          {/* P&L Report — for past events */}
+          {status === 'past' && (
+            <Link
+              href={`/dashboard/events/reports?eventId=${event.id}`}
+              className="flex-1"
+            >
+              <Button variant="primary" size="sm" className="w-full">
+                View P&L
+              </Button>
+            </Link>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onShowQR}
+            aria-label="Show QR code"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm14 3h.01M17 17h.01M14 14h3v3h-3v-3zm0 4h.01M17 20h.01M20 14h.01M20 17h.01M20 20h.01" />
+            </svg>
+          </Button>
+          {/* ─── PERMISSION GUARD: Edit button ─── */}
+          {canEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onEdit}
+            >
+              Edit
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ——— Event Form Modal ——— */
+
+function EventFormModal({
+  isOpen,
+  event,
+  taxProfiles,
+  tenantId,
+  onSave,
+  onClose,
+}: {
+  isOpen: boolean;
+  event: Event | null;
+  taxProfiles: TaxProfile[];
+  tenantId: string;
+  onSave: (data: Partial<Event> & { _productTypeFilter?: { limitProducts: boolean; selectedProductTypeIds: string[] } }) => void;
+  onClose: () => void;
+}) {
+  const [form, setForm] = useState({
+    name: '',
+    description: '',
+    location: '',
+    start_time: '',
+    end_time: '',
+    booth_fee: '0',
+    tax_profile_id: '',
+  });
+
+  // ─── Product type filtering state ───
+  const [productTypes, setProductTypes] = useState<ProductType[]>([]);
+  const [limitProducts, setLimitProducts] = useState(false);
+  const [selectedProductTypeIds, setSelectedProductTypeIds] = useState<string[]>([]);
+  const [loadingProductTypes, setLoadingProductTypes] = useState(false);
+
+  // ─── Load form data + product types when modal opens ───
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Reset event form fields
+    setForm({
+      name: event?.name || '',
+      description: event?.description || '',
+      location: event?.location || '',
+      start_time: event?.start_time
+        ? format(new Date(event.start_time), "yyyy-MM-dd'T'HH:mm")
+        : '',
+      end_time: event?.end_time
+        ? format(new Date(event.end_time), "yyyy-MM-dd'T'HH:mm")
+        : '',
+      booth_fee: event?.booth_fee?.toString() || '0',
+      tax_profile_id: event?.tax_profile_id || '',
+    });
+
+    // Load product types for the checkbox list
+    const loadProductTypes = async () => {
+      if (!tenantId) return;
+      setLoadingProductTypes(true);
+      const supabase = createClient();
+
+      // Fetch all active product types for the tenant
+      const { data: types } = await supabase
+        .from('product_types')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .order('sort_order');
+
+      setProductTypes(types || []);
+
+      // If editing, load existing event product type selections
+      if (event?.id) {
+        const { data: selected } = await supabase
+          .from('event_product_types')
+          .select('product_type_id')
+          .eq('event_id', event.id);
+
+        if (selected && selected.length > 0) {
+          setLimitProducts(true);
+          setSelectedProductTypeIds(selected.map((s) => s.product_type_id));
+        } else {
+          setLimitProducts(false);
+          setSelectedProductTypeIds([]);
+        }
+      } else {
+        setLimitProducts(false);
+        setSelectedProductTypeIds([]);
+      }
+
+      setLoadingProductTypes(false);
+    };
+
+    loadProductTypes();
+  }, [isOpen, event?.id, tenantId]);
+
+  const set = (key: string, val: string) =>
+    setForm((f) => ({ ...f, [key]: val }));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      name: form.name,
+      description: form.description || null,
+      location: form.location || null,
+      start_time: new Date(form.start_time).toISOString(),
+      end_time: form.end_time
+        ? new Date(form.end_time).toISOString()
+        : null,
+      booth_fee: Number(form.booth_fee),
+      tax_profile_id: form.tax_profile_id || null,
+      // Pass product filtering as extra data
+      _productTypeFilter: {
+        limitProducts,
+        selectedProductTypeIds,
+      },
+    });
+  };
+
+  const taxOptions = [
+    { value: '', label: 'No tax' },
+    ...taxProfiles.map((tp) => ({
+      value: tp.id,
+      label: `${tp.name} (${(tp.rate * 100).toFixed(2)}%)`,
+    })),
+  ];
+
+  const isSubmitDisabled =
+    !form.name ||
+    !form.start_time ||
+    (limitProducts && selectedProductTypeIds.length === 0);
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="lg">
+      <form onSubmit={handleSubmit}>
+        <ModalHeader>
+          <h2 className="text-xl font-semibold text-text-primary">
+            {event ? 'Edit Event' : 'New Event'}
+          </h2>
+          <p className="text-sm text-text-tertiary mt-1">
+            {event
+              ? 'Update the event details below.'
+              : 'Fill in the details to create a new event.'}
+          </p>
+        </ModalHeader>
+        <ModalBody className="space-y-4">
+          <Input
+            label="Event Name"
+            value={form.name}
+            onChange={(e) => set('name', e.target.value)}
+            placeholder="Saturday Pop-up at The Mill"
+            required
+          />
+          <Textarea
+            label="Description"
+            value={form.description}
+            onChange={(e) => set('description', e.target.value)}
+            placeholder="Optional description…"
+            rows={2}
+          />
+          <Input
+            label="Location"
+            value={form.location}
+            onChange={(e) => set('location', e.target.value)}
+            placeholder="123 Main St, Suite B"
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Start Time"
+              type="datetime-local"
+              value={form.start_time}
+              onChange={(e) => set('start_time', e.target.value)}
+              required
+            />
+            <Input
+              label="End Time"
+              type="datetime-local"
+              value={form.end_time}
+              onChange={(e) => set('end_time', e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Booth Fee ($)"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.booth_fee}
+              onChange={(e) => set('booth_fee', e.target.value)}
+            />
+            <Select
+              label="Tax Profile"
+              value={form.tax_profile_id}
+              onChange={(e) => set('tax_profile_id', e.target.value)}
+              options={taxOptions}
+            />
+          </div>
+
+          {/* ─── Product Availability ─── */}
+          <div className="pt-4 border-t border-[var(--border-primary)]">
+            <label className="block text-sm font-medium text-[var(--text-primary)] mb-3">
+              Product Availability
+            </label>
+
+            <div className="space-y-2 mb-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="productFilter"
+                  checked={!limitProducts}
+                  onChange={() => {
+                    setLimitProducts(false);
+                    setSelectedProductTypeIds([]);
+                  }}
+                  className="w-4 h-4 accent-[var(--accent-primary)]"
+                />
+                <span className="text-sm text-[var(--text-primary)]">
+                  All products available
+                </span>
+              </label>
+
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="productFilter"
+                  checked={limitProducts}
+                  onChange={() => setLimitProducts(true)}
+                  className="w-4 h-4 accent-[var(--accent-primary)]"
+                />
+                <span className="text-sm text-[var(--text-primary)]">
+                  Limit products for this event
+                </span>
+              </label>
+            </div>
+
+            {limitProducts && (
+              <div className="ml-7 space-y-1">
+                {loadingProductTypes ? (
+                  <p className="text-sm text-[var(--text-tertiary)]">Loading product types…</p>
+                ) : productTypes.length === 0 ? (
+                  <p className="text-sm text-[var(--text-tertiary)]">
+                    No product types configured yet. Add them in Settings → Product Types.
+                  </p>
+                ) : (
+                  <>
+                    <div className="space-y-1.5">
+                      {productTypes.map((pt) => (
+                        <label key={pt.id} className="flex items-center gap-3 cursor-pointer py-1.5">
+                          <input
+                            type="checkbox"
+                            checked={selectedProductTypeIds.includes(pt.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedProductTypeIds((prev) => [...prev, pt.id]);
+                              } else {
+                                setSelectedProductTypeIds((prev) =>
+                                  prev.filter((id) => id !== pt.id)
+                                );
+                              }
+                            }}
+                            className="w-4 h-4 rounded accent-[var(--accent-primary)]"
+                          />
+                          <span className="text-sm text-[var(--text-primary)]">{pt.name}</span>
+                        </label>
+                      ))}
+                    </div>
+
+                    <p className="text-xs text-[var(--text-tertiary)] mt-2 italic">
+                      Custom products are always available regardless of this setting.
+                    </p>
+
+                    {selectedProductTypeIds.length === 0 && (
+                      <p className="text-xs text-red-500 mt-1">
+                        Select at least one product type.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="secondary" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit" disabled={isSubmitDisabled}>
+            {event ? 'Update Event' : 'Create Event'}
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
+  );
+}

@@ -1,0 +1,243 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+  /* ═══════════════════════════════════════════════════════
+     Sunstone PJ — Brand Design Tokens
+     Warm, luxe, beauty-industry palette
+
+     SURFACE HIERARCHY (most important for visual clarity):
+       base    → Page background (warm petal)
+       raised  → Cards, panels (WHITE — lifts off the background)
+       overlay → Modals, dropdowns (white)
+       subtle  → Hover states, disabled fields (soft pink)
+       sidebar → Sidebar background (slightly deeper than base)
+     ═══════════════════════════════════════════════════════ */
+
+  /* Fonts */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
+
+  /* ─── Surfaces ─── */
+  --surface-base: #FBEEEE;       /* Petal — page background */
+  --surface-raised: #FFFFFF;     /* White — cards, panels (CONTRAST!) */
+  --surface-overlay: #FFFFFF;    /* White — modals, dropdowns */
+  --surface-subtle: #F6EFE8;     /* Warm tan — hover states, muted areas */
+  --surface-sidebar: #F3E5E0;    /* Deeper warm — sidebar distinction */
+
+  /* ─── Text (warm, not harsh black) ─── */
+  --text-primary: #31241B;       /* Black Brown */
+  --text-secondary: #85625D;     /* Soft Brown */
+  --text-tertiary: #BF9F9A;      /* Taupe */
+  --text-inverse: #FFFFFF;
+
+  /* ─── Borders (warm taupe family) ─── */
+  --border-default: #E6D6D2;
+  --border-strong: #D7C1BC;
+  --border-subtle: #F3E7E4;
+
+  /* ─── Accent: Deep Wine (brand default) ─── */
+  /* Scale built around #852454 as the 500 (picked color) */
+  --accent-50:  #f9f6f7;
+  --accent-100: #e8d6df;
+  --accent-200: #d5a8be;
+  --accent-300: #c7759d;
+  --accent-400: #b43c78;
+  --accent-500: #852454;         /* Deep Wine — the brand color */
+  --accent-600: #731e48;
+  --accent-700: #641a3f;
+  --accent-800: #581637;
+  --accent-900: #4b122e;
+  --accent-950: #3a0e24;
+
+  /* Semantic Accent Aliases */
+  --accent-primary: var(--accent-500);
+  --accent-hover: var(--accent-600);
+  --accent-subtle: var(--accent-50);
+  --accent-muted: var(--accent-100);
+
+  /* ─── Active Nav State (needs to be obviously highlighted) ─── */
+  --nav-active-bg: var(--accent-100);
+  --nav-active-text: var(--accent-700);
+  --nav-active-border: var(--accent-600);
+
+  /* ─── Functional Colors ─── */
+  --success-50: #f0fdf4;
+  --success-500: #10b981;
+  --success-600: #059669;
+  --warning-50: #fffbeb;
+  --warning-500: #f59e0b;
+  --warning-600: #d97706;
+  --error-50: #fef2f2;
+  --error-500: #ef4444;
+  --error-600: #dc2626;
+  --info-50: #eff6ff;
+  --info-500: #3b82f6;
+  --info-600: #2563eb;
+
+  /* ─── Spacing ─── */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-1: 0.25rem;
+  --space-1\.5: 0.375rem;
+  --space-2: 0.5rem;
+  --space-2\.5: 0.625rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+
+  /* ─── Border Radius (soft, premium) ─── */
+  --radius-sm: 0.375rem;        /* 6px — badges, pills */
+  --radius-base: 0.625rem;      /* 10px — inputs, buttons */
+  --radius-md: 0.875rem;        /* 14px — cards */
+  --radius-lg: 1rem;            /* 16px — modals, panels */
+  --radius-xl: 1.5rem;          /* 24px — feature cards */
+  --radius-full: 9999px;
+
+  /* ─── Shadows / Elevation (soft luxe, warm tint) ─── */
+  --shadow-xs: 0 1px 2px 0 rgba(49, 36, 27, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(49, 36, 27, 0.06), 0 1px 2px -1px rgba(49, 36, 27, 0.06);
+  --shadow-base: 0 4px 6px -1px rgba(49, 36, 27, 0.06), 0 2px 4px -2px rgba(49, 36, 27, 0.04);
+  --shadow-md: 0 10px 15px -3px rgba(49, 36, 27, 0.08), 0 4px 6px -4px rgba(49, 36, 27, 0.04);
+  --shadow-lg: 0 20px 25px -5px rgba(49, 36, 27, 0.08), 0 8px 10px -6px rgba(49, 36, 27, 0.04);
+  --shadow-xl: 0 25px 50px -12px rgba(49, 36, 27, 0.15);
+
+  --elevation-0: none;
+  --elevation-1: 0 10px 30px rgba(49, 36, 27, 0.06);
+  --elevation-2: 0 18px 60px rgba(49, 36, 27, 0.10);
+  --elevation-3: var(--shadow-md);
+  --elevation-4: var(--shadow-lg);
+  --elevation-5: var(--shadow-xl);
+
+  /* ─── Motion ─── */
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ─── Focus ─── */
+  --focus-ring: 0 0 0 3px var(--accent-subtle);
+
+  /* ─── Touch Targets ─── */
+  --touch-target-min: 44px;
+  --touch-target-comfortable: 48px;
+  --touch-target-spacious: 56px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Base Styles
+   ═══════════════════════════════════════════════════════ */
+
+@layer base {
+  body {
+    background: var(--surface-base);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .touch-target {
+    @apply min-h-[48px] min-w-[48px];
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   Typography Utilities
+   ═══════════════════════════════════════════════════════ */
+
+@layer components {
+  .text-display-lg {
+    font-family: var(--font-display);
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.025em;
+  }
+
+  .text-heading-1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.025em;
+  }
+
+  .text-heading-2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.375;
+  }
+
+  .text-heading-3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.375;
+  }
+
+  .text-body {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .text-body-sm {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .text-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.025em;
+  }
+
+  .text-label-sm {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   Scrollbar (warm-tinted)
+   ═══════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Signature Canvas (waiver page)
+   ═══════════════════════════════════════════════════════ */
+
+.signature-canvas {
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  cursor: crosshair;
+  touch-action: none;
+}

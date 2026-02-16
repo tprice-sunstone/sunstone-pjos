@@ -1,0 +1,52 @@
+/*
+ * ═══════════════════════════════════════════════════════
+ * tokens.css — Sunstone PJ Brand Reference
+ * ═══════════════════════════════════════════════════════
+ *
+ * NOTE: These tokens are now baked directly into globals.css.
+ * This file exists as a REFERENCE ONLY — you do NOT need to
+ * import it. All brand values are already live.
+ *
+ * If a tenant overrides their accent color via the ThemeProvider,
+ * the --accent-* variables will be updated at runtime automatically.
+ *
+ * ═══════════════════════════════════════════════════════
+ */
+
+/*
+  SURFACES
+  --surface-base:    #FBEEEE   (Petal)
+  --surface-raised:  #F6EFE8   (Warm neutral)
+  --surface-overlay: #FFFFFF   (Cards, modals)
+  --surface-subtle:  #FCEFF2   (Whisper of pink)
+
+  TEXT
+  --text-primary:    #31241B   (Black Brown)
+  --text-secondary:  #85625D   (Soft Brown)
+  --text-tertiary:   #BF9F9A   (Taupe)
+  --text-inverse:    #FFFFFF
+
+  BORDERS
+  --border-default:  #E6D6D2
+  --border-strong:   #D7C1BC
+  --border-subtle:   #F3E7E4
+
+  ACCENT (Deep Wine / PJ Rose)
+  --accent-50:       #FFF1F7
+  --accent-100:      #FFE1EE
+  --accent-200:      #FFC0DD
+  --accent-300:      #FF99C7
+  --accent-400:      #F070AD
+  --accent-500:      #E1598F   (PJ Rose)
+  --accent-600:      #B1275E   (Raspberry)
+  --accent-700:      #852454   (Deep Wine — PRIMARY)
+  --accent-800:      #6F1E44
+  --accent-900:      #541636
+  --accent-950:      #2E0B1D
+
+  SEMANTIC ACCENT
+  --accent-primary:  var(--accent-700)
+  --accent-hover:    var(--accent-800)
+  --accent-subtle:   var(--accent-50)
+  --accent-muted:    var(--accent-100)
+*/
