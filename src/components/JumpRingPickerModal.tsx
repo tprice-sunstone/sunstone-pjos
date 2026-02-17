@@ -76,7 +76,7 @@ export default function JumpRingPickerModal({
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={onClose}>
+    <Modal isOpen={open} onClose={onClose}>
       <ModalHeader>
         <h2 className="text-lg font-bold text-[var(--text-primary)]">Jump Ring Selection</h2>
       </ModalHeader>
