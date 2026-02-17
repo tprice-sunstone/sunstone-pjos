@@ -124,7 +124,16 @@ export interface ProductType {
   created_at: string;
   updated_at: string;
 }
-
+export interface Material {
+  id: string;
+  tenant_id: string;
+  name: string;
+  abbreviation: string | null;
+  sort_order: number;
+  is_system: boolean;
+  is_active: boolean;
+  created_at: string;
+}
 export interface ChainProductPrice {
   id: string;
   tenant_id: string;
