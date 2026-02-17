@@ -21,6 +21,7 @@ export type TenantRole = 'admin' | 'manager' | 'staff';
 export type BusinessType = 'permanent_jewelry' | 'salon_spa' | 'boutique' | 'popup_vendor' | 'other';
 export type InventoryType = 'chain' | 'jump_ring' | 'charm' | 'connector' | 'other';
 export type InventoryUnit = 'in' | 'ft' | 'each' | 'pack';
+export type PricingMode = 'per_product' | 'per_inch';
 export type MovementType = 'restock' | 'sale' | 'waste' | 'adjustment';
 export type PaymentMethod = 'card_present' | 'card_not_present' | 'cash' | 'venmo' | 'other';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
