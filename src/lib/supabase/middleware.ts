@@ -1,8 +1,8 @@
 // src/lib/supabase/middleware.ts
-// Updated: platform admins get redirected to /admin instead of /dashboard
+// Simplified: no service role client in Edge Runtime (was causing MIDDLEWARE_INVOCATION_FAILED)
+// Admin redirect is handled by the root page (src/app/page.tsx) instead
 
 import { createServerClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function updateSession(request: NextRequest) {
@@ -37,6 +37,7 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute =
     request.nextUrl.pathname.startsWith('/auth') ||
     request.nextUrl.pathname.startsWith('/waiver') ||
+    request.nextUrl.pathname.startsWith('/api/') ||
     request.nextUrl.pathname === '/';
 
   if (!user && !isPublicRoute) {
@@ -46,27 +47,14 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect authenticated users away from auth pages
-  if (user && request.nextUrl.pathname.startsWith('/auth')) {
+  // EXCEPT /auth/update-password (password reset flow needs this)
+  const isPasswordResetPage =
+    request.nextUrl.pathname === '/auth/update-password';
+
+  if (user && request.nextUrl.pathname.startsWith('/auth') && !isPasswordResetPage) {
     const url = request.nextUrl.clone();
-
-    // Check if platform admin → redirect to /admin instead of /dashboard
-    try {
-      const serviceClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { auth: { autoRefreshToken: false, persistSession: false } }
-      );
-      const { data: adminRecord } = await serviceClient
-        .from('platform_admins')
-        .select('user_id')
-        .eq('user_id', user.id)
-        .single();
-
-      url.pathname = adminRecord ? '/admin' : '/dashboard';
-    } catch {
-      url.pathname = '/dashboard';
-    }
-
+    // Send to root page which handles admin vs dashboard redirect
+    url.pathname = '/';
     return NextResponse.redirect(url);
   }
 
