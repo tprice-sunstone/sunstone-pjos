@@ -1,13 +1,13 @@
 // src/app/waiver/page.tsx
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useSearchParams } from 'next/navigation';
 import { Button, Input, Select, Card, CardContent } from '@/components/ui';
 import type { Tenant, Event } from '@/types';
 
-export default function PublicWaiverPage() {
+function PublicWaiverPage() {
   const params = useSearchParams();
   const tenantSlug = params.get('tenant');
   const eventId = params.get('event');
@@ -355,5 +355,12 @@ export default function PublicWaiverPage() {
         )}
       </div>
     </div>
+  );
+}
+export default function PublicWaiverPageWrapper() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><p>Loading...</p></div>}>
+      <PublicWaiverPage />
+    </Suspense>
   );
 }

@@ -11,7 +11,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/hooks/use-tenant';
 import { format } from 'date-fns';
@@ -173,7 +173,7 @@ function exportCSV(report: EventPL) {
 // Component
 // ————————————————————————————————————————————————
 
-export default function EventPLReportPage() {
+function EventPLReportPage() {
   const { tenant, can } = useTenant();
   const params = useSearchParams();
   const router = useRouter();
@@ -595,5 +595,12 @@ function ReportRow({ label, value, negative, subtle, bold }: {
       <span className={`text-sm ${bold ? 'font-semibold text-text-primary' : subtle ? 'text-text-tertiary' : 'text-text-secondary'}`}>{label}</span>
       <span className={`text-sm ${bold ? 'font-semibold text-text-primary' : negative ? 'text-red-500' : subtle ? 'text-text-tertiary' : 'text-text-primary'}`}>{value}</span>
     </div>
+  );
+}
+export default function EventPLReportPageWrapper() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><p className="text-text-secondary">Loading...</p></div>}>
+      <EventPLReportPage />
+    </Suspense>
   );
 }

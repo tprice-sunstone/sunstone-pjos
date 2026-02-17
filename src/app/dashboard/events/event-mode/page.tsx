@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, Suspense } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/hooks/use-tenant';
 import { useCartStore } from '@/hooks/use-cart';
@@ -68,7 +68,7 @@ const ChevronRight = () => (
 // Main Component
 // ============================================================================
 
-export default function EventModePage() {
+function EventModePage() {
   const { tenant } = useTenant();
   const params = useSearchParams();
   const router = useRouter();
@@ -874,5 +874,12 @@ export default function EventModePage() {
         lowStockWarnings={pendingJumpRingLowStockWarnings}
       />
     </div>
+  );
+}
+export default function EventModePageWrapper() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><p className="text-text-secondary">Loading...</p></div>}>
+      <EventModePage />
+    </Suspense>
   );
 }

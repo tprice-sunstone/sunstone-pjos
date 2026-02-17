@@ -286,7 +286,7 @@ export default function ChainPricingConfig({
               </div>
               <div className="divide-y divide-[var(--border-subtle)]">
                 {productTypes.map((pt) => {
-                  const calculatedPrice = perInchRate * pt.default_inches;
+                  const calculatedPrice = perInchRate * (pt.default_inches ?? 0);
                   return (
                     <div key={pt.id} className="px-4 py-3 flex items-center justify-between">
                       <div className="flex items-center gap-2">

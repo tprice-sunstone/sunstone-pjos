@@ -139,7 +139,7 @@ export default function MaterialDropdown({
             <option value="">Select material...</option>
             {materials.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.name}{m.short_name ? ` (${m.short_name})` : ''}
+                {m.name}{m.abbreviation ? ` (${m.abbreviation})` : ''}
               </option>
             ))}
             <option value="__add_new__">+ Add new material</option>

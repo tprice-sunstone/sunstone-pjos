@@ -16,7 +16,7 @@
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/hooks/use-tenant';
@@ -105,7 +105,7 @@ type PaymentProcessor = 'square' | 'stripe';
 // Page Component
 // ============================================================================
 
-export default function SettingsPage() {
+function SettingsPage() {
   const { tenant, can, isOwner, refetch } = useTenant();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -1985,5 +1985,12 @@ export default function SettingsPage() {
         </ModalFooter>
       </Modal>
     </div>
+  );
+}
+export default function SettingsPageWrapper() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><p className="text-text-secondary">Loading...</p></div>}>
+      <SettingsPage />
+    </Suspense>
   );
 }

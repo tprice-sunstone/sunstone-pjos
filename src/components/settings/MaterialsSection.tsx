@@ -58,7 +58,7 @@ export default function MaterialsSection({ tenantId }: MaterialsSectionProps) {
       const { error } = await supabase.from('materials').insert({
         tenant_id: tenantId,
         name: newName.trim(),
-        short_name: newShortName.trim() || null,
+        abbreviation: newShortName.trim() || null,
         sort_order: nextSort,
         is_system: false,
       });
@@ -77,7 +77,7 @@ export default function MaterialsSection({ tenantId }: MaterialsSectionProps) {
   const startEdit = (m: Material) => {
     setEditingId(m.id);
     setEditName(m.name);
-    setEditShortName(m.short_name || '');
+    setEditShortName(m.abbreviation || '');
   };
 
   const handleEdit = async () => {
@@ -86,7 +86,7 @@ export default function MaterialsSection({ tenantId }: MaterialsSectionProps) {
     try {
       const { error } = await supabase
         .from('materials')
-        .update({ name: editName.trim(), short_name: editShortName.trim() || null })
+        .update({ name: editName.trim(), abbreviation: editShortName.trim() || null })
         .eq('id', editingId);
       if (error) {
         if (error.code === '23505') toast.error('A material with this name already exists');
@@ -235,9 +235,9 @@ export default function MaterialsSection({ tenantId }: MaterialsSectionProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-[var(--text-primary)]">{m.name}</span>
-                      {m.short_name && (
+                      {m.abbreviation && (
                         <span className="text-xs text-[var(--text-tertiary)] bg-[var(--surface-subtle)] px-1.5 py-0.5 rounded font-mono">
-                          {m.short_name}
+                          {m.abbreviation}
                         </span>
                       )}
                       {m.is_system && (
