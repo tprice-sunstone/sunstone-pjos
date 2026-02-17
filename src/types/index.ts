@@ -126,6 +126,7 @@ export interface ProductType {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  is_default: boolean;
 }
 export interface Material {
   id: string;
