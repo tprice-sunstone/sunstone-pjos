@@ -1,3 +1,6 @@
+// src/app/api/square/callback/route.ts
+// Updated: Better error logging for production debugging
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 
@@ -10,14 +13,24 @@ export async function GET(request: NextRequest) {
 
   const settingsUrl = new URL('/dashboard/settings', request.url);
 
+  // Log incoming callback for debugging
+  console.log('[Square Callback] Received:', {
+    hasCode: !!code,
+    hasState: !!stateParam,
+    error: error || 'none',
+    errorDescription: errorDescription || 'none',
+    callbackUrl: request.url.split('?')[0], // log URL without params for safety
+  });
+
   // Handle Square denial
   if (error) {
-    console.error('Square OAuth error:', error, errorDescription);
+    console.error('[Square Callback] OAuth denied by user or Square:', error, errorDescription);
     settingsUrl.searchParams.set('error', 'square_denied');
     return NextResponse.redirect(settingsUrl);
   }
 
   if (!code || !stateParam) {
+    console.error('[Square Callback] Missing code or state parameter');
     settingsUrl.searchParams.set('error', 'missing_params');
     return NextResponse.redirect(settingsUrl);
   }
@@ -28,6 +41,7 @@ export async function GET(request: NextRequest) {
     try {
       state = JSON.parse(Buffer.from(stateParam, 'base64url').toString());
     } catch {
+      console.error('[Square Callback] Failed to decode state parameter');
       settingsUrl.searchParams.set('error', 'invalid_state');
       return NextResponse.redirect(settingsUrl);
     }
@@ -35,12 +49,32 @@ export async function GET(request: NextRequest) {
     const applicationId = process.env.SQUARE_APPLICATION_ID!;
     const applicationSecret = process.env.SQUARE_APPLICATION_SECRET!;
     const environment = process.env.SQUARE_ENVIRONMENT || 'sandbox';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+    // Log config (safe — no secrets)
+    console.log('[Square Callback] Config:', {
+      hasApplicationId: !!applicationId,
+      hasApplicationSecret: !!applicationSecret,
+      environment,
+      appUrl,
+      tenantId: state.tenant_id,
+    });
+
+    if (!applicationId || !applicationSecret) {
+      console.error('[Square Callback] Missing Square credentials in env vars');
+      settingsUrl.searchParams.set('error', 'square_not_configured');
+      return NextResponse.redirect(settingsUrl);
+    }
 
     const squareBaseUrl = environment === 'production'
       ? 'https://connect.squareup.com'
       : 'https://connect.squareupsandbox.com';
 
+    const redirectUri = `${appUrl}/api/square/callback`;
+
     // Exchange authorization code for tokens
+    console.log('[Square Callback] Exchanging code for tokens at:', `${squareBaseUrl}/oauth2/token`);
+
     const tokenResponse = await fetch(`${squareBaseUrl}/oauth2/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -49,13 +83,18 @@ export async function GET(request: NextRequest) {
         client_secret: applicationSecret,
         code,
         grant_type: 'authorization_code',
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/square/callback`,
+        redirect_uri: redirectUri,
       }),
     });
 
     if (!tokenResponse.ok) {
       const errBody = await tokenResponse.text();
-      console.error('Square token exchange failed:', tokenResponse.status, errBody);
+      console.error('[Square Callback] Token exchange failed:', {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        body: errBody,
+        redirectUri,
+      });
       settingsUrl.searchParams.set('error', 'token_exchange_failed');
       return NextResponse.redirect(settingsUrl);
     }
@@ -64,9 +103,12 @@ export async function GET(request: NextRequest) {
     const { access_token, refresh_token, merchant_id } = tokenData;
 
     if (!access_token || !merchant_id) {
+      console.error('[Square Callback] Incomplete token response — missing access_token or merchant_id');
       settingsUrl.searchParams.set('error', 'incomplete_response');
       return NextResponse.redirect(settingsUrl);
     }
+
+    console.log('[Square Callback] Token exchange successful, merchant:', merchant_id);
 
     // Fetch merchant's primary location
     let locationId: string | null = null;
@@ -83,9 +125,12 @@ export async function GET(request: NextRequest) {
         const locations = locData.locations || [];
         const active = locations.find((l: any) => l.status === 'ACTIVE');
         locationId = active?.id || locations[0]?.id || null;
+        console.log('[Square Callback] Location found:', locationId, `(${locations.length} total)`);
+      } else {
+        console.warn('[Square Callback] Locations fetch failed:', locRes.status);
       }
     } catch (locErr) {
-      console.warn('Could not fetch Square locations:', locErr);
+      console.warn('[Square Callback] Could not fetch Square locations:', locErr);
     }
 
     // Store tokens on the tenant using service role (bypasses RLS)
@@ -102,16 +147,17 @@ export async function GET(request: NextRequest) {
       .eq('id', state.tenant_id);
 
     if (updateError) {
-      console.error('Failed to store Square tokens:', updateError);
+      console.error('[Square Callback] Failed to store tokens in DB:', updateError);
       settingsUrl.searchParams.set('error', 'storage_failed');
       return NextResponse.redirect(settingsUrl);
     }
 
+    console.log('[Square Callback] ✅ Square connected successfully for tenant:', state.tenant_id);
     settingsUrl.searchParams.set('success', 'square_connected');
     return NextResponse.redirect(settingsUrl);
 
   } catch (err: any) {
-    console.error('Square OAuth callback error:', err);
+    console.error('[Square Callback] Unexpected error:', err?.message, err?.stack);
     settingsUrl.searchParams.set('error', 'callback_failed');
     return NextResponse.redirect(settingsUrl);
   }

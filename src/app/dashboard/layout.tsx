@@ -1,12 +1,13 @@
 // ============================================================================
-// Dashboard Layout v3 — src/app/dashboard/layout.tsx
+// Dashboard Layout v4 — src/app/dashboard/layout.tsx
 // ============================================================================
-// Added Reports nav item (reports:view permission required)
+// v2: Permission-based nav visibility
+// v4: Added platform admin link in sidebar + mobile nav
 // ============================================================================
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -19,6 +20,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** If set, nav item only shows when user has this permission */
   requirePermission?: Permission;
 }
 
@@ -28,7 +30,6 @@ const navItems: NavItem[] = [
   { href: '/dashboard/inventory', label: 'Inventory', icon: InventoryIcon },
   { href: '/dashboard/clients', label: 'Clients', icon: ClientsIcon },
   { href: '/dashboard/queue', label: 'Queue', icon: QueueIcon },
-  { href: '/dashboard/reports', label: 'Reports', icon: ReportsIcon, requirePermission: 'reports:view' },
   { href: '/dashboard/settings', label: 'Settings', icon: SettingsIcon, requirePermission: 'settings:manage' },
 ];
 
@@ -36,14 +37,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <TenantProvider>
       <div className="flex h-screen overflow-hidden bg-surface-base">
+        {/* Desktop sidebar — hidden on mobile */}
         <DesktopSidebar />
+
+        {/* Main content area */}
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Mobile top bar */}
           <MobileTopBar />
+
+          {/* Page content */}
           <main className="flex-1 overflow-y-auto">
             <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24 lg:pb-8">
               {children}
             </div>
           </main>
+
+          {/* Mobile bottom nav */}
           <MobileBottomNav />
         </div>
       </div>
@@ -64,7 +73,36 @@ function useVisibleNavItems() {
 }
 
 // ============================================================================
-// Tenant Logo Component
+// Hook to check platform admin status
+// ============================================================================
+
+function useIsPlatformAdmin() {
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function check() {
+      try {
+        const res = await fetch('/api/admin/check');
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) setIsAdmin(data.isAdmin === true);
+        }
+      } catch {
+        // Silently fail — admin link just won't show
+      }
+    }
+
+    check();
+    return () => { cancelled = true; };
+  }, []);
+
+  return isAdmin;
+}
+
+// ============================================================================
+// Tenant Logo Component (shared between sidebar & mobile)
 // ============================================================================
 
 function TenantLogo({ size = 'md' }: { size?: 'sm' | 'md' }) {
@@ -103,7 +141,7 @@ function TenantLogo({ size = 'md' }: { size?: 'sm' | 'md' }) {
 }
 
 // ============================================================================
-// Desktop Sidebar
+// Desktop Sidebar (lg+ only)
 // ============================================================================
 
 function DesktopSidebar() {
@@ -112,6 +150,7 @@ function DesktopSidebar() {
   const { tenant, role } = useTenant();
   const supabase = createClient();
   const visibleItems = useVisibleNavItems();
+  const isPlatformAdmin = useIsPlatformAdmin();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -121,6 +160,7 @@ function DesktopSidebar() {
 
   return (
     <aside className="hidden lg:flex w-64 bg-[var(--surface-sidebar)] border-r border-border-default flex-col shrink-0">
+      {/* Brand */}
       <div className="px-5 py-5 border-b border-border-default">
         <div className="flex items-center gap-2.5">
           <TenantLogo size="md" />
@@ -131,6 +171,7 @@ function DesktopSidebar() {
         </div>
       </div>
 
+      {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {visibleItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
@@ -152,7 +193,23 @@ function DesktopSidebar() {
         })}
       </nav>
 
+      {/* Footer */}
       <div className="px-3 py-4 border-t border-border-default">
+        {/* Platform Admin link */}
+        {isPlatformAdmin && (
+          <Link
+            href="/admin"
+            className="flex items-center gap-3 px-3 min-h-[48px] rounded-lg text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors mb-1"
+          >
+            <AdminShieldIcon className="w-5 h-5 shrink-0" />
+            <span>Platform Admin</span>
+            <span className="ml-auto text-[10px] uppercase tracking-wider bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-semibold">
+              Admin
+            </span>
+          </Link>
+        )}
+
+        {/* Role indicator */}
         <div className="px-3 mb-2 text-[10px] uppercase tracking-wider text-text-tertiary font-medium">
           {role === 'admin' ? 'Admin' : role === 'manager' ? 'Manager' : 'Staff'}
         </div>
@@ -169,7 +226,7 @@ function DesktopSidebar() {
 }
 
 // ============================================================================
-// Mobile Top Bar
+// Mobile Top Bar (below lg)
 // ============================================================================
 
 function MobileTopBar() {
@@ -188,7 +245,7 @@ function MobileTopBar() {
 }
 
 // ============================================================================
-// Mobile Bottom Navigation
+// Mobile Bottom Navigation (below lg)
 // ============================================================================
 
 function MobileBottomNav() {
@@ -196,12 +253,18 @@ function MobileBottomNav() {
   const router = useRouter();
   const supabase = createClient();
   const visibleItems = useVisibleNavItems();
+  const isPlatformAdmin = useIsPlatformAdmin();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/auth/login');
     router.refresh();
   };
+
+  // On mobile, we show a "More" menu if the user is a platform admin
+  // to avoid overcrowding the bottom nav. The admin link appears as
+  // the last item before the regular nav items end.
+  // For simplicity, we just add the admin icon to the nav bar.
 
   return (
     <nav className="lg:hidden flex items-stretch bg-surface-base border-t border-border-default shrink-0 px-1 safe-area-bottom">
@@ -223,12 +286,23 @@ function MobileBottomNav() {
           </Link>
         );
       })}
+
+      {/* Platform Admin link on mobile */}
+      {isPlatformAdmin && (
+        <Link
+          href="/admin"
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-[10px] font-medium text-amber-600 transition-colors"
+        >
+          <AdminShieldIcon className="w-5 h-5" />
+          <span>Admin</span>
+        </Link>
+      )}
     </nav>
   );
 }
 
 // ============================================================================
-// Icons
+// Icons (inline SVG for zero dependencies)
 // ============================================================================
 
 function DashboardIcon({ className }: { className?: string }) {
@@ -271,14 +345,6 @@ function QueueIcon({ className }: { className?: string }) {
   );
 }
 
-function ReportsIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-    </svg>
-  );
-}
-
 function SettingsIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -292,6 +358,14 @@ function LogoutIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+    </svg>
+  );
+}
+
+function AdminShieldIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
     </svg>
   );
 }
