@@ -58,6 +58,8 @@ export interface Tenant {
   waiver_required: boolean;
   min_monthly_transactions: number;
   created_at: string;
+  default_tax_rate: number | null;
+  is_suspended: boolean;
   updated_at: string;
 }
 
