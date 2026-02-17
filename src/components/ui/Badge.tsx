@@ -1,7 +1,7 @@
 import { type HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-export type BadgeVariant = 'default' | 'accent' | 'success' | 'warning' | 'error' | 'info';
+export type BadgeVariant = 'default' | 'secondary' | 'accent' | 'success' | 'warning' | 'error' | 'info';
 export type BadgeSize = 'sm' | 'md';
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
@@ -11,6 +11,7 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 
 const variantStyles: Record<BadgeVariant, string> = {
   default: 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]',
+  secondary: 'bg-[var(--surface-raised)] text-[var(--text-secondary)] ring-1 ring-[var(--border-default)]',
   accent:
     'bg-[var(--accent-subtle)] text-[var(--accent-600,var(--accent-hover))] ring-1 ring-[var(--accent-200,#fbd9c6)]',
   success: 'bg-[var(--success-50)] text-[var(--success-600)] ring-1 ring-emerald-200',
