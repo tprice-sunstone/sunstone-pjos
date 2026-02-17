@@ -12,14 +12,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useCartStore } from '@/hooks/use-cart';
+import { useCartStore, type CartStore } from '@/hooks/use-cart';
 import { useTenant } from '@/hooks/use-tenant';
 import { Button } from '@/components/ui/Button';
 
 type CheckoutStep = 'items' | 'tip' | 'payment' | 'receipt' | 'confirmation';
 
 export default function CartPanel({ cart, step, setStep, tenant }: {
-  cart: ReturnType<typeof useCartStore>;
+  cart: CartStore;
   step: CheckoutStep;
   setStep: (s: CheckoutStep) => void;
   tenant: any;

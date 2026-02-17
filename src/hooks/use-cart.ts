@@ -8,7 +8,7 @@
 import { create } from 'zustand';
 import type { CartItem, CartState, PaymentMethod, FeeHandling } from '@/types';
 
-interface CartStore extends CartState {
+export interface CartStore extends CartState {
   // Actions
   addItem: (item: Omit<CartItem, 'id' | 'line_total'>) => void;
   removeItem: (id: string) => void;
