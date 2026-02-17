@@ -137,6 +137,20 @@ export interface Material {
   is_active: boolean;
   created_at: string;
 }
+export interface Supplier {
+  id: string;
+  tenant_id: string;
+  name: string;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  website: string | null;
+  is_sunstone: boolean;
+  notes: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
 export interface ChainProductPrice {
   id: string;
   tenant_id: string;
