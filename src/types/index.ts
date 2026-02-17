@@ -51,6 +51,7 @@ export interface Tenant {
   square_location_id: string | null;
   stripe_account_id: string | null;
   stripe_onboarding_complete: boolean;
+  onboarding_completed: boolean;
   logo_url: string | null;
   brand_color: string;
   waiver_text: string;
