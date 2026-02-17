@@ -253,7 +253,7 @@ export default function ChainProductPicker({
       product_type_id: null,
       product_type_name: 'Custom',
       inches_used: inches,
-      pricing_mode: chain.pricing_mode,
+      pricing_mode: chain.pricing_mode ?? 'per_product',
     });
     onClose();
   };
