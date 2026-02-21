@@ -22,6 +22,30 @@ export function formatPhone(phone: string): string {
   return phone;
 }
 
+/**
+ * Format a phone number to E.164 format for Twilio SMS.
+ * Strips all non-digit characters, then prepends +1 if not already present.
+ * Examples:
+ *   "8014009693"       -> "+18014009693"
+ *   "(801) 400-9693"   -> "+18014009693"
+ *   "+18014009693"     -> "+18014009693"
+ *   "18014009693"      -> "+18014009693"
+ */
+export function formatPhoneE164(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 10) {
+    return `+1${digits}`;
+  }
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+${digits}`;
+  }
+  // Already has country code or unusual length — prepend + if missing
+  if (phone.startsWith('+')) {
+    return `+${digits}`;
+  }
+  return `+1${digits}`;
+}
+
 export function slugify(text: string): string {
   return text
     .toLowerCase()

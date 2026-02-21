@@ -12,14 +12,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useCartStore, type CartStore } from '@/hooks/use-cart';
 import { useTenant } from '@/hooks/use-tenant';
 import { Button } from '@/components/ui/Button';
 
-type CheckoutStep = 'items' | 'tip' | 'payment' | 'receipt' | 'confirmation';
+// CHANGED: Removed 'receipt' from CheckoutStep
+type CheckoutStep = 'items' | 'tip' | 'payment' | 'confirmation';
 
 export default function CartPanel({ cart, step, setStep, tenant }: {
-  cart: CartStore;
+  cart: any;
   step: CheckoutStep;
   setStep: (s: CheckoutStep) => void;
   tenant: any;
@@ -74,7 +74,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
 
   return (
     <>
-      {/* ── Panel Header ── */}
+      {/* —— Panel Header —— */}
       <div className="hidden md:flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)]">
         <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
           Current Sale
@@ -84,7 +84,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
         </span>
       </div>
 
-      {/* ── Line Items ── */}
+      {/* —— Line Items —— */}
       <div className="flex-1 overflow-y-auto px-2">
         {cart.items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-6">
@@ -96,7 +96,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
             <p className="text-[var(--text-tertiary)] text-sm">Tap items to add them</p>
           </div>
         ) : (
-          cart.items.map((item) => (
+          cart.items.map((item: any) => (
             <div key={item.id} className="group">
               <div className="flex items-start justify-between gap-3 px-4 py-3.5 min-h-[56px] border-b border-[var(--surface-subtle)] hover:bg-[var(--surface-raised)] transition-colors rounded-lg mx-1 my-0.5">
                 <div className="min-w-0 flex-1 pt-0.5">
@@ -212,7 +212,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
         )}
       </div>
 
-      {/* ── Totals ── */}
+      {/* —— Totals —— */}
       <div className="px-6 pt-4 pb-2 border-t border-[var(--border-subtle)] space-y-1.5 text-sm">
         <div className="flex justify-between text-[var(--text-tertiary)]">
           <span>Subtotal</span>
@@ -345,7 +345,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
         )}
       </div>
 
-      {/* ── THE MOMENT: Total ── */}
+      {/* —— THE MOMENT: Total —— */}
       <div className="px-6 pt-4 pb-2 border-t-2 border-[var(--text-primary)]">
         <div className="flex items-baseline justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Total</span>
@@ -355,7 +355,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
         </div>
       </div>
 
-      {/* ── Checkout Button ── */}
+      {/* —— Checkout Button —— */}
       <div className="p-5">
         {step === 'items' && cart.items.length > 0 && (
           <button
@@ -363,13 +363,14 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
             className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm hover:shadow-md"
             style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
           >
-            Checkout -- ${cart.total.toFixed(2)}
+            Checkout — ${cart.total.toFixed(2)}
           </button>
         )}
         {step !== 'items' && step !== 'confirmation' && (
           <button
             onClick={() => {
-              const steps: CheckoutStep[] = ['items', 'tip', 'payment', 'receipt'];
+              // CHANGED: Removed 'receipt' from step navigation
+              const steps: CheckoutStep[] = ['items', 'tip', 'payment'];
               const idx = steps.indexOf(step);
               if (idx > 0) setStep(steps[idx - 1]);
             }}

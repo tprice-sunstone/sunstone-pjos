@@ -5,7 +5,6 @@ interface ReceiptEmailBody {
   to: string;
   tenantName: string;
   tenantAccentColor?: string;
-  tenantLogoUrl?: string;        // Supabase storage URL for tenant logo
   eventName?: string;
   saleDate: string;
   items: Array<{
@@ -46,7 +45,7 @@ function buildReceiptHTML(data: ReceiptEmailBody): string {
       (item) => `
       <tr>
         <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; color: #374151;">
-          ${item.name}${item.quantity > 1 ? ` <span style="color: #9ca3af;">×${item.quantity}</span>` : ''}
+          ${item.name}${item.quantity > 1 ? ` <span style="color: #9ca3af;">&times;${item.quantity}</span>` : ''}
         </td>
         <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; color: #374151; text-align: right; font-family: 'SF Mono', Monaco, monospace;">
           $${item.lineTotal.toFixed(2)}
@@ -54,11 +53,6 @@ function buildReceiptHTML(data: ReceiptEmailBody): string {
       </tr>`
     )
     .join('');
-
-  // Build logo HTML — shows logo image if URL provided, otherwise just the name
-  const logoHtml = data.tenantLogoUrl
-    ? `<img src="${data.tenantLogoUrl}" alt="${data.tenantName}" style="max-height: 48px; max-width: 160px; margin: 0 auto 8px; display: block;" />`
-    : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -76,7 +70,6 @@ function buildReceiptHTML(data: ReceiptEmailBody): string {
           <!-- Header -->
           <tr>
             <td style="padding: 32px 32px 24px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-              ${logoHtml}
               <h1 style="margin: 0 0 4px; font-size: 22px; font-weight: 700; color: ${accent};">
                 ${data.tenantName}
               </h1>
@@ -133,7 +126,7 @@ function buildReceiptHTML(data: ReceiptEmailBody): string {
           <!-- Thank You -->
           <tr>
             <td style="padding: 24px 32px; text-align: center; background-color: #f9fafb; border-top: 1px solid #f3f4f6;">
-              <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #111827;">Thank you for your purchase! 💎</p>
+              <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #111827;">Thank you for your purchase!</p>
               <p style="margin: 0; font-size: 12px; color: #d1d5db;">Powered by Sunstone</p>
             </td>
           </tr>
