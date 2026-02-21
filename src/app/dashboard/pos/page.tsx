@@ -2,10 +2,8 @@
 // Store Mode POS — src/app/dashboard/pos/page.tsx
 // ============================================================================
 // Luxury step-down product selection with visual hierarchy.
-// Primary services (Bracelet, Anklet) get hero cards.
-// Secondary services (Necklace, Hand Chain, Ring) medium.
-// Add-ons and Custom are compact.
-// Flow: Category -> Material -> Chain -> (Measure)
+// Includes: QR code for waiver check-in, MiniQueueStrip, serving banner,
+// queue-to-POS client linking, cancel serving, walk-up sales.
 // ============================================================================
 
 'use client';
@@ -17,8 +15,12 @@ import { useCartStore } from '@/hooks/use-cart';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { PLATFORM_FEE_RATES } from '@/types';
+import { generateQRData } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/ui/Modal';
+import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
+import MiniQueueStrip from '@/components/MiniQueueStrip';
 import type {
   InventoryItem,
   TaxProfile,
@@ -36,8 +38,6 @@ const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
 
 const TIP_PRESETS = [0, 3, 5, 10, 15, 20];
 
-// CHANGED: Removed 'receipt' from CheckoutStep — flow is now items → tip → payment → completeSale
-// 'confirmation' kept for CartPanel type compatibility (not used in Store Mode)
 type CheckoutStep = 'items' | 'tip' | 'payment' | 'confirmation';
 type SelectionStep = 'category' | 'material' | 'chain' | 'measure';
 
@@ -48,7 +48,7 @@ const NON_CHAIN_LABELS: Record<string, string> = {
   other: 'Other Items',
 };
 
-// SVG icons as components (no emojis)
+// SVG icons as components
 const BackArrow = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
@@ -85,10 +85,17 @@ export default function StoreModePage() {
   const [customItem, setCustomItem] = useState({ name: '', price: '' });
   const [selectedNonChainType, setSelectedNonChainType] = useState<string | null>(null);
 
+  // QR code state
+  const [showQR, setShowQR] = useState(false);
+  const [showFullScreenQR, setShowFullScreenQR] = useState(false);
+
+  // Queue/check-in state
+  const [activeQueueEntry, setActiveQueueEntry] = useState<any | null>(null);
+
   const cart = useCartStore();
   const supabase = createClient();
 
-  // —— Load data ——
+  // ── Load data ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!tenant) return;
@@ -127,7 +134,7 @@ export default function StoreModePage() {
     load();
   }, [tenant]);
 
-  // —— Derived data ——
+  // ── Derived data ───────────────────────────────────────────────────────
 
   const chains = useMemo(() => inventory.filter((i) => i.type === 'chain'), [inventory]);
 
@@ -137,7 +144,6 @@ export default function StoreModePage() {
     return Array.from(types);
   }, [inventory]);
 
-  // Tier assignment: first 2 product types = primary, rest = secondary
   const primaryTypes = useMemo(() => productTypes.slice(0, 2), [productTypes]);
   const secondaryTypes = useMemo(() => productTypes.slice(2), [productTypes]);
 
@@ -163,7 +169,7 @@ export default function StoreModePage() {
     return inventory.filter((i) => i.type === selectedNonChainType && i.quantity_on_hand > 0);
   }, [selectedNonChainType, inventory]);
 
-  // —— Helpers ——
+  // ── Helpers ────────────────────────────────────────────────────────────
 
   const chainAvailCount = (ptId: string) =>
     chains.filter((c) => c.quantity_on_hand > 0 && chainPrices.some((p) => p.inventory_item_id === c.id && p.product_type_id === ptId)).length;
@@ -175,7 +181,7 @@ export default function StoreModePage() {
     return row ? `$${Number(row.sell_price).toFixed(2)}` : `$${Number(chain.sell_price).toFixed(2)}`;
   };
 
-  // —— Navigation ——
+  // ── Navigation ─────────────────────────────────────────────────────────
 
   const goHome = () => {
     setSelectionStep('category'); setSelectedProductType(null); setSelectedMaterial(null);
@@ -188,7 +194,7 @@ export default function StoreModePage() {
     else if (selectionStep === 'material') goHome();
   };
 
-  // —— Add to cart handlers ——
+  // ── Add to cart handlers ───────────────────────────────────────────────
 
   const selectCategory = (pt: ProductType) => {
     setSelectedProductType(pt); setSelectedMaterial(null); setSelectedChain(null);
@@ -241,7 +247,52 @@ export default function StoreModePage() {
     toast.success(`Added ${customItem.name}`); setCustomItem({ name: '', price: '' }); goHome();
   };
 
-  // —— Sale completion ——
+  // ── Queue: Start Sale from check-in strip ──────────────────────────────
+
+  const handleQueueStartSale = async (entry: any) => {
+    setActiveQueueEntry(entry);
+
+    // Update queue entry status to 'serving'
+    await supabase
+      .from('queue_entries')
+      .update({ status: 'serving' })
+      .eq('id', entry.id);
+
+    // Pre-fill receipt fields
+    if (entry.email) {
+      setReceiptEmail(entry.email);
+    } else if (entry.client_id) {
+      const { data: client } = await supabase.from('clients').select('email, phone').eq('id', entry.client_id).single();
+      if (client?.email) setReceiptEmail(client.email);
+      if (client?.phone && !entry.phone) setReceiptPhone(client.phone);
+    }
+    if (entry.phone) {
+      setReceiptPhone(entry.phone);
+    }
+
+    // Link client to cart
+    if (entry.client_id) {
+      cart.setClientId(entry.client_id);
+    }
+  };
+
+  // ── Queue: Cancel Serving ──────────────────────────────────────────────
+
+  const cancelServing = async () => {
+    if (!activeQueueEntry) return;
+
+    await supabase
+      .from('queue_entries')
+      .update({ status: 'waiting' })
+      .eq('id', activeQueueEntry.id);
+
+    setActiveQueueEntry(null);
+    setReceiptEmail('');
+    setReceiptPhone('');
+    cart.setClientId(null);
+  };
+
+  // ── Sale completion ────────────────────────────────────────────────────
 
   const completeSale = async () => {
     if (!tenant || !cart.payment_method) return;
@@ -274,6 +325,15 @@ export default function StoreModePage() {
         await supabase.from('inventory_items').update({ quantity_on_hand: Math.max(0, inv.quantity_on_hand - deduct) }).eq('id', inv.id);
       }
 
+      // Mark queue entry as served (if started from check-in strip)
+      if (activeQueueEntry) {
+        await supabase
+          .from('queue_entries')
+          .update({ status: 'served', served_at: new Date().toISOString() })
+          .eq('id', activeQueueEntry.id);
+        setActiveQueueEntry(null);
+      }
+
       setTodaySales((p) => ({ count: p.count + 1, total: p.total + Number(sale.total) }));
       cart.reset(); setStep('items'); setReceiptEmail(''); setReceiptPhone(''); goHome();
       toast.success('Sale completed');
@@ -281,7 +341,7 @@ export default function StoreModePage() {
     finally { setProcessing(false); }
   };
 
-  // —— Loading ——
+  // ── Loading ────────────────────────────────────────────────────────────
 
   if (!tenant) {
     return (
@@ -294,7 +354,11 @@ export default function StoreModePage() {
     );
   }
 
-  // —— Shared card classes ——
+  // ── QR data ────────────────────────────────────────────────────────────
+
+  const qrUrl = generateQRData(tenant.slug);
+
+  // ── Shared card classes ────────────────────────────────────────────────
 
   const cardBase = 'bg-white border border-[var(--border-default)] text-left cursor-pointer transition-all duration-200 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.08)] hover:-translate-y-px active:scale-[0.97]';
   const cardPrimary = `${cardBase} rounded-2xl p-7 min-h-[140px] shadow-[0_1px_3px_0_rgba(0,0,0,0.06)]`;
@@ -308,7 +372,7 @@ export default function StoreModePage() {
   return (
     <div className="fixed inset-0 bg-white flex flex-col">
 
-      {/* —— Header —— */}
+      {/* ── Header ── */}
       <header className="bg-white border-b border-[var(--border-default)] px-5 py-3.5 flex items-center justify-between shrink-0 z-10">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={() => router.push('/dashboard')}
@@ -320,7 +384,20 @@ export default function StoreModePage() {
             <div className="text-[11px] text-[var(--text-tertiary)] uppercase tracking-[0.05em] font-medium">Store Mode</div>
           </div>
         </div>
-        <div className="flex items-center gap-5 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          {/* QR Code button */}
+          <button
+            onClick={() => setShowQR(true)}
+            className="p-2 rounded-lg hover:bg-[var(--surface-raised)] text-[var(--text-tertiary)] min-h-[44px] min-w-[44px] flex items-center justify-center"
+            title="Show QR Code"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
+            </svg>
+          </button>
+
+          {/* Desktop stats */}
           <div className="hidden sm:flex items-center gap-5 text-sm">
             <div className="text-center">
               <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.05em] font-semibold">Sales</div>
@@ -335,7 +412,44 @@ export default function StoreModePage() {
         </div>
       </header>
 
-      {/* —— Main —— */}
+      {/* ── Check-In Strip ── */}
+      <MiniQueueStrip
+        tenantId={tenant.id}
+        mode="store"
+        onStartSale={handleQueueStartSale}
+        isServingActive={!!activeQueueEntry}
+      />
+
+      {/* ── Serving Banner ── */}
+      {activeQueueEntry && step === 'items' && (
+        <div
+          className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border-default)]"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--accent-primary) 10%, white)' }}
+        >
+          <div className="flex items-center gap-2">
+            <div
+              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+              style={{ backgroundColor: 'var(--accent-primary)' }}
+            >
+              {activeQueueEntry.name?.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+            </div>
+            <span className="text-sm font-medium text-[var(--text-primary)]">
+              Serving: {activeQueueEntry.name}
+            </span>
+          </div>
+          <button
+            onClick={cancelServing}
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-white/50 text-[var(--text-tertiary)]"
+            title="Cancel serving"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* ── Main ── */}
       <div className="flex-1 flex overflow-hidden relative">
 
         <div className="flex-1 overflow-y-auto bg-[var(--surface-raised)]">
@@ -351,7 +465,7 @@ export default function StoreModePage() {
             {step === 'items' && (
               <div>
 
-                {/* —— CATEGORY VIEW —— */}
+                {/* ── CATEGORY VIEW ── */}
                 {selectionStep === 'category' && !showCustomForm && (
                   <div>
                     {/* Primary services — hero cards */}
@@ -367,7 +481,7 @@ export default function StoreModePage() {
                                 className={`${cardPrimary} flex flex-col justify-between ${count === 0 ? cardDisabled : ''}`}>
                                 <div>
                                   <div className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight leading-tight">{pt.name}</div>
-                                  <div className="text-[12px] text-[var(--text-tertiary)] mt-1.5 font-medium">{pt.default_inches}" standard</div>
+                                  <div className="text-[12px] text-[var(--text-tertiary)] mt-1.5 font-medium">{pt.default_inches}&quot; standard</div>
                                 </div>
                                 <div className="flex items-center gap-1 text-[11px] text-[var(--text-tertiary)] font-medium mt-4">
                                   <span>{count} chain{count !== 1 ? 's' : ''}</span>
@@ -391,7 +505,7 @@ export default function StoreModePage() {
                                 disabled={count === 0}
                                 className={`${cardSecondary} flex flex-col justify-between ${count === 0 ? cardDisabled : ''}`}>
                                 <div className="text-[16px] font-semibold text-[var(--text-primary)]">{pt.name}</div>
-                                <div className="text-[11px] text-[var(--text-tertiary)] mt-2 font-medium">{pt.default_inches}" standard</div>
+                                <div className="text-[11px] text-[var(--text-tertiary)] mt-2 font-medium">{pt.default_inches}&quot; standard</div>
                               </button>
                             );
                           })}
@@ -426,7 +540,7 @@ export default function StoreModePage() {
                   </div>
                 )}
 
-                {/* —— CUSTOM FORM —— */}
+                {/* ── CUSTOM FORM ── */}
                 {selectionStep === 'category' && showCustomForm && (
                   <div>
                     <button onClick={goHome} className={backButton}><BackArrow /> Back</button>
@@ -451,7 +565,7 @@ export default function StoreModePage() {
                   </div>
                 )}
 
-                {/* —— MATERIAL SELECTION —— */}
+                {/* ── MATERIAL SELECTION ── */}
                 {selectionStep === 'material' && selectedProductType && (
                   <div>
                     <button onClick={goBack} className={backButton}><BackArrow /> Back</button>
@@ -481,7 +595,7 @@ export default function StoreModePage() {
                   </div>
                 )}
 
-                {/* —— CHAIN SELECTION —— */}
+                {/* ── CHAIN SELECTION ── */}
                 {selectionStep === 'chain' && selectedProductType && selectedMaterial && (
                   <div>
                     <button onClick={goBack} className={backButton}><BackArrow /> Back</button>
@@ -504,7 +618,7 @@ export default function StoreModePage() {
                   </div>
                 )}
 
-                {/* —— NON-CHAIN ITEMS —— */}
+                {/* ── NON-CHAIN ITEMS ── */}
                 {selectionStep === 'chain' && selectedNonChainType && (
                   <div>
                     <button onClick={goHome} className={backButton}><BackArrow /> Back</button>
@@ -526,7 +640,7 @@ export default function StoreModePage() {
                   </div>
                 )}
 
-                {/* —— MEASUREMENT (per-inch) —— */}
+                {/* ── MEASUREMENT (per-inch) ── */}
                 {selectionStep === 'measure' && selectedChain && selectedProductType && (
                   <div>
                     <button onClick={goBack} className={backButton}><BackArrow /> Back</button>
@@ -562,7 +676,7 @@ export default function StoreModePage() {
               </div>
             )}
 
-            {/* ═══ TIP / PAYMENT STEPS ═══ */}
+            {/* ═══ TIP / PAYMENT / RECEIPT STEPS ═══ */}
             {step === 'tip' && (
               <div className="max-w-sm mx-auto py-8 space-y-6">
                 <h2 className={pageTitle + ' text-center'}>Add a Tip</h2>
@@ -600,18 +714,13 @@ export default function StoreModePage() {
                     </button>
                   ))}
                 </div>
-                {/* CHANGED: Payment Continue now goes directly to completeSale instead of receipt step */}
                 {cart.payment_method && (
-                  <button onClick={completeSale} disabled={processing}
-                    className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm disabled:opacity-60"
-                    style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}>
-                    {processing ? 'Processing...' : `Complete Sale — $${cart.total.toFixed(2)}`}
-                  </button>
+                  <button onClick={completeSale} disabled={processing} className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm disabled:opacity-60"
+                    style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}>{processing ? 'Processing...' : `Complete Sale — $${cart.total.toFixed(2)}`}</button>
                 )}
               </div>
             )}
 
-            {/* REMOVED: Receipt step entirely — no pre-checkout contact collection */}
 
           </div>
         </div>
@@ -655,6 +764,50 @@ export default function StoreModePage() {
             <span className="font-bold font-mono text-lg">${cart.total.toFixed(2)}</span>
           </button>
         </div>
+      )}
+
+      {/* ── QR Code Modal ── */}
+      {showQR && tenant && !showFullScreenQR && (
+        <Modal isOpen={true} onClose={() => setShowQR(false)} size="lg">
+          <ModalHeader>
+            <h2 className="text-xl font-semibold text-[var(--text-primary)]">Waiver Check-In</h2>
+            <p className="text-sm text-[var(--text-tertiary)] mt-1">
+              Customers scan this to sign the waiver and check in.
+            </p>
+          </ModalHeader>
+          <ModalBody className="flex flex-col items-center py-4">
+            <QRCode
+              url={qrUrl}
+              size={280}
+              tenantName={tenant.name}
+              showDownload
+              showPrint
+            />
+            <p className="text-xs text-[var(--text-tertiary)] mt-4 text-center font-mono break-all">
+              {typeof window !== 'undefined' ? `${window.location.origin}/waiver?tenant=${tenant.slug}` : ''}
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <div className="flex gap-2 w-full">
+              <Button variant="secondary" className="flex-1" onClick={() => setShowFullScreenQR(true)}>
+                Full Screen
+              </Button>
+              <Button variant="primary" className="flex-1" onClick={() => setShowQR(false)}>
+                Done
+              </Button>
+            </div>
+          </ModalFooter>
+        </Modal>
+      )}
+
+      {/* ── Full Screen QR ── */}
+      {showFullScreenQR && tenant && (
+        <FullScreenQR
+          url={qrUrl}
+          tenantName={tenant.name}
+          eventName="Scan to sign waiver & check in"
+          onClose={() => setShowFullScreenQR(false)}
+        />
       )}
     </div>
   );
