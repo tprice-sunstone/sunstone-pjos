@@ -29,6 +29,18 @@ import type {
   ChainProductPrice,
 } from '@/types';
 
+interface CompletedSaleData {
+  saleId: string;
+  saleDate: string;
+  items: { name: string; quantity: number; unit_price: number; line_total: number }[];
+  subtotal: number;
+  taxAmount: number;
+  taxRate: number;
+  tipAmount: number;
+  total: number;
+  paymentMethod: string;
+}
+
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'card_present', label: 'Card' },
   { value: 'cash', label: 'Cash' },
@@ -92,6 +104,16 @@ export default function StoreModePage() {
   // Queue/check-in state
   const [activeQueueEntry, setActiveQueueEntry] = useState<any | null>(null);
 
+  // Receipt / confirmation
+  const [completedSale, setCompletedSale] = useState<CompletedSaleData | null>(null);
+  const [receiptConfig, setReceiptConfig] = useState<{ email: boolean; sms: boolean }>({ email: false, sms: false });
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [sendingSMS, setSendingSMS] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [smsSent, setSmsSent] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [smsError, setSmsError] = useState('');
+
   const cart = useCartStore();
   const supabase = createClient();
 
@@ -133,6 +155,15 @@ export default function StoreModePage() {
     };
     load();
   }, [tenant]);
+
+  // ── Check receipt config ────────────────────────────────────────────────
+
+  useEffect(() => {
+    fetch('/api/receipts/config')
+      .then((r) => r.json())
+      .then((cfg) => setReceiptConfig(cfg))
+      .catch(() => {});
+  }, []);
 
   // ── Derived data ───────────────────────────────────────────────────────
 
@@ -292,6 +323,39 @@ export default function StoreModePage() {
     cart.setClientId(null);
   };
 
+  // ── Receipt sending ───────────────────────────────────────────────────
+
+  const sendEmailReceipt = async () => {
+    if (!receiptEmail || !completedSale || !tenant) return;
+    setSendingEmail(true); setEmailError('');
+    try {
+      const res = await fetch('/api/receipts/email', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: receiptEmail, tenantName: tenant.name, tenantAccentColor: tenant.brand_color || undefined,
+          saleDate: completedSale.saleDate, items: completedSale.items,
+          subtotal: completedSale.subtotal, taxAmount: completedSale.taxAmount, taxRate: completedSale.taxRate,
+          tipAmount: completedSale.tipAmount, total: completedSale.total, paymentMethod: completedSale.paymentMethod }) });
+      const data = await res.json();
+      if (data.sent) { setEmailSent(true); if (completedSale.saleId) await supabase.from('sales').update({ receipt_sent_at: new Date().toISOString() }).eq('id', completedSale.saleId); }
+      else setEmailError(data.error || "Couldn't send email.");
+    } catch { setEmailError("Couldn't send email."); }
+    finally { setSendingEmail(false); }
+  };
+
+  const sendSMSReceipt = async () => {
+    if (!receiptPhone || !completedSale || !tenant) return;
+    setSendingSMS(true); setSmsError('');
+    try {
+      const res = await fetch('/api/receipts/sms', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: receiptPhone.replace(/[^\d+]/g, ''), tenantName: tenant.name,
+          total: completedSale.total, itemCount: completedSale.items.reduce((s: number, i: any) => s + i.quantity, 0),
+          paymentMethod: completedSale.paymentMethod }) });
+      const data = await res.json();
+      if (data.sent) { setSmsSent(true); if (completedSale.saleId) await supabase.from('sales').update({ receipt_sent_at: new Date().toISOString() }).eq('id', completedSale.saleId); }
+      else setSmsError(data.error || "Couldn't send text.");
+    } catch { setSmsError("Couldn't send text."); }
+    finally { setSendingSMS(false); }
+  };
+
   // ── Sale completion ────────────────────────────────────────────────────
 
   const completeSale = async () => {
@@ -334,9 +398,32 @@ export default function StoreModePage() {
         setActiveQueueEntry(null);
       }
 
+      // Save completed sale data for confirmation screen
+      const paymentLabels: Record<string, string> = { card_present: 'Card', cash: 'Cash', venmo: 'Venmo', other: 'Other' };
+      const saleData: CompletedSaleData = {
+        saleId: sale.id,
+        saleDate: new Date().toISOString(),
+        items: cart.items.map((item: any) => ({
+          name: item.name, quantity: item.quantity, unit_price: item.unit_price, line_total: item.line_total,
+        })),
+        subtotal: cart.subtotal,
+        taxAmount: cart.tax_amount,
+        taxRate: taxProfile ? Number(taxProfile.rate) : 0,
+        tipAmount: cart.tip_amount,
+        total: cart.total,
+        paymentMethod: paymentLabels[cart.payment_method || ''] || cart.payment_method || 'Unknown',
+      };
+
       setTodaySales((p) => ({ count: p.count + 1, total: p.total + Number(sale.total) }));
-      cart.reset(); setStep('items'); setReceiptEmail(''); setReceiptPhone(''); goHome();
+      setCompletedSale(saleData);
+      cart.reset(); setStep('confirmation'); setShowCart(false);
+      setEmailSent(false); setSmsSent(false); setEmailError(''); setSmsError('');
+      goHome();
       toast.success('Sale completed');
+
+      // Refresh inventory
+      const { data: refreshed } = await supabase.from('inventory_items').select('*').eq('tenant_id', tenant.id).eq('is_active', true).order('type').order('name');
+      if (refreshed) setInventory(refreshed as InventoryItem[]);
     } catch (err: any) { toast.error(err?.message || 'Sale failed'); }
     finally { setProcessing(false); }
   };
@@ -718,6 +805,101 @@ export default function StoreModePage() {
                   <button onClick={completeSale} disabled={processing} className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm disabled:opacity-60"
                     style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}>{processing ? 'Processing...' : `Complete Sale — $${cart.total.toFixed(2)}`}</button>
                 )}
+              </div>
+            )}
+
+            {/* ═══ CONFIRMATION STEP ═══ */}
+            {step === 'confirmation' && completedSale && (
+              <div className="max-w-md mx-auto py-8 space-y-6">
+                {/* Success header */}
+                <div className="text-center space-y-3">
+                  <div className="mx-auto w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-primary) 12%, white)' }}>
+                    <svg className="w-7 h-7" style={{ color: 'var(--accent-primary)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  </div>
+                  <h2 className={pageTitle}>Sale Complete</h2>
+                  <div className="text-[36px] font-bold text-[var(--text-primary)] font-mono tracking-tight leading-none">
+                    ${completedSale.total.toFixed(2)}
+                  </div>
+                  <p className="text-sm text-[var(--text-tertiary)]">{completedSale.paymentMethod} — {completedSale.items.length} item{completedSale.items.length !== 1 ? 's' : ''}</p>
+                </div>
+
+                {/* Receipt sending */}
+                {(receiptConfig.email || receiptConfig.sms) && (
+                  <div className="space-y-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)]">Send Receipt</p>
+
+                    {/* Email receipt */}
+                    {receiptConfig.email && (
+                      <div className="bg-white border border-[var(--border-default)] rounded-xl p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                          </svg>
+                          <input
+                            className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-white text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
+                            type="email" value={receiptEmail} onChange={(e) => setReceiptEmail(e.target.value)}
+                            placeholder="customer@email.com"
+                          />
+                        </div>
+                        {emailSent ? (
+                          <div className="flex items-center gap-1.5 text-green-600 text-sm">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            Sent
+                          </div>
+                        ) : (
+                          <Button variant="secondary" size="sm" onClick={sendEmailReceipt} disabled={!receiptEmail || sendingEmail} className="w-full min-h-[44px]">
+                            {sendingEmail ? 'Sending...' : 'Send Email Receipt'}
+                          </Button>
+                        )}
+                        {emailError && <p className="text-xs text-red-500">{emailError}</p>}
+                      </div>
+                    )}
+
+                    {/* SMS receipt */}
+                    {receiptConfig.sms && (
+                      <div className="bg-white border border-[var(--border-default)] rounded-xl p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                          </svg>
+                          <input
+                            className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-white text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
+                            type="tel" value={receiptPhone} onChange={(e) => setReceiptPhone(e.target.value)}
+                            placeholder="+1 (555) 000-0000"
+                          />
+                        </div>
+                        {smsSent ? (
+                          <div className="flex items-center gap-1.5 text-green-600 text-sm">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            Sent
+                          </div>
+                        ) : (
+                          <Button variant="secondary" size="sm" onClick={sendSMSReceipt} disabled={!receiptPhone || sendingSMS} className="w-full min-h-[44px]">
+                            {sendingSMS ? 'Sending...' : 'Send Text Receipt'}
+                          </Button>
+                        )}
+                        {smsError && <p className="text-xs text-red-500">{smsError}</p>}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* New Sale button */}
+                <button
+                  onClick={() => {
+                    setStep('items'); setCompletedSale(null);
+                    setReceiptEmail(''); setReceiptPhone('');
+                    setEmailSent(false); setSmsSent(false);
+                    setEmailError(''); setSmsError('');
+                    goHome();
+                  }}
+                  className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm"
+                  style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
+                >
+                  New Sale
+                </button>
               </div>
             )}
 

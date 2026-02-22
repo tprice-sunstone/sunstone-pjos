@@ -215,8 +215,8 @@ export default function MiniQueueStrip({
   };
 
   const showNotifyButton = (entry: QueueEntry, index: number) => {
-    if (mode === 'store') return false; // No notify in store mode
     if (entry.status === 'serving') return false;
+    if (mode === 'store') return !!entry.phone; // Store mode: notify any waiting entry that has a phone
     // Event mode: "Up Next" card
     if (!servingEntry) return index === 1;
     return index === 0;
