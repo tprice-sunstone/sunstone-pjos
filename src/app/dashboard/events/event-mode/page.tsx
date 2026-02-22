@@ -7,6 +7,7 @@
 // chain product fields, per-product and per-inch pricing.
 // Task A: Receipt step removed, Suspense wrapper added.
 // Task B: Mini queue strip + queue-POS client linking.
+// Task C: Queue refresh trigger for immediate strip updates.
 // ============================================================================
 
 'use client';
@@ -188,6 +189,7 @@ function EventModePageInner() {
 
   // ── Task B: Queue integration state ──
   const [activeQueueEntry, setActiveQueueEntry] = useState<QueueEntry | null>(null);
+  const [queueRefresh, setQueueRefresh] = useState(0);
 
   const cart = useCartStore();
   const supabase = createClient();
@@ -426,6 +428,7 @@ function EventModePageInner() {
     setReceiptEmail('');
     setReceiptPhone('');
     cart.setClientId(null);
+    setQueueRefresh((n) => n + 1);
   };
 
   // ── Sale completion — with jump ring auto-deduction ──
@@ -548,6 +551,7 @@ function EventModePageInner() {
       setCompletedSale(saleData); cart.reset(); setStep('confirmation'); setShowCart(false);
       setEmailSent(false); setSmsSent(false); setEmailError(''); setSmsError('');
       setJumpRingResolutions([]);
+      setQueueRefresh((n) => n + 1);
 
       const { data: refreshed } = await supabase.from('inventory_items').select('*').eq('tenant_id', tenant.id).eq('is_active', true).order('type').order('name');
       if (refreshed) setInventory(refreshed as InventoryItem[]);
@@ -591,7 +595,9 @@ function EventModePageInner() {
   const startNewSale = () => {
     setStep('items'); setCompletedSale(null); setReceiptEmail(''); setReceiptPhone('');
     setEmailSent(false); setSmsSent(false); setEmailError(''); setSmsError('');
-    setJumpRingResolutions([]); setActiveQueueEntry(null); goHome();
+    setJumpRingResolutions([]); setActiveQueueEntry(null);
+    setQueueRefresh((n) => n + 1);
+    goHome();
   };
 
   // ── Loading ──
@@ -664,6 +670,7 @@ function EventModePageInner() {
           mode="event"
           onStartSale={handleQueueStartSale}
           isServingActive={!!activeQueueEntry}
+          refreshTrigger={queueRefresh}
         />
       )}
 

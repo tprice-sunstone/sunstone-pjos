@@ -103,6 +103,7 @@ export default function StoreModePage() {
 
   // Queue/check-in state
   const [activeQueueEntry, setActiveQueueEntry] = useState<any | null>(null);
+  const [queueRefresh, setQueueRefresh] = useState(0);
 
   // Receipt / confirmation
   const [completedSale, setCompletedSale] = useState<CompletedSaleData | null>(null);
@@ -418,6 +419,7 @@ export default function StoreModePage() {
       setCompletedSale(saleData);
       cart.reset(); setStep('confirmation'); setShowCart(false);
       setEmailSent(false); setSmsSent(false); setEmailError(''); setSmsError('');
+      setQueueRefresh((n) => n + 1);
       goHome();
       toast.success('Sale completed');
 
@@ -505,6 +507,7 @@ export default function StoreModePage() {
         mode="store"
         onStartSale={handleQueueStartSale}
         isServingActive={!!activeQueueEntry}
+        refreshTrigger={queueRefresh}
       />
 
       {/* ── Serving Banner ── */}
@@ -893,6 +896,7 @@ export default function StoreModePage() {
                     setReceiptEmail(''); setReceiptPhone('');
                     setEmailSent(false); setSmsSent(false);
                     setEmailError(''); setSmsError('');
+                    setQueueRefresh((n) => n + 1);
                     goHome();
                   }}
                   className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm"

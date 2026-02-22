@@ -36,6 +36,7 @@ interface MiniQueueStripProps {
   mode: 'event' | 'store';
   onStartSale: (entry: QueueEntry) => void;
   isServingActive?: boolean;
+  refreshTrigger?: number;
 }
 
 export default function MiniQueueStrip({
@@ -44,6 +45,7 @@ export default function MiniQueueStrip({
   mode,
   onStartSale,
   isServingActive = false,
+  refreshTrigger = 0,
 }: MiniQueueStripProps) {
   const [entries, setEntries] = useState<QueueEntry[]>([]);
   const [expanded, setExpanded] = useState(true);
@@ -71,7 +73,7 @@ export default function MiniQueueStrip({
 
   useEffect(() => {
     fetchEntries();
-  }, [fetchEntries]);
+  }, [fetchEntries, refreshTrigger]);
 
   // ── Real-time subscription ─────────────────────────────────────────────
 
