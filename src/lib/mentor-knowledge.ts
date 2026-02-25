@@ -646,13 +646,13 @@ export const PRODUCTS_KNOWLEDGE = {
     eventInventoryFormula: {
       steps: [
         'Estimate total attendees at the event.',
-        'Determine how long each service takes (typically ~15 minutes per piece for bracelets).',
+        'Ask the artist how long each service takes for them (varies widely — some do 5 min, others 15 min). Do NOT assume a default.',
         'Calculate max capacity: (event hours × 60) ÷ minutes per piece = max customers.',
         'Calculate base stock needed: max customers × chain length per piece type.',
         'TRIPLE the base stock for stacking purchases and safety margin.',
       ],
       example:
-        'A 6-hour market with 15 min/piece = 24 max customers. If each bracelet uses ~8 inches of chain, base stock = 192 inches (16 feet) per chain type you offer. Triple it = 48 feet. Plus matching jump rings.',
+        'Example: A 6-hour market where the artist does 10 min/piece = 36 max customers. If each bracelet uses ~8 inches of chain, base stock = 288 inches (24 feet) per chain type. Triple it = 72 feet. Plus matching jump rings. Always ask the artist their speed first.',
     },
     reorderTiming: 'Track usage patterns. Reorder based on lead time from your supplier and your event frequency. Don\'t wait until you run out.',
     multipleSuppliers: 'Maintain relationships with multiple suppliers for backup. Most artists use a variety of sources — this is expected and normal.',
@@ -823,7 +823,7 @@ export const BUSINESS_STRATEGY_KNOWLEDGE = {
     boothFeeRuleOfThumb:
       'Plan on your revenue being AT LEAST 3× your booth fee, or reconsider the event. A typical farmers market day yields 5–10 customers.',
     capacityCalculation: [
-      'How many bracelets can you do per hour? (Typically 4 per hour at 15 min each)',
+      'How many bracelets can you do per hour? (Ask the artist — speed varies widely)',
       'Multiply by event hours = max customers',
       'Multiply by average sale price = max revenue',
       'Compare to booth fee — is 3× realistic?',
@@ -856,7 +856,7 @@ export const BUSINESS_STRATEGY_KNOWLEDGE = {
       'Captive audience during wait times (hair dye, lashes drying, etc.).',
       'Impulse buy that feels personal and special.',
       'Minimal space needed — a tray, cart, or corner is enough.',
-      'Fast service (~15 min) with high profit margins.',
+      'Fast service (5–15 min depending on artist speed) with high profit margins.',
     ],
     arrangementOptions: [
       'Chair/booth rent — already well established in the beauty industry.',
@@ -1269,6 +1269,8 @@ export const PJ_UNIVERSITY_AND_SUNNY_ROLE = {
   pjUniversity: {
     overview: 'Two courses, ~20 modules each (~40 total classes), with a completion certificate ("Sunstone Certified") for each course.',
     includedWith: 'All starter kits (Momentum, Dream, Legacy) include PJ University access.',
+    loginUrl: 'https://permanentjewelry-sunstonewelders.thinkific.com/users/sign_in',
+    accessNote: 'Artists receive PJ University login information in their welcome email after purchasing their kit. If they cannot find it, direct them to Sunstone support at 385-999-5240.',
     additionalResources: [
       '300+ images and videos for social media content',
       'Event packing checklist',
@@ -1285,8 +1287,44 @@ export const PJ_UNIVERSITY_AND_SUNNY_ROLE = {
     ],
 
     course1: {
-      name: 'PJ Mastery Series',
+      name: 'PJ Mastery Series: The Sunstone Method',
       focus: 'Hands-on welding technique and customer experience',
+      sections: {
+        introductionAndSetup: [
+          'Welcome to the Sunstone Method',
+          'Zapp Plus 2 - Setup & Overview',
+          'mPulse Setup Guide',
+          'Zapp Plus Setup Guide',
+          'Argon Set Up and Electrode Maintenance',
+          'Optics Set Up Guide',
+        ],
+        understandingMaterials: [
+          'Metals Deep Dive',
+          'Semi-Precious Metals Deep Dive',
+          'Choosing the Right Chain',
+        ],
+        fundamentalsOfMicroTIGWelding: [
+          'Handling Jump Rings',
+          'Welding Basics',
+          'Safety and Measuring for PJ',
+        ],
+        advancedPJWeldingTechniques: [
+          'Stylus technique and bracelet welding',
+          'Rings & Hand Chains',
+          'Crafting Necklaces',
+          'Anklets - How to do it',
+        ],
+        customerExperience: [
+          'Upselling Charms & Connectors',
+          'Troubleshooting',
+          'Aftercare',
+        ],
+        storageAndMarketing: [
+          'Storing & Transporting Materials',
+          'Being Sunstone Certified',
+        ],
+      },
+      // Flat list for backward compatibility
       modules: [
         'Welcome to the Sunstone Method',
         'Zapp Plus 2 - Setup & Overview',
@@ -1294,29 +1332,62 @@ export const PJ_UNIVERSITY_AND_SUNNY_ROLE = {
         'Zapp Plus Setup Guide',
         'Argon Set Up and Electrode Maintenance',
         'Optics Set Up Guide',
-        'Understanding Materials',
         'Metals Deep Dive',
         'Semi-Precious Metals Deep Dive',
         'Choosing the Right Chain',
-        'Fundamentals of Micro TIG Welding',
         'Handling Jump Rings',
         'Welding Basics',
         'Safety and Measuring for PJ',
-        'Advanced PJ Welding Techniques',
         'Stylus technique and bracelet welding',
         'Rings & Hand Chains',
         'Crafting Necklaces',
         'Anklets - How to do it',
-        'Customer Experience',
         'Upselling Charms & Connectors',
         'Troubleshooting',
         'Aftercare',
+        'Storing & Transporting Materials',
+        'Being Sunstone Certified',
       ],
     },
 
     course2: {
       name: 'Business Foundations for PJ Professionals',
       focus: 'Business building, marketing, and growth strategy',
+      sections: {
+        introductionToPermanentJewelry: [
+          'What is Permanent Jewelry',
+          'The Permanent Jewelry Experience',
+          'The Different Types of Permanent Jewelry',
+          'The Financial Potential of Your Permanent Jewelry Business',
+        ],
+        productManagement: [
+          'Choosing the Right Chains and Jump Rings',
+          'Working with Charms, Connectors and Inventory',
+        ],
+        theCustomerExperience: [
+          'Welding Permanent Jewelry: Step by Step',
+          'Completing the Customer Experience: Aftercare',
+        ],
+        businessFoundations: [
+          'Choosing a Legal Entity: Sole Proprietor and LLC',
+          'Protecting Your Business with Insurance',
+          'Managing Finances and Customer Checkout',
+        ],
+        marketing: [
+          'Creating Your Unique Brand',
+          'Creating a Logo and Marketing Your Brand',
+          'Pricing Strategies for Permanent Jewelry',
+          'Diving into Social Media Marketing',
+          'How to Plan and Execute a House Party',
+          'Maximizing Your Pop-Up Presence',
+          'Marketing a Brick & Mortar Location',
+          'Growing Your Business Through Networking',
+        ],
+        nextSteps: [
+          'Building Your Permanent Jewelry Empire',
+        ],
+      },
+      // Flat list for backward compatibility
       modules: [
         'What is Permanent Jewelry',
         'The Permanent Jewelry Experience',
@@ -1350,6 +1421,8 @@ export const PJ_UNIVERSITY_AND_SUNNY_ROLE = {
     notIncludedWith: ['Momentum kit ($2,399)'],
     duration: '90 days from purchase date',
     what: 'Access to a PJ expert for personalized coaching above and beyond regular Sunstone support.',
+    bookingUrl: 'https://outlook.office.com/book/SunstoneSuccessCoach@sunstonewelders.com/?ismsaljsauthenabled',
+    bookingNote: 'Dream and Legacy kit owners can book mentoring sessions using the link above. They also received this in their welcome email.',
     sunnyAwareness:
       'Sunny should be aware that Dream/Legacy customers may have received specific advice from their mentor. Don\'t contradict mentoring guidance — if there\'s a conflict, suggest they follow up with their mentor or Sunstone support.',
   },
@@ -1427,8 +1500,8 @@ export const PJ_UNIVERSITY_AND_SUNNY_ROLE = {
       for: ['Equipment malfunction', 'Account issues', 'Return policy questions', 'Edge cases beyond Sunny\'s knowledge', 'Competitive comparisons'],
     },
     communityGroups: [
-      'Sunstone PJ Community (Facebook — official)',
-      'Original Permanent Jewelry Community (Facebook)',
+      { name: 'Sunstone PJ Community (Facebook — official)', url: 'https://www.facebook.com/share/g/1G8g5gFmqs/' },
+      { name: 'Original Permanent Jewelry Community (Facebook)', url: 'https://www.facebook.com/share/g/1B5na4wges/' },
       'Permanent Jewelry Startup (Facebook)',
       'Permanent Jewelry Newbies (Facebook)',
       'Permanent Jewelry Business Tips (Facebook)',
