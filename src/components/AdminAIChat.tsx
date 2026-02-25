@@ -5,6 +5,10 @@
 // Atlas queries real-time platform data to provide insights, analytics,
 // and custom reports. Styled with admin slate/amber palette.
 // ============================================================================
+// FIX: Added lg:left-auto to panel to override mobile inset-x-0 on desktop.
+// Without it, left:0 stays set on desktop, positioning the panel at the LEFT
+// edge. translate-x-full then pushes it into the middle instead of off-screen.
+// ============================================================================
 
 'use client';
 
@@ -307,10 +311,13 @@ export default function AdminAIChat() {
       {/* ================================================================ */}
       {/* Chat Panel                                                       */}
       {/* ================================================================ */}
+      {/* FIX: Added lg:left-auto to clear the left:0 from inset-x-0     */}
+      {/* Without it, the panel sits at the LEFT edge on desktop and      */}
+      {/* translate-x-full pushes it to center instead of off-screen.     */}
       <div
         className={cn(
           'fixed z-50 flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-out',
-          'lg:top-0 lg:right-0 lg:h-full lg:w-[440px] lg:border-l lg:border-slate-200',
+          'lg:top-0 lg:right-0 lg:left-auto lg:h-full lg:w-[440px] lg:border-l lg:border-slate-200',
           'inset-x-0 bottom-0 h-[calc(100%-60px)] rounded-t-2xl lg:rounded-none',
           isOpen
             ? 'translate-y-0 lg:translate-x-0'
@@ -353,7 +360,7 @@ export default function AdminAIChat() {
                 Platform Intelligence
               </h3>
               <p className="text-sm text-slate-500 mb-6 max-w-xs">
-                I have real-time access to all platform data — revenue, tenants, sales, Sunny's activity, inventory, events, and more. Ask me anything.
+                I have real-time access to all platform data — revenue, tenants, sales, Sunny&#39;s activity, inventory, events, and more. Ask me anything.
               </p>
               <div className="flex flex-wrap gap-2 justify-center max-w-sm">
                 {SUGGESTED_PROMPTS.map((prompt) => (
@@ -414,7 +421,7 @@ export default function AdminAIChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about revenue, tenants, Sunny's gaps, events..."
+              placeholder="Ask about revenue, tenants, Sunny&#39;s gaps, events..."
               rows={1}
               disabled={isStreaming}
               className={cn(
