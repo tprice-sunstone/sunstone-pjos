@@ -1,10 +1,12 @@
 // src/app/api/mentor/route.ts
 // POST endpoint for Sunny mentor chat with streaming responses
 // ============================================================================
-// V3: Subsection-level keyword matching (~40 small chunks, send top 4-5)
-// System prompt: ~1,000-2,500 tokens instead of ~15,000+
-// Verbosity: behavior-first prompt design, max_tokens 512
-// Conversation history: capped at 10 messages
+// V4: Tenant data enrichment + anti-hallucination hardening
+// - Queries actual inventory items (chain names, quantities, prices)
+// - Includes upcoming events, recent client count
+// - Active queue status if an event is running
+// - Stronger "don't guess" and "don't hallucinate" rules
+// - Stricter question discipline (answer and stop)
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -21,7 +23,7 @@ import {
 } from '@/lib/mentor-knowledge';
 
 // ============================================================================
-// Subsection registry — ~40 small chunks with keyword maps
+// Subsection registry — ~43 small chunks with keyword maps
 // ============================================================================
 
 interface Subsection {
@@ -29,7 +31,7 @@ interface Subsection {
   label: string;
   data: any;
   keywords: string[];
-  priority?: number; // higher = more likely to be selected on ties
+  priority?: number;
 }
 
 const SUBSECTIONS: Subsection[] = [
@@ -51,7 +53,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'eq-argon',
     label: 'Argon Setup',
     data: EQUIPMENT_KNOWLEDGE.argon,
-    keywords: ['argon', 'gas', 'tank', 'regulator', 'flow', 'lpm', 'psi', 'compressed', 'hose', 'coupler'],
+    keywords: ['argon', 'gas', 'tank', 'regulator', 'flow', 'lpm', 'psi', 'compressed', 'hose', 'coupler', 'mini'],
   },
   {
     id: 'eq-electrode',
@@ -349,11 +351,9 @@ function selectSubsections(userMessage: string, recentMessages: string[]): Subse
     let score = 0;
     for (const keyword of sub.keywords) {
       if (searchText.includes(keyword.toLowerCase())) {
-        // Longer keywords are more specific = higher score
         score += keyword.length > 6 ? 3 : keyword.length > 3 ? 2 : 1;
       }
     }
-    // Add priority bonus
     if (sub.priority && score > 0) {
       score += sub.priority;
     }
@@ -362,13 +362,11 @@ function selectSubsections(userMessage: string, recentMessages: string[]): Subse
 
   scored.sort((a, b) => b.score - a.score);
 
-  // Top subsections with score > 0, max 5
   const selected = scored
     .filter(s => s.score > 0)
     .slice(0, 5)
     .map(s => s.sub);
 
-  // Fallback: if nothing matched, include pricing + events (most common generic)
   if (selected.length === 0) {
     return SUBSECTIONS.filter(s => s.id === 'biz-pricing' || s.id === 'biz-events');
   }
@@ -392,7 +390,7 @@ function stringify(obj: any, depth = 0): string {
     if (typeof obj[0] === 'string' || typeof obj[0] === 'number') {
       return obj.map(item => `${indent}- ${item}`).join('\n');
     }
-    return obj.map((item, i) => {
+    return obj.map((item) => {
       if (typeof item === 'object' && item !== null) {
         return stringify(item, depth);
       }
@@ -424,29 +422,155 @@ function stringify(obj: any, depth = 0): string {
 }
 
 // ============================================================================
-// Fetch business context (lightweight)
+// Fetch RICH tenant context (inventory items, clients, events, queue)
 // ============================================================================
 
-async function fetchBusinessContext(serviceClient: any, tenantId: string) {
+async function fetchTenantContext(serviceClient: any, tenantId: string) {
   try {
-    const [tenantRes, salesRes, clientsRes, eventsRes] = await Promise.all([
-      serviceClient.from('tenants').select('name, subscription_tier, created_at').eq('id', tenantId).single(),
-      serviceClient.from('sales').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('status', 'completed'),
-      serviceClient.from('clients').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId),
-      serviceClient.from('events').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+    const [
+      tenantRes,
+      salesCountRes,
+      clientsCountRes,
+      eventsCountRes,
+      inventoryRes,
+      upcomingEventsRes,
+      activeQueueRes,
+      recentClientsRes,
+    ] = await Promise.all([
+      // Basic tenant info
+      serviceClient
+        .from('tenants')
+        .select('name, subscription_tier, created_at')
+        .eq('id', tenantId)
+        .single(),
+
+      // Total completed sales
+      serviceClient
+        .from('sales')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .eq('status', 'completed'),
+
+      // Total clients
+      serviceClient
+        .from('clients')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId),
+
+      // Total events
+      serviceClient
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId),
+
+      // ACTUAL inventory items (chains, jump rings, charms, connectors)
+      serviceClient
+        .from('inventory_items')
+        .select('name, type, material, quantity_on_hand, sell_price, unit, is_active')
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .order('type')
+        .order('name'),
+
+      // Upcoming events (next 30 days)
+      serviceClient
+        .from('events')
+        .select('name, location, start_time, end_time, booth_fee')
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .gte('start_time', new Date().toISOString())
+        .lte('start_time', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString())
+        .order('start_time')
+        .limit(5),
+
+      // Active queue entries (waiting or notified)
+      serviceClient
+        .from('queue_entries')
+        .select('name, status, position')
+        .eq('tenant_id', tenantId)
+        .in('status', ['waiting', 'notified'])
+        .order('position')
+        .limit(20),
+
+      // Recent clients (last 10)
+      serviceClient
+        .from('clients')
+        .select('first_name, last_name, created_at')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(10),
     ]);
 
     const tenant = tenantRes.data;
+    const inventory = inventoryRes.data || [];
+    const upcomingEvents = upcomingEventsRes.data || [];
+    const activeQueue = activeQueueRes.data || [];
+    const recentClients = recentClientsRes.data || [];
+
+    // Format inventory by type
+    const chains = inventory.filter((i: any) => i.type === 'chain');
+    const jumpRings = inventory.filter((i: any) => i.type === 'jump_ring');
+    const charms = inventory.filter((i: any) => i.type === 'charm');
+    const connectors = inventory.filter((i: any) => i.type === 'connector');
+
+    const formatItem = (i: any) => {
+      const qty = Number(i.quantity_on_hand) || 0;
+      const price = Number(i.sell_price) || 0;
+      const unit = i.unit === 'ft' ? 'ft' : i.unit === 'each' ? 'ea' : i.unit;
+      const mat = i.material ? ` (${i.material})` : '';
+      return `${i.name}${mat}: ${qty}${unit} on hand, $${price.toFixed(2)} sell price`;
+    };
+
+    const inventoryText = [
+      chains.length > 0 ? `Chains (${chains.length}):\n${chains.map(formatItem).join('\n')}` : 'Chains: None in inventory',
+      jumpRings.length > 0 ? `Jump Rings (${jumpRings.length}):\n${jumpRings.map(formatItem).join('\n')}` : 'Jump Rings: None in inventory',
+      charms.length > 0 ? `Charms (${charms.length}):\n${charms.map(formatItem).join('\n')}` : 'Charms: None in inventory',
+      connectors.length > 0 ? `Connectors (${connectors.length}):\n${connectors.map(formatItem).join('\n')}` : 'Connectors: None in inventory',
+    ].join('\n');
+
+    const eventsText = upcomingEvents.length > 0
+      ? upcomingEvents.map((e: any) => {
+          const start = new Date(e.start_time);
+          const end = e.end_time ? new Date(e.end_time) : null;
+          const dur = end ? `${Math.round((end.getTime() - start.getTime()) / 3600000)}h` : '';
+          return `${e.name} - ${e.location || 'TBD'} on ${start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} ${dur} (booth fee: $${e.booth_fee || 0})`;
+        }).join('\n')
+      : 'No upcoming events scheduled';
+
+    const queueText = activeQueue.length > 0
+      ? `${activeQueue.length} people in queue: ${activeQueue.map((q: any) => `${q.name} (${q.status})`).join(', ')}`
+      : 'No active queue';
+
+    const clientsText = recentClients.length > 0
+      ? `Recent: ${recentClients.map((c: any) => `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unnamed').join(', ')}`
+      : 'No clients yet';
+
     return {
       businessName: tenant?.name || 'Your Business',
       tier: tenant?.subscription_tier || 'free',
       since: tenant?.created_at ? new Date(tenant.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'recently',
-      sales: salesRes.count || 0,
-      clients: clientsRes.count || 0,
-      events: eventsRes.count || 0,
+      sales: salesCountRes.count || 0,
+      clientCount: clientsCountRes.count || 0,
+      eventCount: eventsCountRes.count || 0,
+      inventoryText,
+      eventsText,
+      queueText,
+      clientsText,
     };
-  } catch {
-    return { businessName: 'Your Business', tier: 'free', since: 'recently', sales: 0, clients: 0, events: 0 };
+  } catch (error) {
+    console.error('[Mentor] Error fetching tenant context:', error);
+    return {
+      businessName: 'Your Business',
+      tier: 'free',
+      since: 'recently',
+      sales: 0,
+      clientCount: 0,
+      eventCount: 0,
+      inventoryText: 'Unable to load inventory',
+      eventsText: 'Unable to load events',
+      queueText: 'Unable to load queue',
+      clientsText: 'Unable to load clients',
+    };
   }
 }
 
@@ -493,9 +617,9 @@ export async function POST(request: NextRequest) {
       .map(s => `[${s.label}]\n${stringify(s.data)}`)
       .join('\n\n');
 
-    // 5. Fetch context + additions
+    // 5. Fetch RICH tenant context + approved additions
     const [biz, additionsRes] = await Promise.all([
-      fetchBusinessContext(serviceClient, tenantId),
+      fetchTenantContext(serviceClient, tenantId),
       serviceClient.from('mentor_knowledge_additions').select('question, answer').eq('is_active', true),
     ]);
 
@@ -507,46 +631,57 @@ export async function POST(request: NextRequest) {
     // 6. System prompt — BEHAVIOR FIRST, knowledge second
     const systemPrompt = `You are Sunny, the AI mentor for Sunstone Permanent Jewelry, inside the PJOS app.
 
-CONVERSATION RULES (follow these STRICTLY on every single response):
-1. NEVER dump multiple pieces of information at once. One topic per response.
-2. When a question requires details you do not have, ASK ONE clarifying question first. Do not assume.
-   - Do not assume time per bracelet — ask.
-   - Do not assume which kit they have — ask.
-   - Do not assume event duration — ask.
-   - Do not assume which welder or metal — ask.
-3. Keep responses SHORT:
-   - Factual lookups (settings, sizes, prices): 1-3 sentences MAX. Just the answer.
-   - How-to: Brief intro + numbered steps (max 6). No essays.
-   - Troubleshooting: Ask one clarifying question, then give the single most likely fix.
-   - Strategy/advice: 2-4 sentences with the key insight. Offer to go deeper.
-4. NEVER start with filler: no "Great question!", "Absolutely!", "I'd be happy to help!", "That's a great question!"
-   Just answer directly.
-5. NEVER list every scenario or possibility. Give the MOST LIKELY answer first.
-6. If the artist says "slow down" or "one step at a time" — switch to asking ONE question per message and waiting.
-7. When doing step-by-step planning, present ONE step, ask for their answer, then proceed. Do not front-load all steps.
-8. Do NOT end every response with a question or "Let me know if..." — just answer and stop. Only ask a follow-up question when you genuinely need information to proceed (like "which welder?" before giving settings). If the answer is complete, just end it.
+ABSOLUTE RULES (violating these is a critical failure):
+1. ONLY state facts that appear in your KNOWLEDGE or ARTIST'S BUSINESS DATA sections below. If something is not written there, you DO NOT KNOW IT.
+2. NEVER invent product names, welder names, procedures, or details. The only Sunstone welders are: Zapp, Zapp Plus 2, and Orion mPulse 2.0. There are no others.
+3. When you are not sure about something, say "I don't have that specific detail — let me flag it for the Sunstone team" and stop. Do NOT guess, do NOT make up an answer, do NOT give a wrong answer and then correct yourself.
+4. NEVER contradict your knowledge base. The sizing rule is ALWAYS: measure → weld → cut. Never suggest pre-cutting chain.
+
+CONVERSATION STYLE:
+5. Keep responses SHORT. Factual lookups: 1-3 sentences. How-to: max 6 numbered steps. Strategy: 2-4 sentences.
+6. When a question requires info you don't have, ask ONE clarifying question and wait. Do NOT assume anything — not time per bracelet, not which kit, not event duration, not which welder.
+7. ONE topic per response. Do not dump multiple pieces of info at once.
+8. NEVER start with filler like "Great question!" or "Absolutely!" — just answer.
+9. Do NOT end responses with a follow-up question unless you genuinely need info to proceed. If the answer is complete, just stop. No "Let me know if you have any questions!" or "Would you like to know more?" — the artist will ask if they want more.
+10. Give the MOST LIKELY answer first, not every possible scenario.
+11. If the artist says "slow down" or "one at a time," switch to one question/step per message.
 
 PERSONALITY:
-Warm, encouraging mentor. "You can do this!" energy. Genuine, not a robotic cheerleader. Celebrate wins, support struggles. Be their knowledgeable friend.
+Warm, encouraging mentor. Celebrate wins, support struggles. Be their knowledgeable friend — not a robotic cheerleader and not an encyclopedia.
 
 KNOWLEDGE (relevant to this question):
 ${knowledgeText}${additionsText}
 
-ARTIST CONTEXT:
-${biz.businessName} | ${biz.tier} plan | Member since ${biz.since} | ${biz.sales} sales | ${biz.clients} clients | ${biz.events} events
+ARTIST'S BUSINESS DATA (from their PJOS account — you CAN see this):
+Business: ${biz.businessName} | ${biz.tier} plan | Member since ${biz.since}
+Sales: ${biz.sales} completed | Clients: ${biz.clientCount} total | Events: ${biz.eventCount} hosted
+
+INVENTORY:
+${biz.inventoryText}
+
+UPCOMING EVENTS:
+${biz.eventsText}
+
+QUEUE:
+${biz.queueText}
+
+RECENT CLIENTS:
+${biz.clientsText}
+
+IMPORTANT — ABOUT BUSINESS DATA ACCESS:
+You DO have access to this artist's inventory, events, queue, and client data — it is shown above. Use it when relevant. If the artist asks "can you see my inventory?" the answer is YES. Reference their actual chain names, quantities, and prices when giving recommendations. If a data section says "None in inventory" or "No upcoming events," tell them that honestly.
 
 GUIDELINES:
 - Use SPECIFIC numbers from knowledge (joule values, prices, kit contents).
 - Bold key numbers/settings with markdown.
+- Reference their actual inventory by name when planning events or recommending what to bring.
 - NEVER recommend discounting.
 - NEVER say it's okay to skip eye protection.
 - Competitors: help generically, no trash talk, don't troubleshoot their hardware.
-- Non-Sunstone chains: help freely.
 - Refer to Sunstone support (385-999-5240) if you can't resolve in 2-3 attempts.
-- When you don't know: "Let me flag this for the Sunstone team." Do NOT guess.
 
 PRODUCT SEARCH:
-When an artist asks about specific products, include at END of response:
+When an artist asks about products to buy, include at END:
 <!-- PRODUCT_SEARCH: descriptive search terms -->
 
 KNOWLEDGE GAP:
@@ -568,7 +703,7 @@ Topics: welding, equipment, business, products, marketing, troubleshooting, clie
         max_tokens: 512,
         stream: true,
         system: systemPrompt,
-        messages: messages.slice(-10), // Reduced from 20
+        messages: messages.slice(-10),
       }),
     });
 
