@@ -1,32 +1,22 @@
 // ============================================================================
-// Sunstone PJOS — Application Types (Updated for Financial Accuracy Tasks)
+// Sunstone PJOS — Application Types (Updated for Task 28: Subscription Billing)
 // ============================================================================
 // These mirror the database schema. Run `npm run db:types` for auto-generated
 // Supabase types, but these provide the application-layer contracts.
-//
-// Changes in this version:
-// - SaleItem: added product_type_id, product_type_name, inches_used,
-//   jump_ring_cost, chain_material_cost
-// - CartItem: added product_type_id, product_type_name, inches_used,
-//   pricing_mode, and _jump_ring/_inventory metadata fields
-// - Added JumpRingResolution interface
-// - Added JumpRingConfirmation interface
-// - Added ProductType interface
-// - Added ChainProductPrice interface
-// ============================================================================
 
-export type SubscriptionTier = 'free' | 'pro' | 'business';
+export type SubscriptionTier = 'starter' | 'pro' | 'business';
+export type SubscriptionStatus = 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid';
 export type FeeHandling = 'pass_to_customer' | 'absorb';
 export type TenantRole = 'admin' | 'manager' | 'staff';
 export type BusinessType = 'permanent_jewelry' | 'salon_spa' | 'boutique' | 'popup_vendor' | 'other';
 export type InventoryType = 'chain' | 'jump_ring' | 'charm' | 'connector' | 'other';
-export type InventoryUnit = 'in' | 'ft' | 'each' | 'pack';
-export type PricingMode = 'per_product' | 'per_inch';
+export type InventoryUnit = 'ft' | 'in' | 'each' | 'pack';
 export type MovementType = 'restock' | 'sale' | 'waste' | 'adjustment';
 export type PaymentMethod = 'card_present' | 'card_not_present' | 'cash' | 'venmo' | 'other';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
 export type QueueStatus = 'waiting' | 'notified' | 'served' | 'no_show';
 export type SaleStatus = 'draft' | 'completed' | 'voided';
+export type PricingMode = 'per_product' | 'per_inch';
 
 // Re-export Permission from the canonical source
 export type { Permission, TenantRole as PermissionRole } from '@/lib/permissions';
@@ -40,26 +30,42 @@ export interface Tenant {
   name: string;
   slug: string;
   owner_id: string;
+  // Subscription
   subscription_tier: SubscriptionTier;
+  subscription_status: SubscriptionStatus;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  trial_ends_at: string | null;
+  subscription_period_end: string | null;
+  sunny_questions_used: number;
+  sunny_questions_reset_at: string | null;
+  // Fees
   fee_handling: FeeHandling;
+  platform_fee_percent: number;
+  // Business info
   business_type: BusinessType | null;
   phone: string | null;
   website: string | null;
+  default_tax_rate: number;
+  onboarding_completed: boolean;
+  // Payment provider connections
   square_merchant_id: string | null;
   square_access_token: string | null;
   square_refresh_token: string | null;
   square_location_id: string | null;
   stripe_account_id: string | null;
   stripe_onboarding_complete: boolean;
-  onboarding_completed: boolean;
+  // Branding
   logo_url: string | null;
   brand_color: string;
+  // Waiver
   waiver_text: string;
   waiver_required: boolean;
+  // Other
   min_monthly_transactions: number;
-  created_at: string;
-  default_tax_rate: number | null;
   is_suspended: boolean;
+  // Timestamps
+  created_at: string;
   updated_at: string;
 }
 
@@ -86,6 +92,7 @@ export interface InventoryItem {
   type: InventoryType;
   material: string | null;
   supplier: string | null;
+  supplier_id: string | null;
   sku: string | null;
   unit: InventoryUnit;
   cost_per_unit: number;
@@ -94,7 +101,8 @@ export interface InventoryItem {
   reorder_threshold: number;
   is_active: boolean;
   notes: string | null;
-  pricing_mode?: 'per_product' | 'per_inch' | null;
+  // Chain-specific
+  pricing_mode: PricingMode | null;
   created_at: string;
   updated_at: string;
 }
@@ -112,32 +120,9 @@ export interface InventoryMovement {
 }
 
 // ============================================================================
-// Product Types & Chain Pricing
+// Suppliers & Product Types (Chain Products)
 // ============================================================================
 
-export interface ProductType {
-  id: string;
-  tenant_id: string;
-  name: string;
-  slug: string;
-  default_inches: number | null;
-  jump_rings_required: number;
-  sort_order: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  is_default: boolean;
-}
-export interface Material {
-  id: string;
-  tenant_id: string;
-  name: string;
-  abbreviation: string | null;
-  sort_order: number;
-  is_system: boolean;
-  is_active: boolean;
-  created_at: string;
-}
 export interface Supplier {
   id: string;
   tenant_id: string;
@@ -152,16 +137,39 @@ export interface Supplier {
   created_at: string;
   updated_at: string;
 }
-export interface ChainProductPrice {
+
+export interface ProductType {
   id: string;
   tenant_id: string;
+  name: string;
+  default_inches: number;
+  jump_rings_required?: number;
+  sort_order: number;
+  is_active: boolean;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChainProductPrice {
+  id: string;
   inventory_item_id: string;
   product_type_id: string;
+  tenant_id: string;
   sell_price: number;
   default_inches: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  product_type?: ProductType;
+}
+
+export interface Material {
+  id: string;
+  name: string;
+  abbreviation: string;
+  sort_order: number;
+  is_system: boolean;
 }
 
 // ============================================================================
@@ -241,11 +249,10 @@ export interface SaleItem {
   discount_type: 'flat' | 'percentage' | null;
   discount_value: number;
   line_total: number;
+  // Chain product fields
   product_type_id: string | null;
-  product_type_name: string | null;
-  inches_used: number | null;
-  jump_ring_cost: number;           // COGS — jump ring material cost
-  chain_material_cost: number;       // COGS — chain material cost
+  chain_inches: number | null;
+  cost_snapshot: number | null;
   created_at: string;
 }
 
@@ -308,13 +315,13 @@ export interface QueueEntry {
 // ============================================================================
 
 export const PLATFORM_FEE_RATES: Record<SubscriptionTier, number> = {
-  free: 0.025,   // 2.5%
-  pro: 0.015,    // 1.5%
-  business: 0,   // 0%
+  starter:  0.03,   // 3%
+  pro:      0.015,  // 1.5%
+  business: 0,      // 0%
 };
 
 export const SUBSCRIPTION_PRICES: Record<SubscriptionTier, number> = {
-  free: 0,
+  starter: 0,
   pro: 99,
   business: 299,
 };
@@ -334,10 +341,11 @@ export interface CartItem {
   line_total: number;
   // Chain product fields
   product_type_id?: string | null;
+  chain_inches?: number | null;
+  // Chain product metadata
   product_type_name?: string | null;
   inches_used?: number | null;
-  pricing_mode?: 'per_product' | 'per_inch' | null;
-  // Jump ring metadata (not persisted — used for calculation only)
+  pricing_mode?: 'per_inch' | 'per_piece' | 'per_product' | null;
   _jump_rings_required?: number | null;
   _inventory_type?: string | null;
   _material?: string | null;
@@ -357,10 +365,7 @@ export interface CartState {
   notes: string;
 }
 
-// ============================================================================
-// Jump Ring Resolution (used during sale completion)
-// ============================================================================
-
+// Jump Ring Resolution — used during sale completion
 export interface JumpRingResolution {
   cart_item_id: string;
   cart_item_name: string;
@@ -371,16 +376,17 @@ export interface JumpRingResolution {
   resolved: boolean;
 }
 
-// ============================================================================
-// Jump Ring Confirmation (used in post-sale confirmation UI)
-// ============================================================================
-
+// Jump Ring Confirmation — used in post-sale confirmation UI
 export interface JumpRingConfirmation {
   cart_item_id: string;
-  item_name: string;                  // "14k Gold Fill Bracelet"
-  material_name: string;              // "14k Gold Fill"
-  default_count: number;              // what was auto-deducted in Phase 1
-  actual_count: number;               // artist's adjusted count (starts at default)
-  jump_ring_inventory_id: string | null;  // which jump ring was used
-  jump_ring_name: string;             // "14k Gold Fill Jump Ring"
+  cart_item_name: string;
+  item_name: string;
+  jump_ring_name: string;
+  jump_ring_inventory_id: string | null;
+  material_name: string;
+  jump_rings_used: number;
+  jump_ring_cost: number;
+  auto_deducted: boolean;
+  default_count: number;
+  actual_count: number;
 }

@@ -11,6 +11,7 @@
 //   6b. Materials (standardized materials — component)
 //   7. Suppliers (chain supply vendors — inlined, cursor-jump bug fixed)
 //   8. Waiver Text
+// Subscription tab: Plan info, trial status, upgrade/manage (NEW - Task 28)
 // Team tab: Invite, role management, remove (unchanged)
 // ============================================================================
 
@@ -40,7 +41,7 @@ import {
 } from '@/components/ui';
 import { applyAccentColor, isValidHexColor, generateAccentScale } from '@/lib/theme';
 import MaterialsSection from '@/components/settings/MaterialsSection';
-import type { TaxProfile, FeeHandling, BusinessType, ProductType, Supplier } from '@/types';
+import type { TaxProfile, FeeHandling, BusinessType, ProductType, Supplier, SubscriptionTier } from '@/types';
 import { PLATFORM_FEE_RATES, SUBSCRIPTION_PRICES } from '@/types';
 
 // ============================================================================
@@ -80,6 +81,24 @@ const ALL_ROLE_OPTIONS = [
   { value: 'admin', label: 'Admin' },
 ];
 
+// Plan feature lists for subscription tab
+const PLAN_FEATURES: Record<string, string[]> = {
+  pro: [
+    '1.5% platform fee (down from 3%)',
+    'Unlimited Sunny AI questions',
+    'Business insights & analytics',
+    'Full P&L reports',
+    'CRM & client management',
+    'Up to 3 team members',
+  ],
+  business: [
+    '0% platform fee',
+    'Everything in Pro',
+    'Unlimited team members',
+    'Priority support',
+  ],
+};
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -98,8 +117,26 @@ interface TeamMember {
   is_pending: boolean;
 }
 
-type SettingsTab = 'general' | 'team';
+type SettingsTab = 'general' | 'subscription' | 'team';
 type PaymentProcessor = 'square' | 'stripe';
+
+// ============================================================================
+// Subscription Helpers
+// ============================================================================
+
+function getTrialDaysRemaining(trialEndsAt: string | null): number {
+  if (!trialEndsAt) return 0;
+  const now = new Date();
+  const end = new Date(trialEndsAt);
+  const diff = end.getTime() - now.getTime();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+function isTrialActive(status: string | null, trialEndsAt: string | null): boolean {
+  if (status !== 'trialing') return false;
+  if (!trialEndsAt) return false;
+  return new Date(trialEndsAt) > new Date();
+}
 
 // ============================================================================
 // Page Component
@@ -118,8 +155,15 @@ function SettingsPage() {
     }
   }, [can, router]);
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  // Tab state — check URL for ?tab=subscription
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab === 'subscription' || tab === 'team') return tab;
+    }
+    return 'general';
+  });
 
   // Business info
   const [businessName, setBusinessName] = useState('');
@@ -196,14 +240,19 @@ function SettingsPage() {
   const [confirmRemove, setConfirmRemove] = useState<TeamMember | null>(null);
   const [removing, setRemoving] = useState(false);
 
+  // Subscription state (Task 28)
+  const [subscribing, setSubscribing] = useState(false);
+
   // ============================================================================
-  // OAuth redirect handling
+  // OAuth redirect handling (updated for subscription checkout)
   // ============================================================================
 
   useEffect(() => {
     const squareSuccess = searchParams.get('success');
     const squareError = searchParams.get('error');
     const stripeParam = searchParams.get('stripe');
+    const checkoutParam = searchParams.get('checkout');
+    const tabParam = searchParams.get('tab');
 
     if (squareSuccess === 'square_connected') {
       toast.success('Square connected successfully!');
@@ -220,11 +269,29 @@ function SettingsPage() {
       toast.error('Failed to connect Stripe. Please try again.');
     }
 
-    if (squareSuccess || squareError || stripeParam) {
+    // Subscription checkout redirects
+    if (checkoutParam === 'success') {
+      toast.success('Subscription activated! Welcome aboard.');
+      refetch();
+    } else if (checkoutParam === 'canceled') {
+      toast.info('Subscription checkout was canceled.');
+    }
+
+    // Set active tab from URL
+    if (tabParam === 'subscription') {
+      setActiveTab('subscription');
+    } else if (tabParam === 'team') {
+      setActiveTab('team');
+    }
+
+    // Clean up URL params
+    if (squareSuccess || squareError || stripeParam || checkoutParam || tabParam) {
       const url = new URL(window.location.href);
       url.searchParams.delete('success');
       url.searchParams.delete('error');
       url.searchParams.delete('stripe');
+      url.searchParams.delete('checkout');
+      url.searchParams.delete('tab');
       window.history.replaceState({}, '', url.pathname);
     }
   }, [searchParams]);
@@ -664,6 +731,52 @@ function SettingsPage() {
   };
 
   // ============================================================================
+  // Subscription handlers (Task 28)
+  // ============================================================================
+
+  const handleSubscribe = async (planTier: 'pro' | 'business') => {
+    setSubscribing(true);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier: planTier }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to start checkout');
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      toast.error('Failed to start checkout. Please try again.');
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      const res = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to open billing portal');
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      toast.error('Failed to open billing portal. Please try again.');
+    }
+  };
+
+  // ============================================================================
   // Product Types handlers (with jump_rings_required)
   // ============================================================================
 
@@ -938,6 +1051,13 @@ function SettingsPage() {
   const stripeConnected = !!tenant.stripe_account_id;
   const showTeamTab = can('team:manage');
 
+  // Subscription derived state
+  const trialActive = isTrialActive(tenant.subscription_status, tenant.trial_ends_at);
+  const trialDays = getTrialDaysRemaining(tenant.trial_ends_at);
+  const hasActiveSubscription = tenant.subscription_status === 'active';
+  const isPastDue = tenant.subscription_status === 'past_due';
+  const effectiveTier = trialActive ? tier : (hasActiveSubscription ? tier : 'starter');
+
   const activeMembers = teamMembers.filter((m) => !m.is_pending);
   const pendingMembers = teamMembers.filter((m) => m.is_pending);
 
@@ -951,18 +1071,28 @@ function SettingsPage() {
       </div>
 
       {/* Tab bar */}
-      {showTeamTab && (
-        <div className="flex gap-1 border-b border-[var(--border-subtle)]">
-          <button
-            onClick={() => setActiveTab('general')}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-              activeTab === 'general'
-                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
-                : 'border-transparent text-text-tertiary hover:text-text-primary'
-            }`}
-          >
-            General
-          </button>
+      <div className="flex gap-1 border-b border-[var(--border-subtle)]">
+        <button
+          onClick={() => setActiveTab('general')}
+          className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            activeTab === 'general'
+              ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
+              : 'border-transparent text-text-tertiary hover:text-text-primary'
+          }`}
+        >
+          General
+        </button>
+        <button
+          onClick={() => setActiveTab('subscription')}
+          className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            activeTab === 'subscription'
+              ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
+              : 'border-transparent text-text-tertiary hover:text-text-primary'
+          }`}
+        >
+          Subscription
+        </button>
+        {showTeamTab && (
           <button
             onClick={() => setActiveTab('team')}
             className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
@@ -973,8 +1103,8 @@ function SettingsPage() {
           >
             Team
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ================================================================ */}
       {/* General Settings Tab                                             */}
@@ -1564,7 +1694,7 @@ function SettingsPage() {
                         <div className="p-3 bg-[var(--surface-raised)] space-y-2">
                           {supEditIsSunstone && (
                             <p className="text-xs text-[var(--text-tertiary)] italic">
-                              You can save your Sunstone rep's contact info here. Company name and website are locked.
+                              You can save your Sunstone rep&apos;s contact info here. Company name and website are locked.
                             </p>
                           )}
                           <input
@@ -1746,6 +1876,227 @@ function SettingsPage() {
                 Save Waiver Text
               </Button>
             </CardFooter>
+          </Card>
+        </div>
+      )}
+
+      {/* ================================================================ */}
+      {/* Subscription Tab (Task 28)                                       */}
+      {/* ================================================================ */}
+      {activeTab === 'subscription' && (
+        <div className="space-y-6">
+
+          {/* Trial banner */}
+          {trialActive && (
+            <div className="bg-gradient-to-r from-[var(--accent-50)] to-[var(--accent-100)] border border-[var(--accent-200)] rounded-2xl p-5">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[var(--accent-primary)] flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-[var(--text-primary)]">
+                    You&apos;re on your 60-day Pro trial
+                  </h3>
+                  <p className="text-sm text-[var(--text-secondary)] mt-1">
+                    <span className="font-semibold text-[var(--accent-primary)]">{trialDays} day{trialDays !== 1 ? 's' : ''}</span> remaining.
+                    You have full access to all Pro features. Subscribe before your trial ends to keep them.
+                  </p>
+                  <p className="text-xs text-[var(--text-tertiary)] mt-2">
+                    After your trial, you&apos;ll drop to the Starter plan (3% fee, limited AI, no reports).
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Past due warning */}
+          {isPastDue && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
+                </svg>
+                <div>
+                  <h3 className="text-base font-semibold text-red-800">Payment Failed</h3>
+                  <p className="text-sm text-red-700 mt-1">
+                    Your last payment didn&apos;t go through. Please update your payment method to keep your subscription active.
+                  </p>
+                  <Button variant="danger" className="mt-3" onClick={handleManageSubscription}>
+                    Update Payment Method
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Current plan status */}
+          {hasActiveSubscription && !isPastDue && (
+            <Card>
+              <CardContent className="py-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Badge variant="accent" size="md">
+                      {tier.charAt(0).toUpperCase() + tier.slice(1)} Plan
+                    </Badge>
+                    <span className="text-sm text-text-secondary">
+                      ${SUBSCRIPTION_PRICES[tier]}/mo
+                    </span>
+                    <span className="text-xs text-green-600 font-medium">Active</span>
+                  </div>
+                  <Button variant="secondary" onClick={handleManageSubscription}>
+                    Manage Subscription
+                  </Button>
+                </div>
+                {tenant.subscription_period_end && (
+                  <p className="text-xs text-text-tertiary mt-3">
+                    Next billing date: {new Date(tenant.subscription_period_end).toLocaleDateString()}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Starter plan notice (trial expired, no subscription) */}
+          {!trialActive && !hasActiveSubscription && !isPastDue && effectiveTier === 'starter' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+              <h3 className="text-base font-semibold text-amber-900">You&apos;re on the Starter plan</h3>
+              <p className="text-sm text-amber-800 mt-1">
+                Upgrade to Pro or Business to unlock lower fees, unlimited AI, reports, CRM, and more.
+              </p>
+            </div>
+          )}
+
+          {/* Plan cards — show when not on active paid subscription */}
+          {(!hasActiveSubscription || trialActive) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Pro card */}
+              <div className="border border-[var(--border-default)] rounded-2xl p-5 space-y-4 bg-[var(--surface-raised)]">
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--text-primary)]">Pro</h3>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-3xl font-bold text-[var(--text-primary)]">$99</span>
+                    <span className="text-sm text-text-tertiary">/mo</span>
+                  </div>
+                </div>
+                <ul className="space-y-2">
+                  {PLAN_FEATURES.pro.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
+                      <svg className="w-4 h-4 text-green-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => handleSubscribe('pro')}
+                  loading={subscribing}
+                >
+                  {trialActive ? 'Subscribe to Pro' : 'Upgrade to Pro'}
+                </Button>
+              </div>
+
+              {/* Business card */}
+              <div className="border-2 border-[var(--accent-primary)] rounded-2xl p-5 space-y-4 bg-[var(--surface-raised)] relative">
+                <div className="absolute -top-3 right-4">
+                  <Badge variant="accent" size="sm">Best Value</Badge>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--text-primary)]">Business</h3>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-3xl font-bold text-[var(--text-primary)]">$299</span>
+                    <span className="text-sm text-text-tertiary">/mo</span>
+                  </div>
+                </div>
+                <ul className="space-y-2">
+                  {PLAN_FEATURES.business.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
+                      <svg className="w-4 h-4 text-green-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => handleSubscribe('business')}
+                  loading={subscribing}
+                >
+                  {trialActive ? 'Subscribe to Business' : 'Upgrade to Business'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Plan comparison table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Plan Comparison</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--border-subtle)]">
+                      <th className="text-left py-2 pr-4 text-text-tertiary font-medium">Feature</th>
+                      <th className="text-center py-2 px-3 text-text-tertiary font-medium">Starter</th>
+                      <th className="text-center py-2 px-3 text-text-tertiary font-medium">Pro</th>
+                      <th className="text-center py-2 px-3 text-text-tertiary font-medium">Business</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-subtle)]">
+                    <tr>
+                      <td className="py-2.5 pr-4 text-text-secondary">Platform fee</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary font-mono">3%</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary font-mono">1.5%</td>
+                      <td className="py-2.5 px-3 text-center text-green-600 font-mono font-semibold">0%</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 pr-4 text-text-secondary">Sunny AI</td>
+                      <td className="py-2.5 px-3 text-center text-text-tertiary">5/mo</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary">Unlimited</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary">Unlimited</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 pr-4 text-text-secondary">Business insights</td>
+                      <td className="py-2.5 px-3 text-center text-text-tertiary">—</td>
+                      <td className="py-2.5 px-3 text-center text-green-600">✓</td>
+                      <td className="py-2.5 px-3 text-center text-green-600">✓</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 pr-4 text-text-secondary">Full P&L reports</td>
+                      <td className="py-2.5 px-3 text-center text-text-tertiary">—</td>
+                      <td className="py-2.5 px-3 text-center text-green-600">✓</td>
+                      <td className="py-2.5 px-3 text-center text-green-600">✓</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 pr-4 text-text-secondary">CRM</td>
+                      <td className="py-2.5 px-3 text-center text-text-tertiary">—</td>
+                      <td className="py-2.5 px-3 text-center text-green-600">✓</td>
+                      <td className="py-2.5 px-3 text-center text-green-600">✓</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 pr-4 text-text-secondary">Team members</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary">1</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary">3</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary">Unlimited</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2.5 pr-4 text-text-secondary">Price</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary font-semibold">Free</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary font-semibold">$99/mo</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary font-semibold">$299/mo</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
           </Card>
         </div>
       )}
@@ -1987,6 +2338,7 @@ function SettingsPage() {
     </div>
   );
 }
+
 export default function SettingsPageWrapper() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><p className="text-text-secondary">Loading...</p></div>}>
