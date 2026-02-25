@@ -116,6 +116,13 @@ export default function MentorChat() {
     }
   }, [isOpen]);
 
+  // Re-focus input after Sunny finishes responding
+  useEffect(() => {
+    if (!isLoading && isOpen) {
+      inputRef.current?.focus();
+    }
+  }, [isLoading, isOpen]);
+
   // ============================================================================
   // Send message
   // ============================================================================
