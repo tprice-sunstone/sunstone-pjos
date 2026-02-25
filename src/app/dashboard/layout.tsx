@@ -1,8 +1,9 @@
 // ============================================================================
-// Dashboard Layout v4 — src/app/dashboard/layout.tsx
+// Dashboard Layout v5 — src/app/dashboard/layout.tsx
 // ============================================================================
 // v2: Permission-based nav visibility
 // v4: Added platform admin link in sidebar + mobile nav
+// v5: Added MentorChat (Ask Sunny) floating button + chat panel
 // ============================================================================
 
 'use client';
@@ -15,6 +16,7 @@ import { TenantProvider, useTenant } from '@/hooks/use-tenant';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import type { Permission } from '@/lib/permissions';
+import MentorChat from '@/components/MentorChat';
 
 interface NavItem {
   href: string;
@@ -56,6 +58,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <MobileBottomNav />
         </div>
       </div>
+
+      {/* Mentor Chat — available on every dashboard page */}
+      <MentorChat />
     </TenantProvider>
   );
 }
@@ -260,11 +265,6 @@ function MobileBottomNav() {
     router.push('/auth/login');
     router.refresh();
   };
-
-  // On mobile, we show a "More" menu if the user is a platform admin
-  // to avoid overcrowding the bottom nav. The admin link appears as
-  // the last item before the regular nav items end.
-  // For simplicity, we just add the admin icon to the nav bar.
 
   return (
     <nav className="lg:hidden flex items-stretch bg-surface-base border-t border-border-default shrink-0 px-1 safe-area-bottom">

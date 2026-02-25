@@ -1,17 +1,25 @@
-// src/app/admin/admin-shell.tsx
+// ============================================================================
+// Admin Shell v3 — src/app/admin/admin-shell.tsx
+// ============================================================================
+// v2: Added "Sunny's Learning" nav item with pending gap badge count
+// v3: Added Atlas AI chat (floating "Ask Atlas" button + panel)
+// ============================================================================
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+import AdminAIChat from '@/components/AdminAIChat';
 
 const navItems = [
   { href: '/admin', label: 'Overview', icon: OverviewIcon, exact: true },
   { href: '/admin/tenants', label: 'Tenants', icon: TenantsIcon },
   { href: '/admin/users', label: 'Users', icon: UsersIcon },
   { href: '/admin/revenue', label: 'Revenue', icon: RevenueIcon },
+  { href: '/admin/mentor', label: "Sunny's Learning", icon: SunnyIcon, badge: true },
 ];
 
 export function AdminShell({
@@ -54,8 +62,38 @@ export function AdminShell({
           </div>
         </main>
       </div>
+
+      {/* ============================================================ */}
+      {/* Atlas AI Chat — floating button + panel on every admin page  */}
+      {/* ============================================================ */}
+      <AdminAIChat />
     </div>
   );
+}
+
+// ============================================================================
+// Hook: Pending gap count for badge
+// ============================================================================
+
+function usePendingGapCount() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchCount() {
+      try {
+        const res = await fetch('/api/admin/mentor/gaps?status=pending&limit=1');
+        if (res.ok) {
+          const data = await res.json();
+          setCount(data.stats?.pendingGaps || 0);
+        }
+      } catch {
+        // Silently fail
+      }
+    }
+    fetchCount();
+  }, []);
+
+  return count;
 }
 
 // ============================================================================
@@ -66,6 +104,7 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const pendingGapCount = usePendingGapCount();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -102,11 +141,16 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
                 'flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm font-medium transition-colors',
                 isActive
                   ? 'bg-amber-500/15 text-amber-400'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
               )}
             >
               <item.icon className="w-5 h-5 shrink-0" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.badge && pendingGapCount > 0 && (
+                <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-full min-w-[20px] text-center">
+                  {pendingGapCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -114,18 +158,21 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
 
       {/* Footer */}
       <div className="px-3 py-4 border-t border-slate-700/50 space-y-1">
+        {/* Back to Dashboard */}
         <Link
           href="/dashboard"
-          className="flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          className="flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
         >
-          <BackIcon className="w-5 h-5" />
+          <BackIcon className="w-5 h-5 shrink-0" />
           Back to Dashboard
         </Link>
+
+        {/* Logout */}
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-slate-500 hover:text-white hover:bg-slate-800 w-full transition-colors"
+          className="w-full flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
         >
-          <LogoutIcon className="w-5 h-5" />
+          <LogoutIcon className="w-5 h-5 shrink-0" />
           Sign Out
         </button>
       </div>
@@ -134,29 +181,28 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
 }
 
 // ============================================================================
-// Mobile Header & Sidebar
+// Mobile Header
 // ============================================================================
 
 function MobileHeader({ onToggle }: { onToggle: () => void }) {
   return (
-    <div className="lg:hidden flex items-center gap-3 px-4 h-14 bg-slate-900 shrink-0">
+    <div className="lg:hidden flex items-center gap-3 px-4 h-14 bg-slate-900 border-b border-slate-700/50 shrink-0">
       <button
         onClick={onToggle}
-        className="w-10 h-10 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+        className="w-10 h-10 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 transition-colors"
       >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
         </svg>
       </button>
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-md bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-          <span className="text-white font-bold text-xs">S</span>
-        </div>
-        <span className="text-sm font-semibold text-white">Sunstone Admin</span>
-      </div>
+      <div className="text-sm font-bold text-white">Sunstone Admin</div>
     </div>
   );
 }
+
+// ============================================================================
+// Mobile Sidebar Content
+// ============================================================================
 
 function MobileSidebarContent({
   userEmail,
@@ -168,6 +214,7 @@ function MobileSidebarContent({
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const pendingGapCount = usePendingGapCount();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -177,18 +224,25 @@ function MobileSidebarContent({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="pb-4 border-b border-slate-700/50 mb-4">
+      {/* Close + Brand */}
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
             <span className="text-white font-bold text-sm">S</span>
           </div>
-          <div>
-            <div className="text-sm font-bold text-white">Sunstone Admin</div>
-            <div className="text-xs text-slate-400 truncate">{userEmail}</div>
-          </div>
+          <div className="text-sm font-bold text-white">Sunstone Admin</div>
         </div>
+        <button
+          onClick={onClose}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-700"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
+      {/* Nav items */}
       <nav className="flex-1 space-y-1">
         {navItems.map((item) => {
           const isActive = item.exact
@@ -200,32 +254,40 @@ function MobileSidebarContent({
               href={item.href}
               onClick={onClose}
               className={cn(
-                'flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors',
                 isActive
                   ? 'bg-amber-500/15 text-amber-400'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
               )}
             >
               <item.icon className="w-5 h-5 shrink-0" />
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.badge && pendingGapCount > 0 && (
+                <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-full min-w-[20px] text-center">
+                  {pendingGapCount}
+                </span>
+              )}
             </Link>
           );
         })}
       </nav>
 
-      <div className="pt-4 border-t border-slate-700/50 space-y-1">
+      {/* Footer */}
+      <div className="border-t border-slate-700/50 pt-4 space-y-1">
+        <div className="px-3 text-xs text-slate-500 mb-2 truncate">{userEmail}</div>
         <Link
           href="/dashboard"
-          className="flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          onClick={onClose}
+          className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
         >
-          <BackIcon className="w-5 h-5" />
+          <BackIcon className="w-5 h-5 shrink-0" />
           Back to Dashboard
         </Link>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-slate-500 hover:text-white hover:bg-slate-800 w-full transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
         >
-          <LogoutIcon className="w-5 h-5" />
+          <LogoutIcon className="w-5 h-5 shrink-0" />
           Sign Out
         </button>
       </div>
@@ -234,7 +296,7 @@ function MobileSidebarContent({
 }
 
 // ============================================================================
-// Icons
+// Icons (inline SVG)
 // ============================================================================
 
 function OverviewIcon({ className }: { className?: string }) {
@@ -248,7 +310,7 @@ function OverviewIcon({ className }: { className?: string }) {
 function TenantsIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.15c0 .415.336.75.75.75z" />
     </svg>
   );
 }
@@ -264,7 +326,15 @@ function UsersIcon({ className }: { className?: string }) {
 function RevenueIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+    </svg>
+  );
+}
+
+function SunnyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
     </svg>
   );
 }
