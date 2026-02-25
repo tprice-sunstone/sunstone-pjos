@@ -1,210 +1,308 @@
-// src/app/admin/page.tsx
-// Platform admin overview — total tenants, users, plan breakdown, revenue, recent activity
+// ============================================================================
+// Admin Overview Page v2 — src/app/admin/page.tsx
+// ============================================================================
+// Stats cards (existing) + Platform Intelligence AI insights section (new)
+// Insights load async — stat cards render immediately, insights load after
+// ============================================================================
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/lib/utils';
 
-interface OverviewData {
+// ============================================================================
+// Types
+// ============================================================================
+
+interface OverviewStats {
   totalTenants: number;
   totalUsers: number;
   planBreakdown: { free: number; pro: number; business: number };
-  totalPlatformRevenue: number;
-  recentSignups: Array<{ id: string; name: string; created_at: string; subscription_tier: string; owner_email: string }>;
-  activeToday: Array<{ id: string; name: string; sales_count: number }>;
+  platformRevenue: number;
+  recentSignups: Array<{ name: string; created_at: string; tier: string }>;
+  activeToday: number;
 }
 
-export default function AdminOverviewPage() {
-  const [data, setData] = useState<OverviewData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+interface Insight {
+  type: 'growth' | 'attention' | 'churn_risk' | 'opportunity' | 'milestone';
+  title: string;
+  body: string;
+}
 
+// ============================================================================
+// Helpers
+// ============================================================================
+
+const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function insightConfig(type: string): { color: string; border: string; bg: string; iconBg: string; label: string } {
+  switch (type) {
+    case 'growth':
+      return { color: 'text-emerald-700', border: 'border-l-emerald-500', bg: 'bg-emerald-50', iconBg: 'bg-emerald-100', label: 'Growth' };
+    case 'attention':
+      return { color: 'text-amber-700', border: 'border-l-amber-500', bg: 'bg-amber-50', iconBg: 'bg-amber-100', label: 'Attention' };
+    case 'churn_risk':
+      return { color: 'text-red-700', border: 'border-l-red-500', bg: 'bg-red-50', iconBg: 'bg-red-100', label: 'Churn Risk' };
+    case 'opportunity':
+      return { color: 'text-blue-700', border: 'border-l-blue-500', bg: 'bg-blue-50', iconBg: 'bg-blue-100', label: 'Opportunity' };
+    case 'milestone':
+      return { color: 'text-purple-700', border: 'border-l-purple-500', bg: 'bg-purple-50', iconBg: 'bg-purple-100', label: 'Milestone' };
+    default:
+      return { color: 'text-slate-700', border: 'border-l-slate-400', bg: 'bg-slate-50', iconBg: 'bg-slate-100', label: 'Info' };
+  }
+}
+
+// ============================================================================
+// Main Page
+// ============================================================================
+
+export default function AdminOverviewPage() {
+  const [stats, setStats] = useState<OverviewStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [insightsLoading, setInsightsLoading] = useState(true);
+  const [insightsError, setInsightsError] = useState(false);
+
+  // Load stats (existing pattern)
   useEffect(() => {
-    loadOverview();
+    loadStats();
   }, []);
 
-  async function loadOverview() {
+  // Load insights (async, separate from stats)
+  useEffect(() => {
+    loadInsights();
+  }, []);
+
+  async function loadStats() {
     try {
-      // Fetch tenants
+      // Fetch tenants for overview stats
       const tenantsRes = await fetch('/api/admin/tenants');
       const tenantsData = await tenantsRes.json();
+      const tenants = tenantsData.tenants || [];
 
       // Fetch users
       const usersRes = await fetch('/api/admin/users');
       const usersData = await usersRes.json();
+      const users = usersData.users || [];
 
       // Fetch revenue
       const revenueRes = await fetch('/api/admin/revenue');
       const revenueData = await revenueRes.json();
 
-      if (!tenantsRes.ok || !usersRes.ok || !revenueRes.ok) {
-        setError('Failed to load overview data');
-        return;
-      }
-
-      const tenants = tenantsData.tenants || [];
-      const users = usersData.users || [];
-
-      // Plan breakdown
+      // Calculate stats
       const planBreakdown = { free: 0, pro: 0, business: 0 };
       for (const t of tenants) {
-        const tier = t.subscription_tier as keyof typeof planBreakdown;
+        const tier = (t.subscription_tier || 'free') as keyof typeof planBreakdown;
         if (planBreakdown[tier] !== undefined) planBreakdown[tier]++;
       }
 
-      // Active today (tenants with sales today)
       const today = new Date().toISOString().substring(0, 10);
-      const activeToday = tenants
-        .filter((t: any) => t.last_active && t.last_active.substring(0, 10) === today)
-        .map((t: any) => ({ id: t.id, name: t.name, sales_count: t.sales_count }));
+      const activeToday = tenants.filter((t: any) =>
+        t.last_active && t.last_active.substring(0, 10) === today
+      ).length;
 
-      // Recent signups (last 10)
-      const recentSignups = tenants.slice(0, 10).map((t: any) => ({
-        id: t.id,
-        name: t.name,
-        created_at: t.created_at,
-        subscription_tier: t.subscription_tier,
-        owner_email: t.owner_email,
-      }));
+      const recentSignups = tenants
+        .sort((a: any, b: any) => b.created_at.localeCompare(a.created_at))
+        .slice(0, 5)
+        .map((t: any) => ({
+          name: t.name,
+          created_at: t.created_at,
+          tier: t.subscription_tier || 'free',
+        }));
 
-      setData({
+      setStats({
         totalTenants: tenants.length,
         totalUsers: users.length,
         planBreakdown,
-        totalPlatformRevenue: revenueData.totals?.platform_fees || 0,
+        platformRevenue: revenueData.totals?.platform_fees || 0,
         recentSignups,
         activeToday,
       });
     } catch (err) {
-      setError('Failed to load overview');
+      console.error('Failed to load admin stats:', err);
     } finally {
-      setLoading(false);
+      setStatsLoading(false);
     }
   }
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
+  async function loadInsights() {
+    setInsightsLoading(true);
+    setInsightsError(false);
+    try {
+      const res = await fetch('/api/admin/insights');
+      if (!res.ok) throw new Error('Failed to fetch insights');
+      const data = await res.json();
+      setInsights(data.insights || []);
+    } catch (err) {
+      console.error('Failed to load insights:', err);
+      setInsightsError(true);
+    } finally {
+      setInsightsLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div>
+        <h1
+          className="text-2xl font-bold text-slate-900"
+          style={{ fontFamily: 'var(--font-display, Georgia)' }}
+        >
           Platform Overview
         </h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Sunstone PJOS — platform health at a glance
+        </p>
+      </div>
+
+      {/* ================================================================ */}
+      {/* Stat Cards                                                        */}
+      {/* ================================================================ */}
+      {statsLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-slate-200 p-6 animate-pulse">
-              <div className="h-4 w-20 bg-slate-100 rounded mb-3" />
+            <div key={i} className="bg-white rounded-xl border border-slate-200 p-5 animate-pulse">
+              <div className="h-3 w-20 bg-slate-100 rounded mb-3" />
               <div className="h-8 w-16 bg-slate-100 rounded" />
             </div>
           ))}
         </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-slate-500">{error}</p>
-        <button onClick={loadOverview} className="mt-4 text-amber-600 hover:text-amber-700 text-sm font-medium">
-          Try again
-        </button>
-      </div>
-    );
-  }
-
-  if (!data) return null;
-
-  return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
-        Platform Overview
-      </h1>
-
-      {/* ── Stats Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Total Tenants"
-          value={data.totalTenants}
-          icon={<TenantsStatIcon />}
-          color="blue"
-        />
-        <StatCard
-          label="Total Users"
-          value={data.totalUsers}
-          icon={<UsersStatIcon />}
-          color="emerald"
-        />
-        <StatCard
-          label="Platform Revenue"
-          value={formatCurrency(data.totalPlatformRevenue)}
-          icon={<RevenueStatIcon />}
-          color="amber"
-        />
-        <StatCard
-          label="Active Today"
-          value={data.activeToday.length}
-          icon={<ActiveStatIcon />}
-          color="violet"
-        />
-      </div>
-
-      {/* ── Plan Breakdown ── */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <h2 className="text-sm font-semibold text-slate-900 mb-4">Plan Breakdown</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <PlanStat label="Free" count={data.planBreakdown.free} total={data.totalTenants} color="slate" />
-          <PlanStat label="Pro" count={data.planBreakdown.pro} total={data.totalTenants} color="blue" />
-          <PlanStat label="Business" count={data.planBreakdown.business} total={data.totalTenants} color="amber" />
-        </div>
-      </div>
-
-      {/* ── Two-column: Recent Signups + Active Today ── */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Recent Signups */}
-        <div className="bg-white rounded-xl border border-slate-200">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h2 className="text-sm font-semibold text-slate-900">Recent Signups</h2>
+      ) : stats ? (
+        <>
+          {/* Primary Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard label="Total Tenants" value={stats.totalTenants} />
+            <StatCard label="Total Users" value={stats.totalUsers} />
+            <StatCard label="Platform Revenue" value={money(stats.platformRevenue)} />
+            <StatCard label="Active Today" value={stats.activeToday} />
           </div>
-          <div className="divide-y divide-slate-100">
-            {data.recentSignups.length === 0 && (
-              <div className="px-6 py-8 text-center text-sm text-slate-400">No tenants yet</div>
-            )}
-            {data.recentSignups.map(t => (
-              <div key={t.id} className="px-6 py-3 flex items-center justify-between">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-slate-900 truncate">{t.name}</div>
-                  <div className="text-xs text-slate-500 truncate">{t.owner_email}</div>
+
+          {/* Plan Breakdown + Recent Signups */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Plan Breakdown */}
+            <div className="bg-white rounded-xl border border-slate-200 p-5">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">
+                Plan Breakdown
+              </h3>
+              <div className="space-y-3">
+                <PlanRow tier="Free" count={stats.planBreakdown.free} total={stats.totalTenants} color="bg-slate-300" />
+                <PlanRow tier="Pro" count={stats.planBreakdown.pro} total={stats.totalTenants} color="bg-blue-500" />
+                <PlanRow tier="Business" count={stats.planBreakdown.business} total={stats.totalTenants} color="bg-amber-500" />
+              </div>
+            </div>
+
+            {/* Recent Signups */}
+            <div className="bg-white rounded-xl border border-slate-200 p-5">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">
+                Recent Signups
+              </h3>
+              {stats.recentSignups.length === 0 ? (
+                <p className="text-sm text-slate-400">No tenants yet</p>
+              ) : (
+                <div className="space-y-0 divide-y divide-slate-100">
+                  {stats.recentSignups.map((s, i) => (
+                    <div key={i} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900 truncate">{s.name}</p>
+                        <p className="text-xs text-slate-400">{new Date(s.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <TierBadge tier={s.tier} />
+                    </div>
+                  ))}
                 </div>
-                <div className="text-right shrink-0 ml-4">
-                  <TierBadge tier={t.subscription_tier} />
-                  <div className="text-xs text-slate-400 mt-0.5">
-                    {new Date(t.created_at).toLocaleDateString()}
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+          <p className="text-slate-500">Failed to load stats. Try refreshing.</p>
+        </div>
+      )}
+
+      {/* ================================================================ */}
+      {/* Platform Intelligence — AI Insights                               */}
+      {/* ================================================================ */}
+      <div>
+        {/* Section Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-sm">
+              <SparkleIcon className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h2
+                className="text-lg font-bold text-slate-900"
+                style={{ fontFamily: 'var(--font-display, Georgia)' }}
+              >
+                Platform Intelligence
+              </h2>
+              <p className="text-xs text-slate-500">AI-powered analysis of your platform data</p>
+            </div>
+          </div>
+          <button
+            onClick={loadInsights}
+            disabled={insightsLoading}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+              insightsLoading
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800'
+            )}
+          >
+            <RefreshIcon className={cn('w-3.5 h-3.5', insightsLoading && 'animate-spin')} />
+            {insightsLoading ? 'Analyzing…' : 'Refresh'}
+          </button>
+        </div>
+
+        {/* Insights Content */}
+        {insightsLoading ? (
+          // Skeleton loading state
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 p-5 animate-pulse">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-slate-100 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-48 bg-slate-100 rounded" />
+                    <div className="h-3 w-full bg-slate-50 rounded" />
+                    <div className="h-3 w-3/4 bg-slate-50 rounded" />
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Active Today */}
-        <div className="bg-white rounded-xl border border-slate-200">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h2 className="text-sm font-semibold text-slate-900">Active Today</h2>
+        ) : insightsError ? (
+          // Error state
+          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+              <AlertCircleIcon className="w-6 h-6 text-slate-400" />
+            </div>
+            <p className="text-sm text-slate-600 mb-3">Insights unavailable — check back soon</p>
+            <button
+              onClick={loadInsights}
+              className="px-4 py-2 bg-amber-50 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-100 transition-colors"
+            >
+              Retry
+            </button>
           </div>
-          <div className="divide-y divide-slate-100">
-            {data.activeToday.length === 0 && (
-              <div className="px-6 py-8 text-center text-sm text-slate-400">No sales today</div>
-            )}
-            {data.activeToday.map(t => (
-              <div key={t.id} className="px-6 py-3 flex items-center justify-between">
-                <div className="text-sm font-medium text-slate-900">{t.name}</div>
-                <div className="text-sm text-slate-500">
-                  {t.sales_count} sale{t.sales_count !== 1 ? 's' : ''}
-                </div>
-              </div>
+        ) : insights.length === 0 ? (
+          // Empty state
+          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+            <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-3">
+              <SparkleIcon className="w-6 h-6 text-amber-500" />
+            </div>
+            <p className="text-sm text-slate-600">No insights yet — insights will appear as platform data grows.</p>
+          </div>
+        ) : (
+          // Insight cards
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {insights.map((insight, i) => (
+              <InsightCard key={i} insight={insight} />
             ))}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -214,64 +312,28 @@ export default function AdminOverviewPage() {
 // Sub-components
 // ============================================================================
 
-function StatCard({
-  label,
-  value,
-  icon,
-  color,
-}: {
-  label: string;
-  value: number | string;
-  icon: React.ReactNode;
-  color: 'blue' | 'emerald' | 'amber' | 'violet';
-}) {
-  const bgColors = {
-    blue: 'bg-blue-50',
-    emerald: 'bg-emerald-50',
-    amber: 'bg-amber-50',
-    violet: 'bg-violet-50',
-  };
-  const iconColors = {
-    blue: 'text-blue-600',
-    emerald: 'text-emerald-600',
-    amber: 'text-amber-600',
-    violet: 'text-violet-600',
-  };
-
+function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
-      <div className="flex items-center gap-3 mb-3">
-        <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', bgColors[color])}>
-          <div className={iconColors[color]}>{icon}</div>
-        </div>
-      </div>
-      <div className="text-2xl font-bold text-slate-900 font-mono">{value}</div>
-      <div className="text-xs text-slate-500 mt-1">{label}</div>
+      <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{label}</div>
+      <div className="text-2xl font-bold text-slate-900 tracking-tight font-mono">{value}</div>
     </div>
   );
 }
 
-function PlanStat({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
+function PlanRow({ tier, count, total, color }: { tier: string; count: number; total: number; color: string }) {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-  const barColors: Record<string, string> = {
-    slate: 'bg-slate-400',
-    blue: 'bg-blue-500',
-    amber: 'bg-amber-500',
-  };
-
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-1">
-        <span className="text-sm font-medium text-slate-700">{label}</span>
-        <span className="text-sm font-mono text-slate-900">{count}</span>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-sm text-slate-700 font-medium">{tier}</span>
+        <span className="text-sm text-slate-500">
+          {count} <span className="text-slate-400">({pct}%)</span>
+        </span>
       </div>
       <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-        <div
-          className={cn('h-full rounded-full transition-all', barColors[color] || 'bg-slate-400')}
-          style={{ width: `${pct}%` }}
-        />
+        <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${pct}%` }} />
       </div>
-      <div className="text-xs text-slate-400 mt-1">{pct}%</div>
     </div>
   );
 }
@@ -282,44 +344,120 @@ function TierBadge({ tier }: { tier: string }) {
     pro: 'bg-blue-50 text-blue-700',
     business: 'bg-amber-50 text-amber-700',
   };
-
   return (
-    <span className={cn('inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium', styles[tier] || styles.free)}>
+    <span className={cn('inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium shrink-0', styles[tier] || styles.free)}>
       {tier.charAt(0).toUpperCase() + tier.slice(1)}
     </span>
   );
 }
 
-// ── Stat Icons ──
+function InsightCard({ insight }: { insight: Insight }) {
+  const config = insightConfig(insight.type);
 
-function TenantsStatIcon() {
   return (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72" />
+    <div className={cn(
+      'bg-white rounded-xl border border-slate-200 p-5 border-l-4 transition-colors',
+      config.border
+    )}>
+      <div className="flex items-start gap-3">
+        {/* Icon */}
+        <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center shrink-0', config.iconBg)}>
+          <InsightTypeIcon type={insight.type} className={cn('w-4.5 h-4.5', config.color)} />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h4 className="text-sm font-semibold text-slate-900 leading-snug">{insight.title}</h4>
+          </div>
+          <p className="text-sm text-slate-600 leading-relaxed">{insight.body}</p>
+          <span className={cn('inline-block mt-2 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full', config.bg, config.color)}>
+            {config.label}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Insight type icons
+// ============================================================================
+
+function InsightTypeIcon({ type, className }: { type: string; className?: string }) {
+  switch (type) {
+    case 'growth':
+      return <TrendingUpIcon className={className} />;
+    case 'attention':
+      return <AlertCircleIcon className={className} />;
+    case 'churn_risk':
+      return <AlertTriangleIcon className={className} />;
+    case 'opportunity':
+      return <LightbulbIcon className={className} />;
+    case 'milestone':
+      return <StarIcon className={className} />;
+    default:
+      return <SparkleIcon className={className} />;
+  }
+}
+
+// ============================================================================
+// Icons (inline SVG)
+// ============================================================================
+
+function SparkleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
     </svg>
   );
 }
 
-function UsersStatIcon() {
+function TrendingUpIcon({ className }: { className?: string }) {
   return (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
     </svg>
   );
 }
 
-function RevenueStatIcon() {
+function AlertCircleIcon({ className }: { className?: string }) {
   return (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <circle cx="12" cy="12" r="10" />
+      <path strokeLinecap="round" d="M12 8v4m0 4h.01" />
     </svg>
   );
 }
 
-function ActiveStatIcon() {
+function AlertTriangleIcon({ className }: { className?: string }) {
   return (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+    </svg>
+  );
+}
+
+function LightbulbIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+    </svg>
+  );
+}
+
+function StarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+    </svg>
+  );
+}
+
+function RefreshIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
     </svg>
   );
 }
