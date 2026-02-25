@@ -1,13 +1,172 @@
 // src/app/api/mentor/route.ts
 // POST endpoint for Sunny mentor chat with streaming responses
-// Handles: knowledge base, business context, learning gap detection, product search markers
+// ============================================================================
+// V2: Keyword-based section selection instead of sending full knowledge base.
+// Only 2-3 relevant sections included per question (~3-5K tokens vs ~15K+).
+// Also includes verbosity constraints in the system prompt.
+// ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
-import { SUNNY_MENTOR_KNOWLEDGE } from '@/lib/mentor-knowledge';
+import {
+  EQUIPMENT_KNOWLEDGE,
+  WELDING_TECHNIQUE_KNOWLEDGE,
+  TROUBLESHOOTING_KNOWLEDGE,
+  PRODUCTS_KNOWLEDGE,
+  BUSINESS_STRATEGY_KNOWLEDGE,
+  CLIENT_EXPERIENCE_KNOWLEDGE,
+  MARKETING_KNOWLEDGE,
+  PJ_UNIVERSITY_AND_SUNNY_ROLE,
+} from '@/lib/mentor-knowledge';
 
 // ============================================================================
-// Build knowledge string from nested object
+// Knowledge sections with keyword mappings
+// ============================================================================
+
+interface KnowledgeSection {
+  key: string;
+  label: string;
+  data: any;
+  keywords: string[];
+}
+
+const KNOWLEDGE_SECTIONS: KnowledgeSection[] = [
+  {
+    key: 'equipment',
+    label: 'EQUIPMENT & SETTINGS',
+    data: EQUIPMENT_KNOWLEDGE,
+    keywords: [
+      'welder', 'zapp', 'mpulse', 'orion', 'pulse', 'trufire', 'tru fire',
+      'kit', 'momentum', 'dream', 'legacy', 'electrode', 'tungsten',
+      'argon', 'gas', 'stylus', 'equipment', 'setup', 'set up', 'settings',
+      'joule', 'power', 'machine', 'regulator', 'flowmeter', 'flow meter',
+      'sharpen', 'optic', 'scope', 'adl', 'on demand', 'ondemand', 'rental',
+    ],
+  },
+  {
+    key: 'weldingTechnique',
+    label: 'WELDING TECHNIQUE',
+    data: WELDING_TECHNIQUE_KNOWLEDGE,
+    keywords: [
+      'weld', 'technique', 'touch', 'arc', 'ground', 'grounding',
+      'angle', 'practice', 'gauge', 'jump ring', 'jumpring',
+      'close', 'gap', 'overlap', 'position', 'steady',
+      'chain link', 'fuse', 'leather', 'patch', 'eye', 'safety',
+      'glasses', 'protection', 'fiberglass', 'brush', 'soot',
+    ],
+  },
+  {
+    key: 'troubleshooting',
+    label: 'TROUBLESHOOTING',
+    data: TROUBLESHOOTING_KNOWLEDGE,
+    keywords: [
+      'troubleshoot', 'problem', 'issue', 'break', 'broke', 'breaking',
+      'abort', 'burn', 'dark spot', 'discolor', 'inconsistent', 'fix',
+      'help', 'not working', 'won\'t hold', 'doesn\'t hold', 'weak',
+      'too low', 'too high', 'fuse together', 'links fusing',
+      'escalat', 'support', 'malfunction', 'error',
+    ],
+  },
+  {
+    key: 'products',
+    label: 'PRODUCTS, CHAINS & INVENTORY',
+    data: PRODUCTS_KNOWLEDGE,
+    keywords: [
+      'chain', 'gold', 'silver', 'sterling', 'stainless', 'steel',
+      'bracelet', 'anklet', 'necklace', 'ring', 'charm', 'connector',
+      'metal', 'gauge', 'inch', 'size', 'measure', 'measurement',
+      'fit', 'fitting', 'clasp', 'tier', 'inventory', 'stock',
+      'supplier', 'supply', 'reorder', 'order', 'sunstone supply',
+      'ready to wear', 'enamel', 'plated', 'gold fill', 'filled',
+      'solid gold', '14k', '10k', 'karat', 'rose', 'white gold',
+      'imprinted', 'stuller', 'rio grande',
+    ],
+  },
+  {
+    key: 'businessStrategy',
+    label: 'BUSINESS STRATEGY',
+    data: BUSINESS_STRATEGY_KNOWLEDGE,
+    keywords: [
+      'price', 'pricing', 'business', 'event', 'pop up', 'popup',
+      'house party', 'market', 'booth', 'revenue', 'profit', 'margin',
+      'salon', 'brick and mortar', 'store', 'permanent location',
+      'insurance', 'llc', 'legal', 'license', 'tax', 'entity',
+      'budget', 'cost', 'fee', 'startup', 'start up',
+      'tip', 'tipping', 'money', 'earn', 'income',
+      'pack', 'packing', 'checklist', 'plan', 'schedule',
+      'pjx', 'conference', 'expo', 'wholesale',
+    ],
+  },
+  {
+    key: 'clientExperience',
+    label: 'CLIENT EXPERIENCE',
+    data: CLIENT_EXPERIENCE_KNOWLEDGE,
+    keywords: [
+      'client', 'customer', 'experience', 'waiver', 'upsell',
+      'aftercare', 'care', 'appointment', 'consultation', 'checkout',
+      'greeting', 'welcome', 'service', 'flow', 'step',
+      'display', 'presentation', 'booking', 'walk in',
+      'repeat', 'retention', 'follow up', 'thank you',
+      'photo', 'selfie', 'social proof', 'review',
+    ],
+  },
+  {
+    key: 'marketing',
+    label: 'MARKETING',
+    data: MARKETING_KNOWLEDGE,
+    keywords: [
+      'marketing', 'social media', 'instagram', 'facebook', 'tiktok',
+      'content', 'photo', 'video', 'reel', 'brand', 'branding',
+      'logo', 'website', 'network', 'networking', 'referral',
+      'community', 'group', 'promote', 'promotion', 'advertis',
+      'post', 'hashtag', 'engage', 'audience', 'follower',
+      'collab', 'partnership', 'flyer', 'card', 'business card',
+    ],
+  },
+];
+
+// ============================================================================
+// Section selection based on keyword matching
+// ============================================================================
+
+function selectRelevantSections(userMessage: string, recentMessages: string[]): KnowledgeSection[] {
+  // Combine current message with recent context for better matching
+  const searchText = [userMessage, ...recentMessages.slice(-2)]
+    .join(' ')
+    .toLowerCase();
+
+  // Score each section
+  const scored = KNOWLEDGE_SECTIONS.map(section => {
+    let score = 0;
+    for (const keyword of section.keywords) {
+      if (searchText.includes(keyword.toLowerCase())) {
+        // Exact word matches score higher for short keywords
+        score += keyword.length > 4 ? 2 : 1;
+      }
+    }
+    return { section, score };
+  });
+
+  // Sort by score descending
+  scored.sort((a, b) => b.score - a.score);
+
+  // Take top sections with score > 0, max 3
+  const selected = scored
+    .filter(s => s.score > 0)
+    .slice(0, 3)
+    .map(s => s.section);
+
+  // If nothing matched, include the most commonly needed sections
+  if (selected.length === 0) {
+    // Default to equipment + business strategy for generic questions
+    return [KNOWLEDGE_SECTIONS[0], KNOWLEDGE_SECTIONS[4]];
+  }
+
+  return selected;
+}
+
+// ============================================================================
+// Build knowledge string from nested object (unchanged from v1)
 // ============================================================================
 
 function buildKnowledgeString(obj: any, depth = 0, prefix = ''): string {
@@ -24,11 +183,9 @@ function buildKnowledgeString(obj: any, depth = 0, prefix = ''): string {
 
   if (Array.isArray(obj)) {
     if (obj.length === 0) return '';
-    // Check if array of simple values
     if (typeof obj[0] === 'string' || typeof obj[0] === 'number') {
-      return obj.map((item, i) => `${indent}- ${item}`).join('\n');
+      return obj.map((item) => `${indent}- ${item}`).join('\n');
     }
-    // Array of objects
     return obj.map((item, i) => {
       if (typeof item === 'object' && item !== null) {
         return buildKnowledgeString(item, depth, `[${i + 1}] `);
@@ -39,7 +196,6 @@ function buildKnowledgeString(obj: any, depth = 0, prefix = ''): string {
 
   if (typeof obj === 'object' && obj !== null) {
     for (const [key, value] of Object.entries(obj)) {
-      // Clean up key for readability
       const label = key
         .replace(/([A-Z])/g, ' $1')
         .replace(/[_]/g, ' ')
@@ -62,26 +218,37 @@ function buildKnowledgeString(obj: any, depth = 0, prefix = ''): string {
 }
 
 // ============================================================================
+// Build personality + behavior prompt (ALWAYS included)
+// ============================================================================
+
+function buildCorePrompt(): string {
+  const personality = PJ_UNIVERSITY_AND_SUNNY_ROLE;
+  return buildKnowledgeString({
+    sunnyPersonality: personality.sunnyPersonality,
+    sunnyBoundaries: personality.sunnyBoundaries,
+    supportResources: personality.supportResources,
+    mentoring: personality.mentoring,
+  });
+}
+
+// ============================================================================
 // Fetch business context for personalization
 // ============================================================================
 
 async function fetchBusinessContext(serviceClient: any, tenantId: string) {
   try {
-    // Tenant info
     const { data: tenant } = await serviceClient
       .from('tenants')
       .select('name, subscription_tier, created_at')
       .eq('id', tenantId)
       .single();
 
-    // Sales count
     const { count: salesCount } = await serviceClient
       .from('sales')
       .select('*', { count: 'exact', head: true })
       .eq('tenant_id', tenantId)
       .eq('status', 'completed');
 
-    // Revenue this month
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
@@ -97,7 +264,6 @@ async function fetchBusinessContext(serviceClient: any, tenantId: string) {
       0
     );
 
-    // Top 3 products
     const { data: topProducts } = await serviceClient
       .from('sale_items')
       .select('product_name, quantity')
@@ -105,7 +271,6 @@ async function fetchBusinessContext(serviceClient: any, tenantId: string) {
       .order('quantity', { ascending: false })
       .limit(20);
 
-    // Aggregate top products
     const productMap: Record<string, number> = {};
     (topProducts || []).forEach((p: any) => {
       productMap[p.product_name] = (productMap[p.product_name] || 0) + (p.quantity || 1);
@@ -115,7 +280,6 @@ async function fetchBusinessContext(serviceClient: any, tenantId: string) {
       .slice(0, 3)
       .map(([name, qty]) => `${name} (${qty} sold)`);
 
-    // Inventory summary
     const { data: inventory } = await serviceClient
       .from('inventory')
       .select('type')
@@ -129,13 +293,11 @@ async function fetchBusinessContext(serviceClient: any, tenantId: string) {
       connectors: (inventory || []).filter((i: any) => i.type === 'connector').length,
     };
 
-    // Events count
     const { count: eventsCount } = await serviceClient
       .from('events')
       .select('*', { count: 'exact', head: true })
       .eq('tenant_id', tenantId);
 
-    // Clients count
     const { count: clientsCount } = await serviceClient
       .from('clients')
       .select('*', { count: 'exact', head: true })
@@ -204,7 +366,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Messages required' }, { status: 400 });
     }
 
-    // 4. Fetch business context + approved additions in parallel
+    // 4. Select relevant knowledge sections based on the question
+    const latestUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
+    const recentUserMessages = messages
+      .filter(m => m.role === 'user')
+      .slice(-3)
+      .map(m => m.content);
+
+    const relevantSections = selectRelevantSections(latestUserMessage, recentUserMessages);
+
+    // Build the relevant knowledge text (only matched sections)
+    const sectionTexts = relevantSections.map(section =>
+      `--- ${section.label} ---\n${buildKnowledgeString(section.data)}`
+    ).join('\n\n');
+
+    // 5. Fetch business context + approved additions in parallel
     const [businessContext, additionsResult] = await Promise.all([
       fetchBusinessContext(serviceClient, tenantId),
       serviceClient
@@ -215,56 +391,63 @@ export async function POST(request: NextRequest) {
 
     const approvedAdditions = additionsResult.data || [];
 
-    // 5. Build system prompt
-    const staticKnowledge = buildKnowledgeString(SUNNY_MENTOR_KNOWLEDGE);
-
     const additionsText = approvedAdditions.length > 0
       ? `\n\nADDITIONAL LEARNED KNOWLEDGE (approved by Sunstone):\n${approvedAdditions.map((a: any) => `Q: ${a.question}\nA: ${a.answer}`).join('\n\n')}`
       : '';
 
+    // 6. Build the LEAN system prompt
+    const corePersonality = buildCorePrompt();
+
     const systemPrompt = `You are Sunny, the official AI mentor for Sunstone Permanent Jewelry. You live inside the Sunstone PJOS app and help permanent jewelry artists succeed.
 
-CORE KNOWLEDGE BASE:
-${staticKnowledge}
+PERSONALITY & BEHAVIOR:
+${corePersonality}
+
+RELEVANT KNOWLEDGE (for this question):
+${sectionTexts}
 ${additionsText}
 
 ARTIST'S BUSINESS CONTEXT:
-${JSON.stringify(businessContext)}
+Business: ${businessContext.businessName} (${businessContext.subscriptionTier} plan, member since ${businessContext.memberSince})
+Sales: ${businessContext.totalSales} total, ${businessContext.revenueThisMonth} this month
+Top products: ${businessContext.topProducts.join(', ')}
+Inventory: ${businessContext.inventory.chains} chains, ${businessContext.inventory.charms} charms, ${businessContext.inventory.jumpRings} jump rings
+Events: ${businessContext.eventsHosted} hosted | Clients: ${businessContext.totalClients}
+
+RESPONSE LENGTH RULES (STRICT — follow these every time):
+- Simple factual questions (settings, sizes, prices): 1-3 sentences. Just the answer.
+  Example Q: "What setting for 24g gold fill on Zapp Plus?" → Just say the joule value and one tip. Done.
+- How-to questions: Brief intro sentence, then numbered steps (max 8 steps). No rambling.
+- Troubleshooting: Ask ONE clarifying question first ("What welder are you using?" or "Are you using argon?"). Then give the most likely fix first — not every possible fix.
+- Business/strategy questions: 3-5 sentences with the key insight. Offer to go deeper only if warranted.
+- NEVER repeat information the artist already provided in their question.
+- NEVER start with "Great question!" or "I'd be happy to help!" or any preamble — just answer directly.
+- NEVER list every possible scenario — give the MOST LIKELY answer first, then offer to elaborate.
+- If the answer is in your knowledge, give it confidently. Don't hedge unless genuinely uncertain.
+- Use markdown bold for key numbers and settings. Use bullet points only for multi-step instructions.
 
 RESPONSE GUIDELINES:
-- Keep responses concise: 3-8 sentences for simple questions, longer for tutorials/guides
-- Use bullet points or numbered steps for how-to instructions
 - Include SPECIFIC settings and numbers from the knowledge base (exact joule values per welder/metal/gauge)
-- Bold key terms and important numbers using markdown
-- Reference the artist's business data when relevant (e.g. "You've done ${businessContext.totalSales} sales so far — nice work!")
-- End complex answers with an invitation to dig deeper
-- When you genuinely don't know something, say: "That's a great question — I want to make sure I give you the right answer. Let me flag this for the Sunstone team to get back to you on." Do NOT guess or make up technical information.
-- When relevant, reference specific PJ University modules by name
+- Reference the artist's business data when relevant (e.g. "With ${businessContext.totalSales} sales under your belt...")
+- When you genuinely don't know something, say: "That's a great question — I want to make sure I give you the right answer. Let me flag this for the Sunstone team." Do NOT guess technical information.
 - NEVER recommend discounting — steer toward value and confidence
 - NEVER say it's okay to skip eye protection
 - Help non-Sunstone-welder users generically but don't troubleshoot competitor hardware
-- Help artists using non-Sunstone chains freely
 - Take the high road on competitors — no trash talk
 - Refer to Sunstone support (call or text 385-999-5240) when you can't resolve something in 2-3 attempts
-- For product recommendations, describe what to look for and note you can search the Sunstone catalog
 
 PRODUCT SEARCH:
-When an artist asks about specific products (chains, jump rings, charms, connectors, tools, kits, or supplies), include this marker at the END of your response (after all visible text):
+When an artist asks about specific products (chains, jump rings, charms, tools, kits, or supplies), include this marker at the END of your response (after all visible text):
 <!-- PRODUCT_SEARCH: descriptive search terms -->
-Use descriptive terms based on what they asked for. Example: "gold filled chain" or "sterling silver jump rings 24g".
-Only include the marker when product search would genuinely help — not for every question.
+Only include when product search would genuinely help.
 
 KNOWLEDGE GAP PROTOCOL:
-If you cannot answer a question from your knowledge base, or if the artist corrects you on something, include this exact marker at the END of your response (after your visible reply and after any PRODUCT_SEARCH marker):
+If you cannot answer from your knowledge base, or the artist corrects you, include at the END:
 <!-- KNOWLEDGE_GAP: {"category": "unknown_answer", "topic": "welding", "summary": "brief description"} -->
 Categories: unknown_answer, correction, product_gap, technique_question, other
-Topics: welding, equipment, business, products, marketing, troubleshooting, client_experience, other
-Only include this when you genuinely cannot answer from your knowledge base.
+Topics: welding, equipment, business, products, marketing, troubleshooting, client_experience, other`;
 
-PERSONALITY:
-You are a warm, encouraging mentor with "You can do this!" energy. Be genuine — not a robotic cheerleader. Read the room. Celebrate wins, support struggles, give honest guidance when needed. You're their knowledgeable friend in the PJ business.`;
-
-    // 6. Call Anthropic API with streaming
+    // 7. Call Anthropic API with streaming
     const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -274,10 +457,10 @@ You are a warm, encouraging mentor with "You can do this!" energy. Be genuine �
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 2048,
+        max_tokens: 1024, // Reduced from 2048 — encourages concise responses
         stream: true,
         system: systemPrompt,
-        messages: messages.slice(-20), // Last 20 messages for context
+        messages: messages.slice(-20),
       }),
     });
 
@@ -287,7 +470,7 @@ You are a warm, encouraging mentor with "You can do this!" energy. Be genuine �
       return NextResponse.json({ error: 'AI service error' }, { status: 502 });
     }
 
-    // 7. Stream response while buffering for gap detection
+    // 8. Stream response while buffering for gap detection
     let fullResponseText = '';
     const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
 
@@ -324,7 +507,6 @@ You are a warm, encouraging mentor with "You can do this!" energy. Be genuine �
                   if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
                     const text = parsed.delta.text;
                     fullResponseText += text;
-                    // Forward SSE to client
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
                   }
 
@@ -342,19 +524,21 @@ You are a warm, encouraging mentor with "You can do this!" energy. Be genuine �
         } finally {
           controller.close();
 
-          // 8. Post-stream: detect knowledge gaps
+          // 9. Post-stream: detect knowledge gaps
           try {
             const gapMatch = fullResponseText.match(/<!--\s*KNOWLEDGE_GAP:\s*(\{[^}]+\})\s*-->/);
             if (gapMatch) {
               const gapData = JSON.parse(gapMatch[1]);
-              // Clean the response (remove marker) for storage
-              const cleanResponse = fullResponseText.replace(/<!--\s*KNOWLEDGE_GAP:.*?-->/g, '').trim();
+              const cleanResponse = fullResponseText
+                .replace(/<!--\s*KNOWLEDGE_GAP:.*?-->/g, '')
+                .replace(/<!--\s*PRODUCT_SEARCH:.*?-->/g, '')
+                .trim();
 
               await serviceClient.from('mentor_knowledge_gaps').insert({
                 tenant_id: tenantId,
                 user_id: user.id,
                 user_message: lastUserMessage,
-                sunny_response: cleanResponse.replace(/<!--\s*PRODUCT_SEARCH:.*?-->/g, '').trim(),
+                sunny_response: cleanResponse,
                 category: gapData.category || 'other',
                 topic: gapData.topic || 'other',
                 status: 'pending',

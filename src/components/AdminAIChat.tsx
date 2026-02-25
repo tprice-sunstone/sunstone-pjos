@@ -5,9 +5,11 @@
 // Atlas queries real-time platform data to provide insights, analytics,
 // and custom reports. Styled with admin slate/amber palette.
 // ============================================================================
-// FIX: Added lg:left-auto to panel to override mobile inset-x-0 on desktop.
-// Without it, left:0 stays set on desktop, positioning the panel at the LEFT
-// edge. translate-x-full then pushes it into the middle instead of off-screen.
+// V2 FIX: Close button now properly hides panel and shows floating trigger.
+// Root cause: inset-x-0 applied at ALL breakpoints, bleeding left:0 into
+// desktop. Fixed by using max-lg: prefix (same pattern as MentorChat).
+// Also: trigger button now uses opacity/pointer-events toggle instead of
+// conditional rendering, preventing layout flash on open/close.
 // ============================================================================
 
 'use client';
@@ -31,7 +33,7 @@ interface ChatMessage {
 
 const SUGGESTED_PROMPTS = [
   'How is the platform doing this month?',
-  'What are artists asking Sunny that she can\'t answer?',
+  "What are artists asking Sunny that she can't answer?",
   'Which tenants are most active?',
   'Give me a revenue report for this week',
   'What products are selling best?',
@@ -75,7 +77,6 @@ function renderMarkdown(text: string): string {
   let listType: 'ul' | 'ol' | null = null;
 
   for (const line of lines) {
-    // Headers
     const h3Match = line.match(/^###\s+(.+)/);
     const h2Match = line.match(/^##\s+(.+)/);
     const h1Match = line.match(/^#\s+(.+)/);
@@ -96,7 +97,6 @@ function renderMarkdown(text: string): string {
       continue;
     }
 
-    // Horizontal rule
     if (line.match(/^---+$/)) {
       if (inList) { processed.push(listType === 'ol' ? '</ol>' : '</ul>'); inList = false; listType = null; }
       processed.push('<hr class="border-slate-200 my-3" />');
@@ -280,23 +280,24 @@ export default function AdminAIChat() {
     <>
       {/* ================================================================ */}
       {/* Floating Button                                                  */}
+      {/* FIX: Always render, use opacity/pointer-events like MentorChat   */}
       {/* ================================================================ */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className={cn(
-            'fixed z-40 flex items-center gap-2 px-4 py-3 rounded-full',
-            'bg-gradient-to-r from-slate-700 to-slate-900 text-white shadow-lg',
-            'hover:shadow-xl hover:scale-105 active:scale-95',
-            'transition-all duration-200 ease-out',
-            'bottom-6 right-6'
-          )}
-          style={{ minHeight: 48, minWidth: 48 }}
-        >
-          <AtlasIcon className="w-5 h-5 text-amber-400" />
-          <span className="text-sm font-semibold whitespace-nowrap">Ask Atlas</span>
-        </button>
-      )}
+      <button
+        onClick={() => setIsOpen(true)}
+        className={cn(
+          'fixed z-40 flex items-center gap-2 px-4 py-3 rounded-full',
+          'bg-gradient-to-r from-slate-700 to-slate-900 text-white shadow-lg',
+          'hover:shadow-xl hover:scale-105 active:scale-95',
+          'transition-all duration-200 ease-out',
+          'bottom-6 right-6',
+          isOpen && 'opacity-0 pointer-events-none scale-90'
+        )}
+        style={{ minHeight: 48, minWidth: 48 }}
+        aria-label="Ask Atlas - Platform Intelligence"
+      >
+        <AtlasIcon className="w-5 h-5 text-amber-400" />
+        <span className="text-sm font-semibold whitespace-nowrap">Ask Atlas</span>
+      </button>
 
       {/* ================================================================ */}
       {/* Backdrop (mobile)                                                */}
@@ -310,19 +311,22 @@ export default function AdminAIChat() {
 
       {/* ================================================================ */}
       {/* Chat Panel                                                       */}
+      {/* FIX: Use max-lg: prefix for mobile styles (same as MentorChat)   */}
+      {/* Old code used inset-x-0 which bleeds left:0 into desktop.        */}
       {/* ================================================================ */}
-      {/* FIX: Added lg:left-auto to clear the left:0 from inset-x-0     */}
-      {/* Without it, the panel sits at the LEFT edge on desktop and      */}
-      {/* translate-x-full pushes it to center instead of off-screen.     */}
       <div
         className={cn(
           'fixed z-50 flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-out',
-          'lg:top-0 lg:right-0 lg:left-auto lg:h-full lg:w-[440px] lg:border-l lg:border-slate-200',
-          'inset-x-0 bottom-0 h-[calc(100%-60px)] rounded-t-2xl lg:rounded-none',
+          // Desktop: right side panel
+          'lg:right-0 lg:top-0 lg:bottom-0 lg:w-[440px] lg:border-l lg:border-slate-200',
+          // Mobile: slide up sheet (max-lg prevents bleeding into desktop)
+          'max-lg:left-0 max-lg:right-0 max-lg:bottom-0 max-lg:rounded-t-2xl max-lg:max-h-[calc(100vh-60px)]',
+          // Open/close
           isOpen
             ? 'translate-y-0 lg:translate-x-0'
             : 'translate-y-full lg:translate-y-0 lg:translate-x-full'
         )}
+        style={{ minHeight: isOpen ? '50vh' : 0 }}
       >
         {/* ============================================================ */}
         {/* Header                                                       */}
@@ -340,6 +344,7 @@ export default function AdminAIChat() {
           <button
             onClick={() => setIsOpen(false)}
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors text-slate-400"
+            aria-label="Close Atlas"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
