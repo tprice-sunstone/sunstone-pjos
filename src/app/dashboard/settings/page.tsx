@@ -1691,7 +1691,7 @@ function SettingsPage() {
                         <div className="flex items-center justify-between px-3 py-2.5">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              {s.is_sunstone && <span className="text-amber-500">✦</span>}
+                              {s.is_sunstone && <img src="/sunstone-logo.png" alt="Sunstone" className="w-4 h-4 object-contain" />}
                               <span className="text-sm text-[var(--text-primary)] font-medium">{s.name}</span>
                             </div>
                             {s.website && (
