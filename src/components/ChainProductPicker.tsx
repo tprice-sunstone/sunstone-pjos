@@ -377,7 +377,7 @@ export default function ChainProductPicker({
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[var(--text-primary)] font-mono font-medium">
+                    <span className="text-[var(--text-primary)]  font-medium">
                       {option.isEstimate ? '~' : ''}${option.sellPrice.toFixed(2)}
                     </span>
                     <svg
@@ -441,14 +441,14 @@ export default function ChainProductPicker({
                   min="0.25"
                   value={measureInches}
                   onChange={(e) => setMeasureInches(e.target.value)}
-                  className="w-full h-12 px-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-primary)] text-lg font-mono focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)]"
+                  className="w-full h-12 px-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-primary)] text-lg  focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)]"
                   autoFocus
                 />
               </div>
 
               <div className="flex items-center justify-between py-3 px-4 bg-[var(--surface-raised)] rounded-xl">
                 <span className="text-sm text-[var(--text-secondary)]">Price</span>
-                <span className="text-2xl font-bold font-mono text-[var(--accent-primary)]">
+                <span className="text-2xl font-bold  text-[var(--accent-primary)]">
                   ${measurePrice.toFixed(2)}
                 </span>
               </div>
@@ -493,7 +493,7 @@ export default function ChainProductPicker({
                     Sell Price
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] font-mono">$</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] ">$</span>
                     <input
                       type="number"
                       step="0.01"
@@ -501,7 +501,7 @@ export default function ChainProductPicker({
                       placeholder="0.00"
                       value={customPrice}
                       onChange={(e) => setCustomPrice(e.target.value)}
-                      className="w-full h-11 pl-8 pr-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-primary)] text-sm font-mono focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)]"
+                      className="w-full h-11 pl-8 pr-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-primary)] text-sm  focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)]"
                     />
                   </div>
                 </div>
@@ -518,7 +518,7 @@ export default function ChainProductPicker({
                   placeholder="0.00"
                   value={customInches}
                   onChange={(e) => setCustomInches(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-primary)] text-sm font-mono focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)]"
+                  className="w-full h-11 px-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-primary)] text-sm  focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)]"
                 />
                 <p className="text-xs text-[var(--text-tertiary)] mt-1">
                   For inventory tracking only — not shown to customer
@@ -529,7 +529,7 @@ export default function ChainProductPicker({
               {isPerInch && customCalcPrice !== null && (
                 <div className="flex items-center justify-between py-3 px-4 bg-[var(--surface-raised)] rounded-xl">
                   <span className="text-sm text-[var(--text-secondary)]">Price</span>
-                  <span className="text-xl font-bold font-mono text-[var(--accent-primary)]">
+                  <span className="text-xl font-bold  text-[var(--accent-primary)]">
                     ${(customCalcPrice || 0).toFixed(2)}
                   </span>
                 </div>

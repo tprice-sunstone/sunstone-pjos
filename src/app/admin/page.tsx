@@ -316,7 +316,7 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5">
       <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{label}</div>
-      <div className="text-2xl font-bold text-slate-900 tracking-tight font-mono">{value}</div>
+      <div className="text-2xl font-bold text-slate-900 tracking-tight ">{value}</div>
     </div>
   );
 }

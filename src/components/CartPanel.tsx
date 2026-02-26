@@ -103,7 +103,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                   <div className="text-sm font-medium text-[var(--text-primary)] leading-snug">{item.name}</div>
                   <div className="text-xs text-[var(--text-tertiary)] mt-1 flex items-center gap-1.5">
                     {item.quantity > 1 && <span>{item.quantity} x </span>}
-                    <span className="font-mono">${item.unit_price.toFixed(2)}</span>
+                    <span className="">${item.unit_price.toFixed(2)}</span>
                     {item.discount_type && item.discount_value > 0 && (
                       <span className="text-green-600 font-medium">
                         (-{item.discount_type === 'flat' ? `$${item.discount_value.toFixed(2)}` : `${item.discount_value}%`})
@@ -112,7 +112,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0 pt-0.5">
-                  <span className="text-sm font-semibold text-[var(--text-primary)] font-mono">
+                  <span className="text-sm font-semibold text-[var(--text-primary)] ">
                     ${item.line_total.toFixed(2)}
                   </span>
                   {/* Discount toggle */}
@@ -183,7 +183,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                       placeholder={discountType === 'flat' ? '0.00' : '0'}
                       value={discountInput}
                       onChange={(e) => setDiscountInput(e.target.value)}
-                      className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-primary)] text-sm font-mono focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-subtle)]"
+                      className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-primary)] text-sm  focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-subtle)]"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') applyItemDiscount(item.id);
@@ -216,7 +216,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
       <div className="px-6 pt-4 pb-2 border-t border-[var(--border-subtle)] space-y-1.5 text-sm">
         <div className="flex justify-between text-[var(--text-tertiary)]">
           <span>Subtotal</span>
-          <span className="font-mono">${cart.subtotal.toFixed(2)}</span>
+          <span className="">${cart.subtotal.toFixed(2)}</span>
         </div>
 
         {/* Cart-level discount controls */}
@@ -234,7 +234,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                 >
                   Discount ({cart._cartDiscountType === 'flat' ? `$${cart._cartDiscountValue.toFixed(2)}` : `${cart._cartDiscountValue}%`})
                 </button>
-                <span className="font-mono">-${(cart.discount_amount).toFixed(2)}</span>
+                <span className="">-${(cart.discount_amount).toFixed(2)}</span>
               </div>
             ) : !showCartDiscount ? (
               <button
@@ -278,7 +278,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                     placeholder={cartDiscountType === 'flat' ? '0.00' : '0'}
                     value={cartDiscountInput}
                     onChange={(e) => setCartDiscountInput(e.target.value)}
-                    className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-primary)] text-sm font-mono focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-subtle)]"
+                    className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-primary)] text-sm  focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-subtle)]"
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') applyCartDiscount();
@@ -315,32 +315,32 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
         {cart.items.length > 0 && !canDiscount && hasCartDiscount && (
           <div className="flex items-center justify-between text-green-600">
             <span className="text-xs">Discount</span>
-            <span className="font-mono">-${(cart.discount_amount).toFixed(2)}</span>
+            <span className="">-${(cart.discount_amount).toFixed(2)}</span>
           </div>
         )}
 
         {cart.discount_amount > 0 && !hasCartDiscount && (
           <div className="flex justify-between text-green-600">
             <span>Item discounts</span>
-            <span className="font-mono">-${cart.discount_amount.toFixed(2)}</span>
+            <span className="">-${cart.discount_amount.toFixed(2)}</span>
           </div>
         )}
         {cart.tax_amount > 0 && (
           <div className="flex justify-between text-[var(--text-tertiary)]">
             <span>Tax ({(cart.tax_rate * 100).toFixed(1)}%)</span>
-            <span className="font-mono">${cart.tax_amount.toFixed(2)}</span>
+            <span className="">${cart.tax_amount.toFixed(2)}</span>
           </div>
         )}
         {cart.tip_amount > 0 && (
           <div className="flex justify-between text-[var(--text-tertiary)]">
             <span>Tip</span>
-            <span className="font-mono">${cart.tip_amount.toFixed(2)}</span>
+            <span className="">${cart.tip_amount.toFixed(2)}</span>
           </div>
         )}
         {cart.platform_fee_amount > 0 && tenant?.fee_handling === 'pass_to_customer' && (
           <div className="flex justify-between text-[var(--text-tertiary)] text-xs">
             <span>Service Fee</span>
-            <span className="font-mono">${cart.platform_fee_amount.toFixed(2)}</span>
+            <span className="">${cart.platform_fee_amount.toFixed(2)}</span>
           </div>
         )}
       </div>
@@ -349,7 +349,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
       <div className="px-6 pt-4 pb-2 border-t-2 border-[var(--text-primary)]">
         <div className="flex items-baseline justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Total</span>
-          <span className="text-[32px] font-bold text-[var(--text-primary)] font-mono tracking-tight leading-none">
+          <span className="text-[32px] font-bold text-[var(--text-primary)]  tracking-tight leading-none">
             ${cart.total.toFixed(2)}
           </span>
         </div>

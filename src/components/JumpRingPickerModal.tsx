@@ -158,7 +158,7 @@ export default function JumpRingPickerModal({
                           </div>
                           <span className="text-sm text-[var(--text-primary)]">{jr.name}</span>
                         </div>
-                        <span className={`text-xs font-mono ${isLow ? 'text-amber-600' : 'text-[var(--text-tertiary)]'}`}>
+                        <span className={`text-xs  ${isLow ? 'text-amber-600' : 'text-[var(--text-tertiary)]'}`}>
                           {stock} left
                         </span>
                       </button>

@@ -259,7 +259,7 @@ export default function ChainPricingConfig({
                 value={perInchRate || ''}
                 onChange={(e) => onPerInchRateChange(parseFloat(e.target.value) || 0)}
                 placeholder="0.00"
-                className={`w-full rounded-xl border bg-[var(--surface-base)] pl-9 pr-14 py-4 text-2xl font-mono font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 transition-colors ${
+                className={`w-full rounded-xl border bg-[var(--surface-base)] pl-9 pr-14 py-4 text-2xl  font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 transition-colors ${
                   showInchValidation
                     ? 'border-[var(--error-500)] focus:border-[var(--error-600)] focus:ring-[var(--error-50)]'
                     : 'border-[var(--border-default)] focus:border-[var(--accent-primary)] focus:ring-[var(--accent-subtle)]'
@@ -295,7 +295,7 @@ export default function ChainPricingConfig({
                           ({pt.default_inches}&quot;)
                         </span>
                       </div>
-                      <span className="text-sm font-mono font-semibold text-[var(--text-primary)]">
+                      <span className="text-sm  font-semibold text-[var(--text-primary)]">
                         ${calculatedPrice.toFixed(2)}
                       </span>
                     </div>
@@ -413,7 +413,7 @@ export default function ChainPricingConfig({
                         }
                         disabled={!row.is_active}
                         placeholder="0.00"
-                        className={`w-full rounded-lg border bg-[var(--surface-base)] pl-7 pr-3 py-2 text-sm font-mono text-right text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 transition-colors disabled:bg-[var(--surface-subtle)] disabled:text-[var(--text-tertiary)] disabled:cursor-not-allowed min-h-[40px] ${
+                        className={`w-full rounded-lg border bg-[var(--surface-base)] pl-7 pr-3 py-2 text-sm  text-right text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 transition-colors disabled:bg-[var(--surface-subtle)] disabled:text-[var(--text-tertiary)] disabled:cursor-not-allowed min-h-[40px] ${
                           hasValidationError
                             ? 'border-[var(--error-500)] focus:border-[var(--error-600)] focus:ring-[var(--error-50)]'
                             : 'border-[var(--border-default)] focus:border-[var(--accent-primary)] focus:ring-[var(--accent-subtle)]'
@@ -443,7 +443,7 @@ export default function ChainPricingConfig({
                       <span className="text-sm text-[var(--text-primary)]">
                         {chainName} {r.product_type_name}
                       </span>
-                      <span className="text-sm font-mono text-[var(--text-secondary)]">
+                      <span className="text-sm  text-[var(--text-secondary)]">
                         ${r.sell_price.toFixed(2)}
                       </span>
                     </div>

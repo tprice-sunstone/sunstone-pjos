@@ -209,7 +209,7 @@ export default function ProductTypesSection({ tenantId }: ProductTypesSectionPro
                       min="0.25"
                       value={editInches}
                       onChange={(e) => setEditInches(e.target.value)}
-                      className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
+                      className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm  text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-tertiary)]">in</span>
                   </div>
@@ -251,7 +251,7 @@ export default function ProductTypesSection({ tenantId }: ProductTypesSectionPro
                 {/* Name + inches */}
                 <div className="flex-1 min-w-0">
                   <span className="text-sm text-[var(--text-primary)] font-medium">{pt.name}</span>
-                  <span className="text-xs text-[var(--text-tertiary)] ml-2 font-mono">
+                  <span className="text-xs text-[var(--text-tertiary)] ml-2 ">
                     {Number(pt.default_inches).toFixed(2)} in
                   </span>
                 </div>
@@ -302,7 +302,7 @@ export default function ProductTypesSection({ tenantId }: ProductTypesSectionPro
                 min="0.25"
                 value={newInches}
                 onChange={(e) => setNewInches(e.target.value)}
-                className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
+                className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm  text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
                 placeholder="0.00"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-tertiary)]">in</span>

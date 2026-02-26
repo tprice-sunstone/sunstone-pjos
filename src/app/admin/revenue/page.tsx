@@ -110,7 +110,7 @@ export default function AdminRevenuePage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-slate-200 p-6">
           <div className="text-xs font-medium text-slate-500 mb-1">Platform Fees</div>
-          <div className="text-2xl font-bold text-amber-600 font-mono">
+          <div className="text-2xl font-bold text-amber-600 ">
             {formatCurrency(timeRange === 'all' ? data.totals.platform_fees : filteredTotals.fees)}
           </div>
           <div className="text-xs text-slate-400 mt-1">
@@ -119,14 +119,14 @@ export default function AdminRevenuePage() {
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-6">
           <div className="text-xs font-medium text-slate-500 mb-1">Gross Merchandise Value</div>
-          <div className="text-2xl font-bold text-slate-900 font-mono">
+          <div className="text-2xl font-bold text-slate-900 ">
             {formatCurrency(timeRange === 'all' ? data.totals.gmv : filteredTotals.gmv)}
           </div>
           <div className="text-xs text-slate-400 mt-1">Total sales value</div>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-6">
           <div className="text-xs font-medium text-slate-500 mb-1">Take Rate</div>
-          <div className="text-2xl font-bold text-slate-900 font-mono">
+          <div className="text-2xl font-bold text-slate-900 ">
             {((timeRange === 'all' ? data.totals.gmv : filteredTotals.gmv) > 0
               ? (
                   ((timeRange === 'all' ? data.totals.platform_fees : filteredTotals.fees) /
@@ -189,15 +189,15 @@ export default function AdminRevenuePage() {
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Fees</span>
-                    <span className="font-mono font-medium text-slate-900">{formatCurrency(tierData.fees)}</span>
+                    <span className=" font-medium text-slate-900">{formatCurrency(tierData.fees)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">GMV</span>
-                    <span className="font-mono text-slate-700">{formatCurrency(tierData.gmv)}</span>
+                    <span className=" text-slate-700">{formatCurrency(tierData.gmv)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Sales</span>
-                    <span className="font-mono text-slate-700">{tierData.count}</span>
+                    <span className=" text-slate-700">{tierData.count}</span>
                   </div>
                 </div>
               </div>
@@ -233,18 +233,18 @@ export default function AdminRevenuePage() {
               )}
               {data.by_tenant.slice(0, 20).map((t, i) => (
                 <tr key={t.tenant_id} className="hover:bg-slate-50/50">
-                  <td className="px-4 py-3 text-slate-400 font-mono">{i + 1}</td>
+                  <td className="px-4 py-3 text-slate-400 ">{i + 1}</td>
                   <td className="px-4 py-3 font-medium text-slate-900">{t.name}</td>
                   <td className="px-4 py-3">
                     <TierBadge tier={t.tier} />
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-amber-600 font-medium">
+                  <td className="px-4 py-3 text-right  text-amber-600 font-medium">
                     {formatCurrency(t.fees)}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-700">
+                  <td className="px-4 py-3 text-right  text-slate-700">
                     {formatCurrency(t.gmv)}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-700">{t.count}</td>
+                  <td className="px-4 py-3 text-right  text-slate-700">{t.count}</td>
                 </tr>
               ))}
             </tbody>

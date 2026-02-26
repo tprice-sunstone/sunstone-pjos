@@ -41,7 +41,7 @@ function Swatch({
         className="w-16 h-16 rounded-md border border-[var(--border-default)]"
         style={{ background: color }}
       />
-      <span className="text-xs font-mono text-text-secondary">{label}</span>
+      <span className="text-xs  text-text-secondary">{label}</span>
     </div>
   );
 }
@@ -61,7 +61,7 @@ function CSSVarSwatch({
         className="w-16 h-16 rounded-md border border-[var(--border-default)]"
         style={{ background: `var(${varName})` }}
       />
-      <span className="text-xs font-mono text-text-secondary leading-tight text-center">
+      <span className="text-xs  text-text-secondary leading-tight text-center">
         {label}
       </span>
     </div>
@@ -229,7 +229,7 @@ export default function StyleguidePage() {
                   >
                     Aa
                   </span>
-                  <span className="text-xs font-mono text-text-secondary">
+                  <span className="text-xs  text-text-secondary">
                     text-{t.label} · {t.hex}
                   </span>
                 </div>
@@ -267,7 +267,7 @@ export default function StyleguidePage() {
             <Card padding="md">
               <div className="space-y-6">
                 <div>
-                  <p className="text-xs font-mono text-text-tertiary mb-1">
+                  <p className="text-xs  text-text-tertiary mb-1">
                     Inter (--font-sans) — UI, body, headings
                   </p>
                   <p className="font-sans text-xl text-text-primary">
@@ -275,7 +275,7 @@ export default function StyleguidePage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-mono text-text-tertiary mb-1">
+                  <p className="text-xs  text-text-tertiary mb-1">
                     Fraunces (--font-display) — Display, branding
                   </p>
                   <p className="font-display text-xl text-text-primary">
@@ -283,10 +283,10 @@ export default function StyleguidePage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-mono text-text-tertiary mb-1">
-                    JetBrains Mono (--font-mono) — Financial, data
+                  <p className="text-xs  text-text-tertiary mb-1">
+                    JetBrains Mono (--) — Financial, data
                   </p>
-                  <p className="font-mono text-xl text-text-primary">
+                  <p className=" text-xl text-text-primary">
                     $1,234.56 · 48 ft · SKU-7891
                   </p>
                 </div>
@@ -298,35 +298,35 @@ export default function StyleguidePage() {
             <Card padding="md">
               <div className="space-y-4">
                 <div className="flex items-baseline gap-4">
-                  <span className="text-xs font-mono text-text-tertiary w-16 shrink-0">4xl</span>
+                  <span className="text-xs  text-text-tertiary w-16 shrink-0">4xl</span>
                   <p className="text-4xl font-bold text-text-primary tracking-tight">Sunstone OS</p>
                 </div>
                 <div className="flex items-baseline gap-4">
-                  <span className="text-xs font-mono text-text-tertiary w-16 shrink-0">3xl</span>
+                  <span className="text-xs  text-text-tertiary w-16 shrink-0">3xl</span>
                   <p className="text-3xl font-bold text-text-primary">Sunstone OS</p>
                 </div>
                 <div className="flex items-baseline gap-4">
-                  <span className="text-xs font-mono text-text-tertiary w-16 shrink-0">2xl</span>
+                  <span className="text-xs  text-text-tertiary w-16 shrink-0">2xl</span>
                   <p className="text-2xl font-semibold text-text-primary">Sunstone OS</p>
                 </div>
                 <div className="flex items-baseline gap-4">
-                  <span className="text-xs font-mono text-text-tertiary w-16 shrink-0">xl</span>
+                  <span className="text-xs  text-text-tertiary w-16 shrink-0">xl</span>
                   <p className="text-xl font-semibold text-text-primary">Sunstone OS</p>
                 </div>
                 <div className="flex items-baseline gap-4">
-                  <span className="text-xs font-mono text-text-tertiary w-16 shrink-0">lg</span>
+                  <span className="text-xs  text-text-tertiary w-16 shrink-0">lg</span>
                   <p className="text-lg font-semibold text-text-primary">Sunstone OS</p>
                 </div>
                 <div className="flex items-baseline gap-4">
-                  <span className="text-xs font-mono text-text-tertiary w-16 shrink-0">base</span>
+                  <span className="text-xs  text-text-tertiary w-16 shrink-0">base</span>
                   <p className="text-base text-text-primary">Sunstone OS</p>
                 </div>
                 <div className="flex items-baseline gap-4">
-                  <span className="text-xs font-mono text-text-tertiary w-16 shrink-0">sm</span>
+                  <span className="text-xs  text-text-tertiary w-16 shrink-0">sm</span>
                   <p className="text-sm text-text-primary">Sunstone OS</p>
                 </div>
                 <div className="flex items-baseline gap-4">
-                  <span className="text-xs font-mono text-text-tertiary w-16 shrink-0">xs</span>
+                  <span className="text-xs  text-text-tertiary w-16 shrink-0">xs</span>
                   <p className="text-xs text-text-primary">Sunstone OS</p>
                 </div>
               </div>
@@ -345,19 +345,19 @@ export default function StyleguidePage() {
             <Card padding="md">
               <div className="space-y-2 text-lg text-text-primary">
                 <p className="font-normal">
-                  <span className="text-xs font-mono text-text-tertiary mr-4 inline-block w-24">normal (400)</span>
+                  <span className="text-xs  text-text-tertiary mr-4 inline-block w-24">normal (400)</span>
                   Permanent jewelry made simple.
                 </p>
                 <p className="font-medium">
-                  <span className="text-xs font-mono text-text-tertiary mr-4 inline-block w-24">medium (500)</span>
+                  <span className="text-xs  text-text-tertiary mr-4 inline-block w-24">medium (500)</span>
                   Permanent jewelry made simple.
                 </p>
                 <p className="font-semibold">
-                  <span className="text-xs font-mono text-text-tertiary mr-4 inline-block w-24">semibold (600)</span>
+                  <span className="text-xs  text-text-tertiary mr-4 inline-block w-24">semibold (600)</span>
                   Permanent jewelry made simple.
                 </p>
                 <p className="font-bold">
-                  <span className="text-xs font-mono text-text-tertiary mr-4 inline-block w-24">bold (700)</span>
+                  <span className="text-xs  text-text-tertiary mr-4 inline-block w-24">bold (700)</span>
                   Permanent jewelry made simple.
                 </p>
               </div>
@@ -386,7 +386,7 @@ export default function StyleguidePage() {
                   <div
                     className={`w-20 h-20 bg-accent-100 border border-accent-300 ${r.cls}`}
                   />
-                  <span className="text-xs font-mono text-text-secondary">
+                  <span className="text-xs  text-text-secondary">
                     {r.label}
                   </span>
                 </div>
@@ -405,7 +405,7 @@ export default function StyleguidePage() {
                 <div
                   className={`w-full aspect-square rounded-lg bg-surface-raised border border-[var(--border-subtle)] shadow-${level}`}
                 />
-                <span className="text-xs font-mono text-text-secondary">
+                <span className="text-xs  text-text-secondary">
                   shadow-{level}
                 </span>
               </div>
@@ -452,7 +452,7 @@ export default function StyleguidePage() {
               <div className="space-y-4">
                 {(['primary', 'secondary', 'ghost', 'danger'] as const).map((v) => (
                   <div key={v} className="flex flex-wrap items-end gap-3">
-                    <span className="text-xs font-mono text-text-tertiary w-20 shrink-0 pt-2">
+                    <span className="text-xs  text-text-tertiary w-20 shrink-0 pt-2">
                       {v}
                     </span>
                     <Button variant={v} size="sm">Small</Button>
@@ -577,7 +577,7 @@ export default function StyleguidePage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {(['none', 'sm', 'md', 'lg'] as const).map((p) => (
                 <Card key={p} padding={p}>
-                  <div className="bg-accent-50 rounded p-2 text-center text-sm font-mono text-text-secondary">
+                  <div className="bg-accent-50 rounded p-2 text-center text-sm  text-text-secondary">
                     padding=&quot;{p}&quot;
                   </div>
                 </Card>
@@ -637,15 +637,15 @@ export default function StyleguidePage() {
                 <div className="space-y-3 text-sm text-text-secondary">
                   <div className="flex justify-between">
                     <span>Rose Gold Chain ×1</span>
-                    <span className="font-mono">$85.00</span>
+                    <span className="">$85.00</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Star Charm ×2</span>
-                    <span className="font-mono">$24.00</span>
+                    <span className="">$24.00</span>
                   </div>
                   <div className="border-t border-[var(--border-subtle)] pt-3 flex justify-between font-semibold text-text-primary">
                     <span>Total</span>
-                    <span className="font-mono">$109.00</span>
+                    <span className="">$109.00</span>
                   </div>
                 </div>
               </ModalBody>
@@ -681,7 +681,7 @@ export default function StyleguidePage() {
                   <p className="text-sm text-text-secondary">
                     Today&apos;s sales are looking great! You&apos;ve processed 14
                     transactions totaling{' '}
-                    <span className="font-mono font-semibold text-text-primary">
+                    <span className=" font-semibold text-text-primary">
                       $1,847.50
                     </span>{' '}
                     at the Farmers Market pop-up.
@@ -690,7 +690,7 @@ export default function StyleguidePage() {
                 <TabsContent value="inventory">
                   <p className="text-sm text-text-secondary">
                     Low stock alert: 14k Rose Gold Chain is down to{' '}
-                    <span className="font-mono font-semibold text-text-primary">
+                    <span className=" font-semibold text-text-primary">
                       3.5 ft
                     </span>{' '}
                     remaining. Reorder threshold is 10 ft.

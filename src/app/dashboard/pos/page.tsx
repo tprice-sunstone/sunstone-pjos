@@ -495,7 +495,7 @@ export default function StoreModePage() {
             <div className="w-px h-7 bg-[var(--border-default)]" />
             <div className="text-center">
               <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.05em] font-semibold">Revenue</div>
-              <div className="text-lg font-bold text-[var(--text-primary)] font-mono">${todaySales.total.toFixed(2)}</div>
+              <div className="text-lg font-bold text-[var(--text-primary)] ">${todaySales.total.toFixed(2)}</div>
             </div>
           </div>
         </div>
@@ -546,7 +546,7 @@ export default function StoreModePage() {
           {/* Mobile stats */}
           <div className="sm:hidden flex items-center justify-between px-4 py-2 bg-white border-b border-[var(--border-subtle)] text-xs">
             <span className="text-[var(--text-tertiary)]"><span className="font-semibold text-[var(--text-primary)]">{todaySales.count}</span> sales today</span>
-            <span className="text-[var(--text-tertiary)]">Revenue: <span className="font-bold text-[var(--text-primary)] font-mono">${todaySales.total.toFixed(2)}</span></span>
+            <span className="text-[var(--text-tertiary)]">Revenue: <span className="font-bold text-[var(--text-primary)] ">${todaySales.total.toFixed(2)}</span></span>
           </div>
 
           <div className="p-5 pb-28 md:pb-5 max-w-[720px] mx-auto">
@@ -640,8 +640,8 @@ export default function StoreModePage() {
                         placeholder="Item name" value={customItem.name}
                         onChange={(e) => setCustomItem({ ...customItem, name: e.target.value })} autoFocus />
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-[var(--text-tertiary)] font-mono">$</span>
-                        <input className="w-full h-14 pl-9 pr-4 rounded-xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-lg font-mono focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all"
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-[var(--text-tertiary)] ">$</span>
+                        <input className="w-full h-14 pl-9 pr-4 rounded-xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-lg  focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all"
                           type="number" step="0.01" min="0" placeholder="0.00" value={customItem.price}
                           onChange={(e) => setCustomItem({ ...customItem, price: e.target.value })}
                           onKeyDown={(e) => { if (e.key === 'Enter') addCustomItem(); }} />
@@ -701,7 +701,7 @@ export default function StoreModePage() {
                             <div className="text-[15px] font-semibold text-[var(--text-primary)]">{chain.name}</div>
                             <div className="text-[12px] text-[var(--text-tertiary)] mt-1">{chain.quantity_on_hand.toFixed(0)} {chain.unit} in stock</div>
                           </div>
-                          <div className="text-[20px] font-bold text-[var(--text-primary)] font-mono mt-3 tracking-tight">{getChainPrice(chain)}</div>
+                          <div className="text-[20px] font-bold text-[var(--text-primary)]  mt-3 tracking-tight">{getChainPrice(chain)}</div>
                         </button>
                       ))}
                     </div>
@@ -723,7 +723,7 @@ export default function StoreModePage() {
                             <div className="text-[15px] font-semibold text-[var(--text-primary)]">{item.name}</div>
                             <div className="text-[12px] text-[var(--text-tertiary)] mt-1">{item.material && `${item.material} — `}{item.quantity_on_hand} left</div>
                           </div>
-                          <div className="text-[20px] font-bold text-[var(--text-primary)] font-mono mt-3 tracking-tight">${Number(item.sell_price).toFixed(2)}</div>
+                          <div className="text-[20px] font-bold text-[var(--text-primary)]  mt-3 tracking-tight">${Number(item.sell_price).toFixed(2)}</div>
                         </button>
                       ))}
                     </div>
@@ -744,13 +744,13 @@ export default function StoreModePage() {
                       <div>
                         <label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] mb-2.5 text-center">Measured Inches</label>
                         <input type="number" step="0.25" min="0.25" value={measureInches} onChange={(e) => setMeasureInches(e.target.value)}
-                          className="w-full h-20 px-4 rounded-2xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] text-center text-[40px] font-mono font-semibold focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all tracking-tight"
+                          className="w-full h-20 px-4 rounded-2xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] text-center text-[40px]  font-semibold focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all tracking-tight"
                           autoFocus onKeyDown={(e) => { if (e.key === 'Enter') addMeasuredChain(); }} />
                       </div>
                       {measureInches && Number(measureInches) > 0 && (
                         <div className="text-center">
                           <div className="text-[11px] uppercase tracking-[0.06em] text-[var(--text-tertiary)] font-semibold mb-2">Calculated Price</div>
-                          <div className="text-[48px] font-bold text-[var(--text-primary)] font-mono tracking-tighter leading-none">
+                          <div className="text-[48px] font-bold text-[var(--text-primary)]  tracking-tighter leading-none">
                             ${(Number(measureInches) * Number(selectedChain.sell_price)).toFixed(2)}
                           </div>
                         </div>
@@ -770,7 +770,7 @@ export default function StoreModePage() {
             {step === 'tip' && (
               <div className="max-w-sm mx-auto py-8 space-y-6">
                 <h2 className={pageTitle + ' text-center'}>Add a Tip</h2>
-                <p className="text-[var(--text-tertiary)] text-center text-sm">Subtotal: <span className="font-mono font-medium">${(cart.subtotal + cart.tax_amount).toFixed(2)}</span></p>
+                <p className="text-[var(--text-tertiary)] text-center text-sm">Subtotal: <span className=" font-medium">${(cart.subtotal + cart.tax_amount).toFixed(2)}</span></p>
                 <div className="grid grid-cols-3 gap-3">
                   {TIP_PRESETS.map((amount) => (
                     <button key={amount} onClick={() => cart.setTip(amount)}
@@ -782,7 +782,7 @@ export default function StoreModePage() {
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] mb-2">Custom tip</label>
-                  <input type="number" step="0.01" min="0" className="w-full h-14 px-4 rounded-xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] text-center text-xl font-mono focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all"
+                  <input type="number" step="0.01" min="0" className="w-full h-14 px-4 rounded-xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] text-center text-xl  focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all"
                     placeholder="$0.00" value={cart.tip_amount || ''} onChange={(e) => cart.setTip(Number(e.target.value) || 0)} />
                 </div>
                 <button onClick={() => setStep('payment')} className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm"
@@ -822,7 +822,7 @@ export default function StoreModePage() {
                     </svg>
                   </div>
                   <h2 className={pageTitle}>Sale Complete</h2>
-                  <div className="text-[36px] font-bold text-[var(--text-primary)] font-mono tracking-tight leading-none">
+                  <div className="text-[36px] font-bold text-[var(--text-primary)]  tracking-tight leading-none">
                     ${completedSale.total.toFixed(2)}
                   </div>
                   <p className="text-sm text-[var(--text-tertiary)]">{completedSale.paymentMethod} — {completedSale.items.length} item{completedSale.items.length !== 1 ? 's' : ''}</p>
@@ -947,7 +947,7 @@ export default function StoreModePage() {
               <span className="bg-white/20 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold">{cart.items.length}</span>
               <span className="font-semibold">View Cart</span>
             </span>
-            <span className="font-bold font-mono text-lg">${cart.total.toFixed(2)}</span>
+            <span className="font-bold  text-lg">${cart.total.toFixed(2)}</span>
           </button>
         </div>
       )}
@@ -969,7 +969,7 @@ export default function StoreModePage() {
               showDownload
               showPrint
             />
-            <p className="text-xs text-[var(--text-tertiary)] mt-4 text-center font-mono break-all">
+            <p className="text-xs text-[var(--text-tertiary)] mt-4 text-center  break-all">
               {typeof window !== 'undefined' ? `${window.location.origin}/waiver?tenant=${tenant.slug}` : ''}
             </p>
           </ModalBody>

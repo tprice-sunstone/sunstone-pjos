@@ -160,7 +160,7 @@ export default function JumpRingConfirmation({ confirmations, saleId, tenantId, 
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
                 </svg>
               </button>
-              <span className={`w-8 text-center text-sm font-mono font-semibold ${
+              <span className={`w-8 text-center text-sm  font-semibold ${
                 item.actual_count !== item.default_count ? 'text-amber-600' : 'text-[var(--text-primary)]'
               }`}>
                 {item.actual_count}

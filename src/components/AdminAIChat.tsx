@@ -53,10 +53,10 @@ function renderMarkdown(text: string): string {
     .replace(/>/g, '&gt;');
 
   // Code blocks
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-slate-800 text-slate-200 rounded-md p-3 my-2 text-xs overflow-x-auto font-mono"><code>$2</code></pre>');
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-slate-800 text-slate-200 rounded-md p-3 my-2 text-xs overflow-x-auto "><code>$2</code></pre>');
 
   // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code class="bg-slate-100 px-1 py-0.5 rounded text-xs font-mono text-slate-800">$1</code>');
+  html = html.replace(/`([^`]+)`/g, '<code class="bg-slate-100 px-1 py-0.5 rounded text-xs  text-slate-800">$1</code>');
 
   // Bold
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-slate-900">$1</strong>');

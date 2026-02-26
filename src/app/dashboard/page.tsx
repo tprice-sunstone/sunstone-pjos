@@ -480,7 +480,7 @@ function StatCard({
             </p>
             <p
               className={`text-2xl font-semibold tracking-tight ${valueColor || 'text-text-primary'}`}
-              style={{ fontFamily: 'var(--font-mono)' }}
+              style={{ fontFamily: 'var(--)' }}
             >
               {value}
             </p>

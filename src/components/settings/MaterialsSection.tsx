@@ -236,7 +236,7 @@ export default function MaterialsSection({ tenantId }: MaterialsSectionProps) {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-[var(--text-primary)]">{m.name}</span>
                       {m.abbreviation && (
-                        <span className="text-xs text-[var(--text-tertiary)] bg-[var(--surface-subtle)] px-1.5 py-0.5 rounded font-mono">
+                        <span className="text-xs text-[var(--text-tertiary)] bg-[var(--surface-subtle)] px-1.5 py-0.5 rounded ">
                           {m.abbreviation}
                         </span>
                       )}

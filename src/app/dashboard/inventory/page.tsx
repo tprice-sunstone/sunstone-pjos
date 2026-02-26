@@ -362,14 +362,14 @@ export default function InventoryPage() {
 
                 {/* Cost */}
                 <div className="hidden sm:block text-right">
-                  <span className="text-sm font-mono text-[var(--text-secondary)]">
+                  <span className="text-sm  text-[var(--text-secondary)]">
                     ${Number(item.cost_per_unit).toFixed(2)}
                   </span>
                 </div>
 
                 {/* Price */}
                 <div className="hidden sm:block text-right">
-                  <span className="text-sm font-mono text-[var(--text-primary)]">
+                  <span className="text-sm  text-[var(--text-primary)]">
                     {formatPrice(item)}
                   </span>
                 </div>
@@ -377,7 +377,7 @@ export default function InventoryPage() {
                 {/* Stock */}
                 <div className="hidden sm:block text-right">
                   <span
-                    className={`text-sm font-mono ${
+                    className={`text-sm  ${
                       item.quantity_on_hand <= item.reorder_threshold
                         ? 'text-[var(--error-600)] font-semibold'
                         : 'text-[var(--text-primary)]'
@@ -427,11 +427,11 @@ export default function InventoryPage() {
 
                 {/* Mobile price/stock row */}
                 <div className="flex items-center justify-between sm:hidden mt-1">
-                  <span className="text-sm font-mono text-[var(--text-primary)]">
+                  <span className="text-sm  text-[var(--text-primary)]">
                     {formatPrice(item)}
                   </span>
                   <span
-                    className={`text-sm font-mono ${
+                    className={`text-sm  ${
                       item.quantity_on_hand <= item.reorder_threshold
                         ? 'text-[var(--error-600)]'
                         : 'text-[var(--text-secondary)]'
@@ -860,7 +860,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
                     value={quantity || ''}
                     onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
                     placeholder="0"
-                    className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-4 py-3 text-[var(--text-primary)] text-base font-mono placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)] min-h-[48px] pr-12"
+                    className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-4 py-3 text-[var(--text-primary)] text-base  placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)] min-h-[48px] pr-12"
                   />
                   {type === 'chain' && (
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[var(--text-tertiary)]">
@@ -883,7 +883,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
                     value={reorderThreshold || ''}
                     onChange={(e) => setReorderThreshold(parseFloat(e.target.value) || 0)}
                     placeholder="0"
-                    className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-4 py-3 text-[var(--text-primary)] text-base font-mono placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)] min-h-[48px] pr-12"
+                    className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-4 py-3 text-[var(--text-primary)] text-base  placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)] min-h-[48px] pr-12"
                   />
                   {type === 'chain' && (
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[var(--text-tertiary)]">
@@ -910,7 +910,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
                   value={costPerUnit || ''}
                   onChange={(e) => setCostPerUnit(parseFloat(e.target.value) || 0)}
                   placeholder="0.00"
-                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] pl-8 pr-4 py-3 text-[var(--text-primary)] text-base font-mono placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)] min-h-[48px]"
+                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] pl-8 pr-4 py-3 text-[var(--text-primary)] text-base  placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)] min-h-[48px]"
                 />
               </div>
             </div>
@@ -975,7 +975,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
                     value={sellPrice || ''}
                     onChange={(e) => setSellPrice(parseFloat(e.target.value) || 0)}
                     placeholder="0.00"
-                    className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] pl-8 pr-4 py-3 text-[var(--text-primary)] text-base font-mono placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)] min-h-[48px]"
+                    className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] pl-8 pr-4 py-3 text-[var(--text-primary)] text-base  placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)] min-h-[48px]"
                   />
                 </div>
               </div>

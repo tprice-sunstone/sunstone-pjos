@@ -20,7 +20,7 @@
   /* Fonts */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display: 'Fraunces', Georgia, serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
+  --: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
 
   /* ─── Surfaces ─── */
   --surface-base: #FBEEEE;       /* Petal — page background */

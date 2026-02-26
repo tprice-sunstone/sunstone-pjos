@@ -243,7 +243,7 @@ export default function AdminTenantsPage() {
                         <span className="text-slate-400">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-mono text-slate-700">{t.sales_count}</td>
+                    <td className="px-4 py-3  text-slate-700">{t.sales_count}</td>
                     <td className="px-4 py-3 text-slate-500">{new Date(t.created_at).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       {t.is_suspended ? (
@@ -337,8 +337,8 @@ function TenantDetailPanel({
               <div key={s.id} className="px-4 py-2 flex items-center justify-between text-sm">
                 <span className="text-slate-500">{new Date(s.created_at).toLocaleDateString()}</span>
                 <div className="flex items-center gap-4">
-                  <span className="font-mono text-slate-900">{formatCurrency(Number(s.total))}</span>
-                  <span className="font-mono text-amber-600 text-xs">
+                  <span className=" text-slate-900">{formatCurrency(Number(s.total))}</span>
+                  <span className=" text-amber-600 text-xs">
                     +{formatCurrency(Number(s.platform_fee_amount))} fee
                   </span>
                 </div>
@@ -395,7 +395,7 @@ function TenantDetailPanel({
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="bg-white rounded-lg border border-slate-200 px-4 py-3">
-      <div className="text-lg font-bold text-slate-900 font-mono">{value}</div>
+      <div className="text-lg font-bold text-slate-900 ">{value}</div>
       <div className="text-xs text-slate-500">{label}</div>
     </div>
   );
