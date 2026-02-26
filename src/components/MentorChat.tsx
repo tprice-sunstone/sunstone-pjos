@@ -1,11 +1,18 @@
-// src/components/MentorChat.tsx
+// ============================================================================
+// MentorChat — GATED — src/components/MentorChat.tsx
+// ============================================================================
 // Floating "Ask Sunny" button + slide-in chat panel
-// Streams responses from the mentor API, renders markdown, displays product cards
+// GATE: Starter tier shows remaining question count, upgrade prompt at limit
+// Handles 429 response from mentor API gracefully
+// ============================================================================
 
 'use client';
 
 import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from 'react';
 import { cn } from '@/lib/utils';
+import { useTenant } from '@/hooks/use-tenant';
+import { getSubscriptionTier, getSunnyQuestionLimit } from '@/lib/subscription';
+import UpgradePrompt from '@/components/ui/UpgradePrompt';
 
 // ============================================================================
 // Types
@@ -49,43 +56,24 @@ const SUGGESTED_PROMPTS = [
 // ============================================================================
 
 function renderMarkdown(text: string): string {
-  // Strip HTML comment markers (knowledge gaps, product search)
   let html = text.replace(/<!--[\s\S]*?-->/g, '');
-
-  // Escape HTML entities
   html = html
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
-
-  // Bold: **text**
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  // Italic: *text*
   html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
-
-  // Headers
   html = html.replace(/^### (.+)$/gm, '<h4 class="font-semibold text-sm mt-3 mb-1">$1</h4>');
   html = html.replace(/^## (.+)$/gm, '<h3 class="font-semibold text-sm mt-3 mb-1">$1</h3>');
-
-  // Numbered lists
   html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<li class="ml-4 list-decimal text-sm leading-relaxed">$2</li>');
-
-  // Bullet lists
   html = html.replace(/^[-•]\s+(.+)$/gm, '<li class="ml-4 list-disc text-sm leading-relaxed">$1</li>');
-
-  // Links: [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
     '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-accent-600 underline hover:text-accent-700">$1</a>');
-
-  // Paragraphs (double newline)
   html = html.replace(/\n\n/g, '</p><p class="text-sm leading-relaxed mb-2">');
-  // Single newlines
   html = html.replace(/\n/g, '<br>');
-
   if (!html.startsWith('<')) {
     html = `<p class="text-sm leading-relaxed mb-2">${html}</p>`;
   }
-
   return html;
 }
 
@@ -99,16 +87,43 @@ export default function MentorChat() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasBeenOpened, setHasBeenOpened] = useState(false);
+  const [limitReached, setLimitReached] = useState(false);
+  const [questionsUsed, setQuestionsUsed] = useState(0);
+
+  const { tenant } = useTenant();
+  const effectiveTier = tenant ? getSubscriptionTier(tenant) : 'starter';
+  const questionLimit = getSunnyQuestionLimit(effectiveTier);
+  const isMetered = effectiveTier === 'starter' && questionLimit !== Infinity;
+
+  // Initialize questions used from tenant data
+  useEffect(() => {
+    if (tenant && isMetered) {
+      setQuestionsUsed(tenant.sunny_questions_used || 0);
+
+      // Check if reset is needed (30 days)
+      const resetAt = tenant.sunny_questions_reset_at
+        ? new Date(tenant.sunny_questions_reset_at)
+        : null;
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      if (!resetAt || resetAt < thirtyDaysAgo) {
+        setQuestionsUsed(0);
+      }
+
+      // Check if already at limit
+      const used = tenant.sunny_questions_used || 0;
+      if (used >= questionLimit && resetAt && resetAt >= thirtyDaysAgo) {
+        setLimitReached(true);
+      }
+    }
+  }, [tenant, isMetered, questionLimit]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Focus input when panel opens
   useEffect(() => {
     if (isOpen) {
       setHasBeenOpened(true);
@@ -116,19 +131,12 @@ export default function MentorChat() {
     }
   }, [isOpen]);
 
-  // Re-focus input after Sunny finishes responding
-  useEffect(() => {
-    if (!isLoading && isOpen) {
-      inputRef.current?.focus();
-    }
-  }, [isLoading, isOpen]);
-
   // ============================================================================
   // Send message
   // ============================================================================
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || isLoading) return;
+    if (!content.trim() || isLoading || limitReached) return;
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -158,6 +166,26 @@ export default function MentorChat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: apiMessages }),
       });
+
+      // Handle 429 — question limit reached
+      if (response.status === 429) {
+        const errorData = await response.json();
+        setLimitReached(true);
+        setQuestionsUsed(errorData.questions_used || questionLimit);
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === assistantMsg.id
+              ? {
+                  ...m,
+                  content: errorData.message || "You've reached your question limit this month. Upgrade to Pro for unlimited Sunny access.",
+                  isStreaming: false,
+                }
+              : m
+          )
+        );
+        setIsLoading(false);
+        return;
+      }
 
       if (!response.ok) throw new Error('Failed to get response');
 
@@ -198,6 +226,17 @@ export default function MentorChat() {
             }
           }
         }
+      }
+
+      // Increment local counter for Starter users
+      if (isMetered) {
+        setQuestionsUsed(prev => {
+          const newCount = prev + 1;
+          if (newCount >= questionLimit) {
+            setLimitReached(true);
+          }
+          return newCount;
+        });
       }
 
       // Check for product search marker
@@ -248,7 +287,7 @@ export default function MentorChat() {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, isLoading]);
+  }, [messages, isLoading, limitReached, isMetered, questionLimit]);
 
   // ============================================================================
   // Keyboard handler
@@ -264,6 +303,8 @@ export default function MentorChat() {
   // ============================================================================
   // Render
   // ============================================================================
+
+  const questionsRemaining = Math.max(0, questionLimit - questionsUsed);
 
   return (
     <>
@@ -296,11 +337,8 @@ export default function MentorChat() {
       <div
         className={cn(
           'fixed z-50 flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out',
-          // Desktop: right side panel
           'lg:right-0 lg:top-0 lg:bottom-0 lg:w-[400px] lg:border-l lg:border-border-default',
-          // Mobile: slide up sheet
           'max-lg:left-0 max-lg:right-0 max-lg:bottom-0 max-lg:rounded-t-2xl max-lg:max-h-[calc(100vh-60px)]',
-          // Open/close
           isOpen
             ? 'translate-y-0 lg:translate-x-0'
             : 'translate-y-full lg:translate-y-0 lg:translate-x-full'
@@ -323,13 +361,21 @@ export default function MentorChat() {
               <p className="text-[11px] text-text-secondary leading-none">Your PJ Mentor</p>
             </div>
           </div>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-raised transition-colors text-text-secondary hover:text-text-primary"
-            aria-label="Close chat"
-          >
-            <CloseIcon className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Question counter for Starter users */}
+            {isMetered && (
+              <span className="text-[11px] text-text-tertiary tabular-nums">
+                {questionsRemaining} of {questionLimit} left
+              </span>
+            )}
+            <button
+              onClick={() => setIsOpen(false)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-raised transition-colors text-text-secondary hover:text-text-primary"
+              aria-label="Close chat"
+            >
+              <CloseIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
@@ -349,35 +395,45 @@ export default function MentorChat() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
-        <div className="p-3 border-t border-border-default shrink-0 bg-white safe-area-bottom">
-          <div className="flex items-end gap-2">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask me anything about PJ..."
-              className="flex-1 resize-none rounded-xl border border-border-default px-3 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500 transition-all max-h-28"
-              rows={1}
-              disabled={isLoading}
-              style={{ minHeight: 42 }}
+        {/* Input area — or upgrade prompt if limit reached */}
+        {limitReached ? (
+          <div className="p-3 border-t border-border-default shrink-0 bg-white safe-area-bottom">
+            <UpgradePrompt
+              feature="Unlimited Sunny Access"
+              variant="inline"
+              description="You've used all 5 questions this month. Upgrade to Pro for unlimited conversations with Sunny."
             />
-            <button
-              onClick={() => sendMessage(input)}
-              disabled={!input.trim() || isLoading}
-              className={cn(
-                'flex items-center justify-center w-10 h-10 rounded-xl transition-all shrink-0',
-                input.trim() && !isLoading
-                  ? 'bg-accent-500 text-white hover:bg-accent-600 shadow-sm'
-                  : 'bg-surface-raised text-text-tertiary cursor-not-allowed'
-              )}
-              aria-label="Send message"
-            >
-              <SendIcon className="w-4 h-4" />
-            </button>
           </div>
-        </div>
+        ) : (
+          <div className="p-3 border-t border-border-default shrink-0 bg-white safe-area-bottom">
+            <div className="flex items-end gap-2">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask me anything about PJ..."
+                className="flex-1 resize-none rounded-xl border border-border-default px-3 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500 transition-all max-h-28"
+                rows={1}
+                disabled={isLoading}
+                style={{ minHeight: 42 }}
+              />
+              <button
+                onClick={() => sendMessage(input)}
+                disabled={!input.trim() || isLoading}
+                className={cn(
+                  'flex items-center justify-center w-10 h-10 rounded-xl transition-all shrink-0',
+                  input.trim() && !isLoading
+                    ? 'bg-accent-500 text-white hover:bg-accent-600 shadow-sm'
+                    : 'bg-surface-raised text-text-tertiary cursor-not-allowed'
+                )}
+                aria-label="Send message"
+              >
+                <SendIcon className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Pulse animation style */}
@@ -408,7 +464,7 @@ function EmptyState({ onSelectPrompt }: { onSelectPrompt: (text: string) => void
         className="text-lg font-semibold text-text-primary mb-1"
         style={{ fontFamily: 'var(--font-display, Fraunces, serif)' }}
       >
-        Hey there! I'm Sunny ✨
+        Hey there! I&apos;m Sunny ✨
       </h3>
       <p className="text-sm text-text-secondary mb-6 max-w-xs">
         Your permanent jewelry mentor. Ask me about welding, business, marketing, pricing — anything PJ!

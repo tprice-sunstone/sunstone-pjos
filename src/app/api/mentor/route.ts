@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
+import { getSubscriptionTier, getSunnyQuestionLimit } from '@/lib/subscription';
 import {
   EQUIPMENT_KNOWLEDGE,
   WELDING_TECHNIQUE_KNOWLEDGE,
@@ -601,6 +602,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No tenant found' }, { status: 400 });
     }
 
+    // 2b. SUBSCRIPTION GATE — meter Sunny questions for Starter
+    const { data: tenantData } = await serviceClient
+      .from('tenants')
+     .select('subscription_tier, subscription_status, trial_ends_at, subscription_period_end, sunny_questions_used, sunny_questions_reset_at')
+      .eq('id', tenantId)
+      .single();
+
+    const effectiveTier = tenantData ? getSubscriptionTier(tenantData) : 'starter';
+    const questionLimit = getSunnyQuestionLimit(effectiveTier);
+
+    if (questionLimit !== Infinity && tenantData) {
+      let questionsUsed = tenantData.sunny_questions_used || 0;
+      const resetAt = tenantData.sunny_questions_reset_at
+        ? new Date(tenantData.sunny_questions_reset_at)
+        : null;
+      const now = new Date();
+
+      // Reset counter if we've rolled into a new month
+      if (!resetAt || resetAt.getMonth() !== now.getMonth() || resetAt.getFullYear() !== now.getFullYear()) {
+        questionsUsed = 0;
+        await serviceClient
+          .from('tenants')
+          .update({
+            sunny_questions_used: 0,
+            sunny_questions_reset_at: now.toISOString(),
+          })
+          .eq('id', tenantId);
+      }
+
+      if (questionsUsed >= questionLimit) {
+        return NextResponse.json(
+          {
+            error: 'limit_reached',
+            message: `You've used all ${questionLimit} Sunny questions this month. Upgrade to Pro for unlimited access.`,
+            questions_used: questionsUsed,
+            questions_limit: questionLimit,
+          },
+          { status: 429 }
+        );
+      }
+    }
+
     // 3. Parse
     const body = await request.json();
     const { messages } = body as { messages: Array<{ role: 'user' | 'assistant'; content: string }> };
@@ -760,6 +803,20 @@ Topics: welding, equipment, business, products, marketing, troubleshooting, clie
         } finally {
           controller.close();
 
+          // 8b. Post-stream: increment question counter for Starter
+          if (questionLimit !== Infinity) {
+            try {
+              await serviceClient.rpc('increment_sunny_questions', { p_tenant_id: tenantId });
+            } catch {
+              // Fallback: direct update if RPC doesn't exist yet
+              const currentUsed = tenantData?.sunny_questions_used || 0;
+              await serviceClient
+                .from('tenants')
+                .update({ sunny_questions_used: currentUsed + 1 })
+                .eq('id', tenantId);
+            }
+          }
+          
           // 9. Post-stream: gap detection
           try {
             const gapMatch = fullResponseText.match(/<!--\s*KNOWLEDGE_GAP:\s*(\{[^}]+\})\s*-->/);

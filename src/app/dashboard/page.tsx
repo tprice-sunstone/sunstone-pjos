@@ -19,6 +19,8 @@ import {
   CardContent,
 } from '@/components/ui';
 import { format } from 'date-fns';
+import UpgradePrompt from '@/components/ui/UpgradePrompt';
+import { getSubscriptionTier, canAccessFeature } from '@/lib/subscription';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -78,8 +80,10 @@ export default function DashboardPage() {
 
   // AI insights state
   const [insights, setInsights] = useState<Insight[]>([]);
-  const [insightsLoading, setInsightsLoading] = useState(true);
+  const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState(false);
+  const effectiveTier = tenant ? getSubscriptionTier(tenant) : 'starter';
+  const canSeeInsights = canAccessFeature(effectiveTier, 'ai_insights');
 
   // ── Fetch quick stats ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -194,6 +198,7 @@ export default function DashboardPage() {
 
   // ── Fetch AI insights ──────────────────────────────────────────────────────
   const fetchInsights = useCallback(async () => {
+    if (!canSeeInsights) return;
     setInsightsLoading(true);
     setInsightsError(false);
     try {
@@ -207,7 +212,7 @@ export default function DashboardPage() {
     } finally {
       setInsightsLoading(false);
     }
-  }, []);
+  }, [canSeeInsights]);
 
   useEffect(() => {
     if (!tenant?.id) return;
@@ -360,6 +365,7 @@ export default function DashboardPage() {
       {/* ================================================================== */}
       {/* AI Business Insights                                                */}
       {/* ================================================================== */}
+      {canSeeInsights ? (
       <section>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
@@ -433,9 +439,20 @@ export default function DashboardPage() {
           </Card>
         )}
       </section>
+      ) : (
+        <UpgradePrompt
+          feature="AI Business Insights"
+          description="Get personalized, AI-powered insights about your sales trends, inventory, and growth opportunities."
+          variant="inline"
+        />
+      )}
+
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-components
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components

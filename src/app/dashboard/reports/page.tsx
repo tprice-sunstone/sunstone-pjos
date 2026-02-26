@@ -26,6 +26,7 @@ import {
 } from '@/components/ui';
 import type { Event, Sale, SaleItem } from '@/types';
 import { PLATFORM_FEE_RATES } from '@/types';
+import UpgradePrompt from '@/components/ui/UpgradePrompt';
 
 // ————————————————————————————————————————————————
 // Types
@@ -105,6 +106,29 @@ function getDateRange(preset: DatePreset, year: number): { start: Date; end: Dat
     default:
       return { start: startOfYear(now), end: now };
   }
+}
+// ————————————————————————————————————————————————
+// Effective tier helper (client-side mirror of server logic)
+// ————————————————————————————————————————————————
+
+function getEffectiveTier(tenant: any): 'starter' | 'pro' | 'business' {
+  if (!tenant) return 'starter';
+  const status = tenant.subscription_status;
+  const trialEnd = tenant.trial_ends_at;
+  const tier = tenant.subscription_tier;
+
+  if (status === 'active') {
+    if (tier === 'pro') return 'pro';
+    if (tier === 'business') return 'business';
+    return 'starter';
+  }
+
+  if (trialEnd) {
+    const end = new Date(trialEnd);
+    if (end > new Date()) return 'pro';
+  }
+
+  return 'starter';
 }
 
 // ————————————————————————————————————————————————
@@ -203,6 +227,10 @@ export default function ReportsPage() {
   const [eventsLoading, setEventsLoading] = useState(true);
 
   const currentYear = new Date().getFullYear();
+
+  // ——— SUBSCRIPTION GATING ———
+  const effectiveTier = getEffectiveTier(tenant);
+  const isFullReports = effectiveTier === 'pro' || effectiveTier === 'business';
 
   // Compute date range
   const dateRange = useMemo(() => {
@@ -430,6 +458,57 @@ export default function ReportsPage() {
     return <div className="text-text-tertiary py-12 text-center">Loading…</div>;
   }
 
+  // ================================================================
+  // STARTER TIER — Basic stats only
+  // ================================================================
+  if (!isFullReports) {
+    return (
+      <div className="space-y-6 max-w-4xl">
+        <div>
+          <h1 className="text-2xl font-semibold text-text-primary">Reports</h1>
+          <p className="text-text-tertiary text-sm mt-1">Track your business performance.</p>
+        </div>
+
+        {loading ? (
+          <div className="py-16 text-center">
+            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
+            <p className="text-text-tertiary mt-3 text-sm">Loading…</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <KPICard label="Total Sales" value={aggregated.salesCount.toString()} />
+            <KPICard label="Total Revenue" value={money(aggregated.totalRevenue)} />
+            <KPICard
+              label="Today's Sales"
+              value={money(
+                sales
+                  .filter((s) => {
+                    const saleDate = new Date(s.created_at);
+                    const today = new Date();
+                    return (
+                      saleDate.getFullYear() === today.getFullYear() &&
+                      saleDate.getMonth() === today.getMonth() &&
+                      saleDate.getDate() === today.getDate()
+                    );
+                  })
+                  .reduce((sum, s) => sum + Number(s.total), 0)
+              )}
+            />
+          </div>
+        )}
+
+        <UpgradePrompt
+          feature="Full Business Reports"
+          description="Unlock date range filtering, event-level P&L, cost breakdowns, monthly trends, payment method analysis, and CSV export."
+          variant="inline"
+        />
+      </div>
+    );
+  }
+
+  // ================================================================
+  // PRO / BUSINESS — Full reports
+  // ================================================================
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

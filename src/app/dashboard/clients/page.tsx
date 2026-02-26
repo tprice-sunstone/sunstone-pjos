@@ -19,6 +19,7 @@ import {
   ModalFooter,
 } from '@/components/ui';
 import type { Client, Waiver } from '@/types';
+import UpgradePrompt from '@/components/ui/UpgradePrompt';
 
 export default function ClientsPage() {
   const { tenant, can } = useTenant();
@@ -31,6 +32,14 @@ export default function ClientsPage() {
   const [waivers, setWaivers] = useState<Waiver[]>([]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const supabase = createClient();
+
+  // Subscription gating — CRM teaser for Starter
+  const isStarter = (() => {
+    if (!tenant) return true;
+    if (tenant.subscription_status === 'active' && (tenant.subscription_tier === 'pro' || tenant.subscription_tier === 'business')) return false;
+    if (tenant.trial_ends_at && new Date(tenant.trial_ends_at) > new Date()) return false;
+    return true;
+  })();
 
   const fetchClients = async () => {
     if (!tenant) return;
@@ -201,6 +210,15 @@ export default function ClientsPage() {
         </div>
       )}
 
+      {/* CRM Teaser — Starter only */}
+      {isStarter && clients.length > 0 && (
+        <UpgradePrompt
+          feature="CRM & Marketing Tools"
+          description="Tag clients, send SMS and email broadcasts, automate aftercare follow-ups, and nurture new client relationships."
+          variant="inline"
+        />
+      )}
+      
       {/* Add Client Modal */}
       {showForm && (
         <ClientFormModal

@@ -1,15 +1,21 @@
 // ============================================================================
-// Team Invite API — src/app/api/team/invite/route.ts
+// Team Invite API — GATED — src/app/api/team/invite/route.ts
 // ============================================================================
 // POST: Invite a new team member (admin only)
-// Creates a pending tenant_members row. If Resend is configured, sends an
-// email invite. If not, the invite still works — the user just needs to
-// sign up and the accept flow in use-tenant will match them.
+// GATE: Starter = max 1 (owner only), Pro = max 3, Business = unlimited
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
 import { hasPermission, type TenantRole } from '@/lib/permissions';
+import { getSubscriptionTier } from '@/lib/subscription';
+
+// Team member limits by tier
+const TEAM_MEMBER_LIMITS: Record<string, number> = {
+  starter: 1,
+  pro: 3,
+  business: Infinity,
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,7 +32,7 @@ export async function POST(request: NextRequest) {
     // Get caller's membership and tenant
     const { data: callerMember, error: memberError } = await serviceClient
       .from('tenant_members')
-      .select('*, tenants(owner_id, name)')
+      .select('*, tenants(owner_id, name, subscription_tier, subscription_status, trial_ends_at)')
       .eq('user_id', user.id)
       .limit(1)
       .single();
@@ -43,6 +49,33 @@ export async function POST(request: NextRequest) {
     // Permission check: must have team:manage
     if (!isOwner && !hasPermission(callerRole, 'team:manage')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    // ── SUBSCRIPTION GATE — enforce team member limits by tier ──
+    const effectiveTier = getSubscriptionTier(tenant);
+    const memberLimit = TEAM_MEMBER_LIMITS[effectiveTier] || 1;
+
+    // Count current team members (including pending)
+    const { count: currentMemberCount } = await serviceClient
+      .from('tenant_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', callerMember.tenant_id);
+
+    const currentCount = currentMemberCount || 0;
+
+    if (currentCount >= memberLimit) {
+      if (effectiveTier === 'starter') {
+        return NextResponse.json(
+          { error: 'Starter plan is limited to 1 team member (owner only). Upgrade to Pro to add team members.' },
+          { status: 403 }
+        );
+      }
+      if (effectiveTier === 'pro') {
+        return NextResponse.json(
+          { error: `Pro plan is limited to ${memberLimit} team members. Upgrade to Business for unlimited team members.` },
+          { status: 403 }
+        );
+      }
     }
 
     // Parse request body

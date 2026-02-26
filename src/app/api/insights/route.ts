@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
+import { getSubscriptionTier, canAccessFeature } from '@/lib/subscription';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -50,7 +51,24 @@ export async function GET(request: NextRequest) {
 
     const tenantId = membership.tenant_id;
 
-    // 3. Gather business data
+    // 3. SUBSCRIPTION GATE — check tier before doing expensive work
+    const { data: tenantData } = await serviceClient
+      .from('tenants')
+      .select('subscription_tier, subscription_status, trial_ends_at, subscription_period_end')
+      .eq('id', tenantId)
+      .single();
+
+    if (tenantData) {
+      const effectiveTier = getSubscriptionTier(tenantData);
+      if (!canAccessFeature(effectiveTier, 'ai_insights')) {
+        return NextResponse.json(
+          { error: 'AI Business Insights require a Pro or Business subscription' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // 4. Gather business data
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);

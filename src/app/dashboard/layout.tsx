@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import type { Permission } from '@/lib/permissions';
 import MentorChat from '@/components/MentorChat';
+import { getSubscriptionTier, isTrialActive } from '@/lib/subscription';
 
 interface NavItem {
   href: string;
@@ -46,6 +47,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Mobile top bar */}
           <MobileTopBar />
+
+          {/* Trial expiry banner */}
+          <TrialBanner />
 
           {/* Page content */}
           <main className="flex-1 overflow-y-auto">
@@ -104,6 +108,113 @@ function useIsPlatformAdmin() {
   }, []);
 
   return isAdmin;
+}
+
+// ============================================================================
+// Trial Expiry Banner
+// ============================================================================
+// Shows in two cases:
+// 1. Trial active but ≤7 days remaining → "Your Pro trial ends in X days"
+// 2. Trial expired + on Starter tier → "Your Pro trial has ended"
+// Dismissible per-session. Hidden once they have an active subscription.
+// ============================================================================
+
+function TrialBanner() {
+  const { tenant } = useTenant();
+  const [dismissed, setDismissed] = useState(false);
+
+  if (!tenant || dismissed) return null;
+
+  const effectiveTier = getSubscriptionTier(tenant);
+  const trialActive = isTrialActive(tenant);
+  const hasActiveSubscription =
+    tenant.subscription_status === 'active' || tenant.subscription_status === 'trialing';
+
+  // Don't show banner if they have an active paid subscription
+  if (hasActiveSubscription && tenant.subscription_status !== 'trialing') return null;
+
+  // Case 1: Trial still active but running out (≤7 days)
+  if (trialActive && tenant.trial_ends_at) {
+    const trialEnd = new Date(tenant.trial_ends_at);
+    const now = new Date();
+    const daysRemaining = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (daysRemaining > 7) return null; // Only show in last 7 days
+
+    return (
+      <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2 text-sm text-amber-800">
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>
+            <span className="font-medium">Your Pro trial ends in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}.</span>{' '}
+            Upgrade to keep full access to reports, AI insights, and team features.
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 ml-4">
+          <Link
+            href="/dashboard/settings?tab=subscription"
+            className="text-sm font-medium text-amber-800 hover:text-amber-900 underline underline-offset-2"
+          >
+            View Plans
+          </Link>
+          <button
+            onClick={() => setDismissed(true)}
+            className="text-amber-400 hover:text-amber-600 p-1"
+            aria-label="Dismiss"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Case 2: Trial has expired and they're on Starter
+  if (!trialActive && effectiveTier === 'starter' && tenant.trial_ends_at) {
+    const trialEnd = new Date(tenant.trial_ends_at);
+    const now = new Date();
+    const daysSinceExpiry = Math.floor((now.getTime() - trialEnd.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Stop showing after 30 days
+    if (daysSinceExpiry > 30) return null;
+
+    return (
+      <div className="bg-surface-raised border-b border-border-default px-4 py-2.5 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2 text-sm text-text-secondary">
+          <svg className="w-4 h-4 shrink-0 text-text-tertiary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+          </svg>
+          <span>
+            <span className="font-medium text-text-primary">Your Pro trial has ended.</span>{' '}
+            Upgrade anytime to unlock reports, AI insights, and more.
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 ml-4">
+          <Link
+            href="/dashboard/settings?tab=subscription"
+            className="text-sm font-medium text-accent-600 hover:text-accent-700 underline underline-offset-2"
+          >
+            View Plans
+          </Link>
+          <button
+            onClick={() => setDismissed(true)}
+            className="text-text-tertiary hover:text-text-secondary p-1"
+            aria-label="Dismiss"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // ============================================================================
