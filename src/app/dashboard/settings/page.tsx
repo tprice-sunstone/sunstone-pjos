@@ -1277,74 +1277,7 @@ function SettingsPage() {
             </CardFooter>
           </Card>
 
-          {/* ── 3. Subscription & Fees (combined) ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Subscription & Fees</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Plan info */}
-              <div className="flex items-center gap-4 flex-wrap">
-                <Badge variant="accent" size="md">
-                  {tier.charAt(0).toUpperCase() + tier.slice(1)}
-                </Badge>
-                <span className="text-text-secondary">
-                  ${SUBSCRIPTION_PRICES[tier]}/mo
-                </span>
-                <span className="text-text-tertiary">·</span>
-                <span className="text-text-secondary">
-                  {(feeRate * 100).toFixed(1)}% platform fee
-                </span>
-              </div>
-
-              {/* Fee handling */}
-              {feeRate > 0 && (
-                <div className="space-y-3 pt-2 border-t border-[var(--border-subtle)]">
-                  <p className="text-sm text-text-secondary">
-                    Choose how the {(feeRate * 100).toFixed(1)}% platform fee is handled for each sale.
-                  </p>
-                  <label className="flex items-start gap-3 p-4 rounded-lg border border-border-default cursor-pointer hover:border-border-strong transition-colors has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50">
-                    <input
-                      type="radio"
-                      name="feeHandling"
-                      checked={feeHandling === 'pass_to_customer'}
-                      onChange={() => setFeeHandling('pass_to_customer')}
-                      className="mt-1 accent-[var(--accent-500)]"
-                    />
-                    <div>
-                      <div className="font-medium text-text-primary">Pass to customer</div>
-                      <div className="text-sm text-text-secondary">
-                        Fee appears as a &quot;Service Fee&quot; line item on the receipt. Customer pays it.
-                      </div>
-                    </div>
-                  </label>
-                  <label className="flex items-start gap-3 p-4 rounded-lg border border-border-default cursor-pointer hover:border-border-strong transition-colors has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50">
-                    <input
-                      type="radio"
-                      name="feeHandling"
-                      checked={feeHandling === 'absorb'}
-                      onChange={() => setFeeHandling('absorb')}
-                      className="mt-1 accent-[var(--accent-500)]"
-                    />
-                    <div>
-                      <div className="font-medium text-text-primary">Absorb fee</div>
-                      <div className="text-sm text-text-secondary">
-                        Fee deducted from your payout. Customer sees no additional charges.
-                      </div>
-                    </div>
-                  </label>
-                </div>
-              )}
-            </CardContent>
-            {feeRate > 0 && (
-              <CardFooter>
-                <Button variant="primary" onClick={saveFeeHandling}>
-                  Save Fee Handling
-                </Button>
-              </CardFooter>
-            )}
-          </Card>
-
+          
           {/* ── 4. Payment Processing (pick one) ── */}
           <Card>
             <CardHeader>
@@ -1386,7 +1319,7 @@ function SettingsPage() {
                     {squareConnected ? (
                       <>
                         <Badge variant="accent" size="md">Connected</Badge>
-                        <span className="text-sm text-text-secondary font-mono">
+                        <span className="text-sm text-text-secondary">
                           {(tenant as any).square_merchant_id}
                         </span>
                       </>
@@ -1416,7 +1349,7 @@ function SettingsPage() {
                     {stripeConnected ? (
                       <>
                         <Badge variant="accent" size="md">Connected</Badge>
-                        <span className="text-sm text-text-secondary font-mono">
+                        <span className="text-sm text-text-secondary">
                           {tenant.stripe_account_id}
                         </span>
                       </>
@@ -1456,7 +1389,7 @@ function SettingsPage() {
                     >
                       <div>
                         <span className="font-medium text-text-primary">{tp.name}</span>
-                        <span className="text-text-tertiary ml-2 font-mono">
+                        <span className="text-text-tertiary ml-2">
                           {(tp.rate * 100).toFixed(2)}%
                         </span>
                       </div>
@@ -1527,7 +1460,7 @@ function SettingsPage() {
                                 min="0.25"
                                 value={ptEditInches}
                                 onChange={(e) => setPtEditInches(e.target.value)}
-                                className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
+                                className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
                               />
                               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-tertiary)]">in</span>
                             </div>
@@ -1538,7 +1471,7 @@ function SettingsPage() {
                                 min="0"
                                 value={ptEditJumpRings}
                                 onChange={(e) => setPtEditJumpRings(e.target.value)}
-                                className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
+                                className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
                                 title="Jump rings required per product"
                               />
                               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--text-tertiary)]">JR</span>
@@ -1575,7 +1508,7 @@ function SettingsPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <span className="text-sm text-[var(--text-primary)] font-medium">{pt.name}</span>
-                            <span className="text-xs text-[var(--text-tertiary)] ml-2 font-mono">
+                            <span className="text-xs text-[var(--text-tertiary)] ml-2">
                               {Number(pt.default_inches).toFixed(2)} in
                             </span>
                             <span className="text-xs text-[var(--text-tertiary)] ml-2">
@@ -1632,7 +1565,7 @@ function SettingsPage() {
                         min="0.25"
                         value={ptNewInches}
                         onChange={(e) => setPtNewInches(e.target.value)}
-                        className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
+                        className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
                         placeholder="0.00"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-tertiary)]">in</span>
@@ -1644,7 +1577,7 @@ function SettingsPage() {
                         min="0"
                         value={ptNewJumpRings}
                         onChange={(e) => setPtNewJumpRings(e.target.value)}
-                        className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
+                        className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
                         placeholder="1"
                         title="Jump rings required"
                       />
@@ -1976,7 +1909,7 @@ function SettingsPage() {
                 <div>
                   <h3 className="text-lg font-bold text-[var(--text-primary)]">Pro</h3>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-3xl font-bold text-[var(--text-primary)]">$99</span>
+                    <span className="text-3xl font-bold text-[var(--text-primary)]">$129</span>
                     <span className="text-sm text-text-tertiary">/mo</span>
                   </div>
                 </div>
@@ -2008,7 +1941,7 @@ function SettingsPage() {
                 <div>
                   <h3 className="text-lg font-bold text-[var(--text-primary)]">Business</h3>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-3xl font-bold text-[var(--text-primary)]">$299</span>
+                    <span className="text-3xl font-bold text-[var(--text-primary)]">279</span>
                     <span className="text-sm text-text-tertiary">/mo</span>
                   </div>
                 </div>
@@ -2053,9 +1986,9 @@ function SettingsPage() {
                   <tbody className="divide-y divide-[var(--border-subtle)]">
                     <tr>
                       <td className="py-2.5 pr-4 text-text-secondary">Platform fee</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary font-mono">3%</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary font-mono">1.5%</td>
-                      <td className="py-2.5 px-3 text-center text-green-600 font-mono font-semibold">0%</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary">3%</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary">1.5%</td>
+                      <td className="py-2.5 px-3 text-center text-green-600 font-semibold">0%</td>
                     </tr>
                     <tr>
                       <td className="py-2.5 pr-4 text-text-secondary">Sunny AI</td>
@@ -2090,13 +2023,81 @@ function SettingsPage() {
                     <tr>
                       <td className="py-2.5 pr-4 text-text-secondary">Price</td>
                       <td className="py-2.5 px-3 text-center text-text-primary font-semibold">Free</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary font-semibold">$99/mo</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary font-semibold">$299/mo</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary font-semibold">$129/mo</td>
+                      <td className="py-2.5 px-3 text-center text-text-primary font-semibold">$279/mo</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </CardContent>
+          </Card>
+          
+          {/* ── 3. Subscription & Fees (combined) ── */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Subscription & Fees</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Plan info */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <Badge variant="accent" size="md">
+                  {tier.charAt(0).toUpperCase() + tier.slice(1)}
+                </Badge>
+                <span className="text-text-secondary">
+                  ${SUBSCRIPTION_PRICES[tier]}/mo
+                </span>
+                <span className="text-text-tertiary">·</span>
+                <span className="text-text-secondary">
+                  {(feeRate * 100).toFixed(1)}% platform fee
+                </span>
+              </div>
+
+              {/* Fee handling */}
+              {feeRate > 0 && (
+                <div className="space-y-3 pt-2 border-t border-[var(--border-subtle)]">
+                  <p className="text-sm text-text-secondary">
+                    Choose how the {(feeRate * 100).toFixed(1)}% platform fee is handled for each sale.
+                  </p>
+                  <label className="flex items-start gap-3 p-4 rounded-lg border border-border-default cursor-pointer hover:border-border-strong transition-colors has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50">
+                    <input
+                      type="radio"
+                      name="feeHandling"
+                      checked={feeHandling === 'pass_to_customer'}
+                      onChange={() => setFeeHandling('pass_to_customer')}
+                      className="mt-1 accent-[var(--accent-500)]"
+                    />
+                    <div>
+                      <div className="font-medium text-text-primary">Pass to customer</div>
+                      <div className="text-sm text-text-secondary">
+                        Fee appears as a &quot;Service Fee&quot; line item on the receipt. Customer pays it.
+                      </div>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 p-4 rounded-lg border border-border-default cursor-pointer hover:border-border-strong transition-colors has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50">
+                    <input
+                      type="radio"
+                      name="feeHandling"
+                      checked={feeHandling === 'absorb'}
+                      onChange={() => setFeeHandling('absorb')}
+                      className="mt-1 accent-[var(--accent-500)]"
+                    />
+                    <div>
+                      <div className="font-medium text-text-primary">Absorb fee</div>
+                      <div className="text-sm text-text-secondary">
+                        Fee deducted from your payout. Customer sees no additional charges.
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              )}
+            </CardContent>
+            {feeRate > 0 && (
+              <CardFooter>
+                <Button variant="primary" onClick={saveFeeHandling}>
+                  Save Fee Handling
+                </Button>
+              </CardFooter>
+            )}
           </Card>
         </div>
       )}
