@@ -1941,7 +1941,7 @@ function SettingsPage() {
                 <div>
                   <h3 className="text-lg font-bold text-[var(--text-primary)]">Business</h3>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-3xl font-bold text-[var(--text-primary)]">279</span>
+                    <span className="text-3xl font-bold text-[var(--text-primary)]">$279</span>
                     <span className="text-sm text-text-tertiary">/mo</span>
                   </div>
                 </div>
