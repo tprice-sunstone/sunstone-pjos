@@ -1,7 +1,7 @@
 // ============================================================================
 // Dashboard Home — src/app/dashboard/page.tsx
 // ============================================================================
-// Phase D3 v2: Pixel-perfect smart dashboard matching DashboardMock design.
+// Phase D3 v3: Smart dashboard with debug panel + improved content strategy.
 // Cards are generated from real data via /api/dashboard/cards.
 // ============================================================================
 
@@ -26,6 +26,8 @@ export default function DashboardPage() {
   const [cards, setCards] = useState<DashboardCard[]>([]);
   const [cardsLoading, setCardsLoading] = useState(true);
   const [eventsThisWeek, setEventsThisWeek] = useState<number>(0);
+  const [debugInfo, setDebugInfo] = useState<Record<string, unknown> | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   // ── Fallback cards — shown if API fails or returns nothing ────────────
   const clientFallbackCards: DashboardCard[] = [
@@ -61,9 +63,27 @@ export default function DashboardPage() {
       const res = await fetch(url);
       const data = await res.json();
       const fetched = Array.isArray(data?.cards) ? data.cards : [];
+
+      // Store full API response for debug panel
+      setDebugInfo({
+        status: res.status,
+        cached: data?.cached ?? false,
+        fallback: data?.fallback ?? false,
+        cardCount: fetched.length,
+        cardTypes: fetched.map((c: DashboardCard) => c.type),
+        fetchedAt: new Date().toISOString(),
+      });
+
       setCards(fetched.length > 0 ? fetched : clientFallbackCards);
     } catch (err) {
       console.error('Failed to fetch dashboard cards:', err);
+      setDebugInfo({
+        status: 'error',
+        error: String(err),
+        cardCount: 0,
+        cardTypes: [],
+        fetchedAt: new Date().toISOString(),
+      });
       setCards(clientFallbackCards);
     } finally {
       setCardsLoading(false);
@@ -178,6 +198,70 @@ export default function DashboardPage() {
           <RegisterIcon />
           Open POS
         </button>
+      </div>
+
+      {/* ================================================================ */}
+      {/* Debug Panel (collapsible)                                        */}
+      {/* ================================================================ */}
+      <div style={{ marginBottom: showDebug ? 16 : 0 }}>
+        <button
+          onClick={() => setShowDebug((v) => !v)}
+          className="text-text-tertiary hover:text-text-secondary transition-colors"
+          style={{
+            fontSize: 10,
+            fontWeight: 500,
+            background: 'none',
+            border: 'none',
+            padding: '2px 0',
+            cursor: 'pointer',
+            marginBottom: showDebug ? 6 : 0,
+          }}
+        >
+          {showDebug ? 'Hide' : 'Show'} Debug Info
+        </button>
+
+        {showDebug && debugInfo && (
+          <div
+            className="border border-[var(--border-default)] bg-[var(--surface-subtle)] text-text-secondary"
+            style={{
+              borderRadius: 8,
+              padding: 12,
+              fontSize: 11,
+              fontFamily: 'monospace',
+              lineHeight: 1.6,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+            }}
+          >
+            <div><strong className="text-text-primary">API Status:</strong> {String(debugInfo.status)}</div>
+            <div><strong className="text-text-primary">Cached:</strong> {String(debugInfo.cached)}</div>
+            <div><strong className="text-text-primary">Fallback:</strong> {String(debugInfo.fallback)}</div>
+            <div><strong className="text-text-primary">Card Count:</strong> {String(debugInfo.cardCount)}</div>
+            <div><strong className="text-text-primary">Card Types:</strong> {JSON.stringify(debugInfo.cardTypes)}</div>
+            <div><strong className="text-text-primary">Fetched At:</strong> {String(debugInfo.fetchedAt)}</div>
+            <div style={{ marginTop: 8 }}>
+              <strong className="text-text-primary">Full Card Data:</strong>
+              <pre style={{ marginTop: 4, fontSize: 10, maxHeight: 200, overflow: 'auto' }}>
+                {JSON.stringify(cards, null, 2)}
+              </pre>
+            </div>
+            <button
+              onClick={() => fetchCards(true)}
+              className="bg-accent-500 text-[var(--text-on-accent)] hover:bg-accent-600 transition-colors"
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                padding: '4px 10px',
+                borderRadius: 6,
+                border: 'none',
+                cursor: 'pointer',
+                marginTop: 8,
+              }}
+            >
+              Force Refresh
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ================================================================ */}

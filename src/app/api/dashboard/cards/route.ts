@@ -5,9 +5,19 @@
 // Pure data queries — no AI/LLM calls. Cached for 24 hours per tenant.
 // Returns structured data payloads that card components render directly.
 //
+// Content Strategy:
+//   1. Getting Started checklist (tenants < 14 days old)
+//   2. Next Event (if within 7 days)
+//   3. Inventory Alert (if low stock items)
+//   4. Revenue Snapshot (ALWAYS — $0 if no sales)
+//   5. Suggested Outreach (if stale clients)
+//   6. Recent Messages (if recent broadcasts)
+//   7. Networking Nudge (if no upcoming events)
+//   8. PJ University (tenants < 30 days old)
+//   9. Sunstone Product Spotlight (ALWAYS — weekly rotation from catalog)
+//
 // Resilience: Each card generator is wrapped in try/catch so one failing
-// query never kills the entire dashboard. Revenue + Sunstone tip are
-// guaranteed to always appear.
+// query never kills the entire dashboard. Revenue + Sunstone are guaranteed.
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -30,6 +40,14 @@ function daysUntil(dateStr: string): number {
   const now = new Date();
   const target = new Date(dateStr);
   return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/** ISO week number (1-52) for a given date */
+function getISOWeek(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,7 +93,6 @@ export async function GET(request: NextRequest) {
       error: authError,
     } = await supabase.auth.getUser();
     if (authError || !user) {
-      // Return fallback cards instead of 401 — dashboard should never be blank
       console.warn('Dashboard cards: not authenticated, returning fallback');
       return NextResponse.json({ cards: fallbackCards(), cached: false, fallback: true });
     }
@@ -152,7 +169,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ cards, cached: false });
   } catch (err) {
     console.error('Dashboard cards error:', err);
-    // Return fallback cards instead of 500 — dashboard should never be blank
     return NextResponse.json({ cards: fallbackCards(), cached: false, fallback: true });
   }
 }
@@ -167,6 +183,24 @@ async function generateCards(
 ): Promise<DashboardCard[]> {
   const cards: DashboardCard[] = [];
   const now = new Date();
+
+  // ── Fetch tenant for age + feature checks ─────────────────────────────
+  let tenant: Record<string, any> | null = null;
+  try {
+    const { data } = await db
+      .from('tenants')
+      .select('created_at, theme_id, square_merchant_id, stripe_account_id, onboarding_completed, waiver_text, waiver_required')
+      .eq('id', tenantId)
+      .single();
+    tenant = data;
+  } catch {
+    // Continue without tenant data — age-based cards won't show
+  }
+
+  const tenantCreatedAt = tenant?.created_at ? new Date(tenant.created_at) : null;
+  const tenantAgeDays = tenantCreatedAt
+    ? Math.floor((now.getTime() - tenantCreatedAt.getTime()) / (1000 * 60 * 60 * 24))
+    : 999; // If unknown, treat as established
 
   // Date boundaries
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -188,6 +222,8 @@ async function generateCards(
   let clientCountResult: { count: number | null } = { count: 0 };
   let broadcastsResult: { data: any[] | null } = { data: [] };
   let upcomingEventsResult: { data: any[] | null } = { data: [] };
+  let allEventsCountResult: { count: number | null } = { count: 0 };
+  let inventoryCountResult: { count: number | null } = { count: 0 };
 
   try {
     [
@@ -201,6 +237,8 @@ async function generateCards(
       clientCountResult,
       broadcastsResult,
       upcomingEventsResult,
+      allEventsCountResult,
+      inventoryCountResult,
     ] = await Promise.all([
       // Next event
       db
@@ -286,10 +324,73 @@ async function generateCards(
         .eq('tenant_id', tenantId)
         .gte('start_time', now.toISOString())
         .lt('start_time', fourteenDaysFromNow.toISOString()),
+
+      // All events count (for Getting Started check)
+      db
+        .from('events')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId),
+
+      // Inventory count (for Getting Started check)
+      db
+        .from('inventory_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true),
     ]);
   } catch (err) {
     console.error('Dashboard cards: parallel queries failed:', err);
     // Continue with defaults — revenue $0 card will still be generated below
+  }
+
+  // ── Getting Started Checklist (tenants < 14 days old) ─────────────────
+  if (tenantAgeDays < 14) {
+    try {
+      const hasEvents = (allEventsCountResult.count || 0) > 0;
+      const hasInventory = (inventoryCountResult.count || 0) > 0;
+      const hasPayment = !!(tenant?.square_merchant_id || tenant?.stripe_account_id);
+      const hasTheme = tenant?.theme_id && tenant.theme_id !== 'rose-gold';
+
+      const steps = [
+        {
+          label: 'Create your first event',
+          done: hasEvents,
+          href: '/dashboard/events',
+        },
+        {
+          label: 'Add inventory items',
+          done: hasInventory,
+          href: '/dashboard/inventory',
+        },
+        {
+          label: 'Connect a payment processor',
+          done: hasPayment,
+          href: '/dashboard/settings',
+        },
+        {
+          label: 'Customize your theme',
+          done: hasTheme,
+          href: '/dashboard/settings',
+        },
+      ];
+
+      const completedCount = steps.filter((s) => s.done).length;
+
+      // Only show if not all steps are done
+      if (completedCount < steps.length) {
+        cards.push({
+          type: 'getting_started',
+          priority: 0, // Highest priority — always first
+          data: {
+            steps,
+            completedCount,
+            totalCount: steps.length,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('Dashboard cards: getting_started failed:', err);
+    }
   }
 
   // ── Next Event Card ─────────────────────────────────────────────────────
@@ -518,19 +619,62 @@ async function generateCards(
     console.error('Dashboard cards: recent_messages failed:', err);
   }
 
-  // ── Sunstone Product Tip (ALWAYS shown) ────────────────────────────────
-  // Always include a tip card. For new/starter tenants this is a setup guide.
-  // For established tenants it rotates through feature tips.
+  // ── PJ University (tenants < 30 days old) ─────────────────────────────
+  if (tenantAgeDays < 30) {
+    try {
+      cards.push({
+        type: 'pj_university',
+        priority: 45,
+        data: {
+          title: 'PJ University',
+          subtitle: 'Free courses on pricing, event setup, and growing your permanent jewelry business.',
+          ctaLabel: 'Start Learning',
+          ctaUrl: 'https://permanentjewelry-sunstonewelders.thinkific.com/users/sign_in',
+        },
+      });
+    } catch (err) {
+      console.error('Dashboard cards: pj_university failed:', err);
+    }
+  }
+
+  // ── Sunstone Product Spotlight (ALWAYS shown) ─────────────────────────
+  // Reads from sunstone_product_catalog with weekly rotation.
+  // Supports admin override via platform_config.sunstone_spotlight.
   try {
-    const allStock = lowStockResult.data || [];
-    const totalClients = clientCountResult.count || 0;
-    const upcomingEvents = eventsResult.data || [];
-    const tip = getSunstoneTip(allStock.length, totalClients, upcomingEvents.length);
-    if (tip) {
-      cards.push({ type: 'sunstone_product', priority: 50, data: tip });
+    const spotlightProduct = await getSunstoneSpotlight(db);
+
+    if (spotlightProduct) {
+      cards.push({
+        type: 'sunstone_product',
+        priority: 50,
+        data: spotlightProduct,
+      });
+    } else {
+      // Fallback: static tip if catalog tables don't exist yet
+      cards.push({
+        type: 'sunstone_product',
+        priority: 50,
+        data: getSunstoneTipFallback(
+          lowStockResult.data?.length || 0,
+          clientCountResult.count || 0,
+          (eventsResult.data || []).length,
+        ),
+      });
     }
   } catch (err) {
     console.error('Dashboard cards: sunstone_product failed:', err);
+    // Static fallback
+    cards.push({
+      type: 'sunstone_product',
+      priority: 50,
+      data: {
+        title: 'Explore Sunstone Supply',
+        body: 'Premium chains, charms, and welders for your permanent jewelry business.',
+        actionLabel: 'Shop Now',
+        actionRoute: 'https://sunstonesupply.com',
+        badge: 'From Sunstone',
+      },
+    });
   }
 
   cards.sort((a, b) => a.priority - b.priority);
@@ -538,14 +682,119 @@ async function generateCards(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Sunstone Tips
+// Sunstone Spotlight — weekly rotation from catalog with admin override
 // ─────────────────────────────────────────────────────────────────────────────
 
-function getSunstoneTip(
+async function getSunstoneSpotlight(
+  db: Awaited<ReturnType<typeof createServiceRoleClient>>
+): Promise<Record<string, unknown> | null> {
+  // Step 1: Check for admin override in platform_config
+  try {
+    const { data: config } = await db
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'sunstone_spotlight')
+      .single();
+
+    if (config?.value) {
+      const spotlight = config.value as Record<string, any>;
+
+      // Custom mode: admin has pinned a specific product
+      if (spotlight.mode === 'custom' && spotlight.custom_product_id) {
+        // Check auto-expiry
+        if (spotlight.custom_expires_at) {
+          const expiresAt = new Date(spotlight.custom_expires_at);
+          if (expiresAt <= new Date()) {
+            // Expired — reset to rotate mode (non-blocking, fire-and-forget)
+            void db.from('platform_config')
+              .update({ value: { mode: 'rotate', rotation_index: 0 }, updated_at: new Date().toISOString() })
+              .eq('key', 'sunstone_spotlight');
+            // Fall through to rotation below
+          } else {
+            // Not expired — use pinned product
+            const { data: product } = await db
+              .from('sunstone_product_catalog')
+              .select('*')
+              .eq('id', spotlight.custom_product_id)
+              .eq('active', true)
+              .single();
+
+            if (product) {
+              return {
+                title: product.name,
+                body: product.subtitle || 'Check out this featured product from Sunstone.',
+                actionLabel: product.cta_label || 'Order from Sunstone',
+                actionRoute: product.cta_url,
+                imageUrl: product.image_url || null,
+                badge: 'Featured This Week',
+              };
+            }
+          }
+        } else {
+          // No expiry set — use pinned product indefinitely
+          const { data: product } = await db
+            .from('sunstone_product_catalog')
+            .select('*')
+            .eq('id', spotlight.custom_product_id)
+            .eq('active', true)
+            .single();
+
+          if (product) {
+            return {
+              title: product.name,
+              body: product.subtitle || 'Check out this featured product from Sunstone.',
+              actionLabel: product.cta_label || 'Order from Sunstone',
+              actionRoute: product.cta_url,
+              imageUrl: product.image_url || null,
+              badge: 'Featured This Week',
+            };
+          }
+        }
+      }
+    }
+  } catch {
+    // platform_config table may not exist yet — fall through to rotation
+  }
+
+  // Step 2: Weekly rotation from active catalog products
+  try {
+    const { data: products } = await db
+      .from('sunstone_product_catalog')
+      .select('*')
+      .eq('active', true)
+      .order('sort_order', { ascending: true });
+
+    if (products && products.length > 0) {
+      const weekNumber = getISOWeek(new Date());
+      const index = weekNumber % products.length;
+      const product = products[index];
+
+      return {
+        title: product.name,
+        body: product.subtitle || 'A top pick from Sunstone Supply.',
+        actionLabel: product.cta_label || 'Order from Sunstone',
+        actionRoute: product.cta_url,
+        imageUrl: product.image_url || null,
+        badge: 'Featured This Week',
+      };
+    }
+  } catch {
+    // sunstone_product_catalog table may not exist yet
+  }
+
+  // No catalog data available
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Static Sunstone Tips (fallback when catalog tables don't exist)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getSunstoneTipFallback(
   inventoryCount: number,
   clientCount: number,
   upcomingEventCount: number
-): Record<string, unknown> | null {
+): Record<string, unknown> {
   if (inventoryCount === 0) {
     return {
       title: 'Set Up Your Inventory',

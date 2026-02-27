@@ -9,3 +9,5 @@ export { OutreachCard } from './OutreachCard';
 export { NudgeCard } from './NudgeCard';
 export { MessagesCard } from './MessagesCard';
 export { SunstoneProductCard } from './SunstoneProductCard';
+export { GettingStartedCard } from './GettingStartedCard';
+export { PJUniversityCard } from './PJUniversityCard';

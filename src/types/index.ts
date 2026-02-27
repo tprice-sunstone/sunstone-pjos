@@ -426,12 +426,14 @@ export const SUBSCRIPTION_PRICES: Record<SubscriptionTier, number> = {
 // ============================================================================
 
 export type DashboardCardType =
+  | 'getting_started'
   | 'next_event'
   | 'revenue_snapshot'
   | 'suggested_outreach'
   | 'inventory_alert'
   | 'networking_nudge'
   | 'recent_messages'
+  | 'pj_university'
   | 'sunstone_product';
 
 export interface DashboardCard {
@@ -500,6 +502,25 @@ export interface SunstoneProductData {
   body: string;
   actionLabel: string;
   actionRoute: string;
+  imageUrl?: string | null;
+  badge?: string;
+}
+
+export interface GettingStartedData {
+  steps: {
+    label: string;
+    done: boolean;
+    href: string;
+  }[];
+  completedCount: number;
+  totalCount: number;
+}
+
+export interface PJUniversityData {
+  title: string;
+  subtitle: string;
+  ctaLabel: string;
+  ctaUrl: string;
 }
 
 // ============================================================================
