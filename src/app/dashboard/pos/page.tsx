@@ -389,7 +389,7 @@ export default function StoreModePage() {
           </div>
           <button
             onClick={cancelServing}
-            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-white/50 text-[var(--text-tertiary)]"
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--surface-subtle)] text-[var(--text-tertiary)]"
             title="Cancel serving"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -436,7 +436,7 @@ export default function StoreModePage() {
                     <button key={amount} onClick={() => cart.setTip(amount)}
                       className={`py-5 rounded-2xl text-xl font-bold transition-all min-h-[56px] ${
                         cart.tip_amount === amount
-                          ? 'bg-[var(--text-primary)] text-white shadow-md' : 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'
+                          ? 'bg-[var(--text-primary)] text-[var(--surface-base)] shadow-md' : 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'
                       }`}>{amount === 0 ? 'None' : `$${amount}`}</button>
                   ))}
                 </div>
@@ -458,7 +458,7 @@ export default function StoreModePage() {
                     <button key={pm.value} onClick={() => cart.setPaymentMethod(pm.value)}
                       className={`py-7 rounded-2xl text-center transition-all min-h-[80px] ${
                         cart.payment_method === pm.value
-                          ? 'bg-[var(--text-primary)] text-white shadow-md' : 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'
+                          ? 'bg-[var(--text-primary)] text-[var(--surface-base)] shadow-md' : 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'
                       }`}>
                       <div className="text-lg font-bold">{pm.label}</div>
                     </button>

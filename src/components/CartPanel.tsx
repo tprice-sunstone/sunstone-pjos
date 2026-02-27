@@ -158,7 +158,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                       onClick={() => setDiscountType('flat')}
                       className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-colors ${
                         discountType === 'flat'
-                          ? 'bg-[var(--text-primary)] text-white'
+                          ? 'bg-[var(--text-primary)] text-[var(--surface-base)]'
                           : 'bg-[var(--surface-base)] text-[var(--text-secondary)] border border-[var(--border-default)]'
                       }`}
                     >
@@ -168,7 +168,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                       onClick={() => setDiscountType('percentage')}
                       className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-colors ${
                         discountType === 'percentage'
-                          ? 'bg-[var(--text-primary)] text-white'
+                          ? 'bg-[var(--text-primary)] text-[var(--surface-base)]'
                           : 'bg-[var(--surface-base)] text-[var(--text-secondary)] border border-[var(--border-default)]'
                       }`}
                     >
@@ -192,7 +192,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                     />
                     <button
                       onClick={() => applyItemDiscount(item.id)}
-                      className="h-9 px-3 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors"
+                      className="h-9 px-3 rounded-lg text-xs font-medium transition-colors" style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
                     >
                       Apply
                     </button>
@@ -253,7 +253,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                     onClick={() => setCartDiscountType('flat')}
                     className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-colors ${
                       cartDiscountType === 'flat'
-                        ? 'bg-[var(--text-primary)] text-white'
+                        ? 'bg-[var(--text-primary)] text-[var(--surface-base)]'
                         : 'bg-[var(--surface-base)] text-[var(--text-secondary)] border border-[var(--border-default)]'
                     }`}
                   >
@@ -263,7 +263,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                     onClick={() => setCartDiscountType('percentage')}
                     className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-colors ${
                       cartDiscountType === 'percentage'
-                        ? 'bg-[var(--text-primary)] text-white'
+                        ? 'bg-[var(--text-primary)] text-[var(--surface-base)]'
                         : 'bg-[var(--surface-base)] text-[var(--text-secondary)] border border-[var(--border-default)]'
                     }`}
                   >
@@ -287,7 +287,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                   />
                   <button
                     onClick={applyCartDiscount}
-                    className="h-9 px-3 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors"
+                    className="h-9 px-3 rounded-lg text-xs font-medium transition-colors" style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
                   >
                     Apply
                   </button>

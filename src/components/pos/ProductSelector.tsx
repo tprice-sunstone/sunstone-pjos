@@ -167,7 +167,7 @@ export function ProductSelector({
   );
 
   // ── Toggle styling ──
-  const toggleActive = 'bg-[var(--text-primary)] text-white';
+  const toggleActive = 'bg-[var(--text-primary)] text-[var(--surface-base)]';
   const toggleInactive = 'bg-[var(--surface-raised)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]';
 
   return (
