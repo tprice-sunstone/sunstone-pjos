@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { downloadWaiverPDF } from '@/lib/generate-waiver-pdf';
 import type { WaiverPDFData } from '@/lib/generate-waiver-pdf';
+import { getThemeById } from '@/lib/themes';
 import {
   Button,
   Input,
@@ -296,9 +297,14 @@ export default function ClientsPage() {
         if (eventData) eventName = eventData.name;
       }
 
+      const themeAccent = tenant.theme_id
+        ? getThemeById(tenant.theme_id).accent
+        : undefined;
+
       const pdfData: WaiverPDFData = {
         tenantName: tenant.name,
-        tenantAccentColor: tenant.brand_color || undefined,
+        tenantAccentColor: themeAccent || tenant.brand_color || undefined,
+        tenantLogoUrl: tenant.logo_url || undefined,
         clientName: waiver.signer_name,
         clientEmail: waiver.signer_email || undefined,
         clientPhone: selectedClient?.phone || undefined,
