@@ -847,7 +847,7 @@ export default function StoreModePage() {
                           />
                         </div>
                         {emailSent ? (
-                          <div className="flex items-center gap-1.5 text-green-600 text-sm">
+                          <div className="flex items-center gap-1.5 text-success-600 text-sm">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                             Sent
                           </div>
@@ -856,7 +856,7 @@ export default function StoreModePage() {
                             {sendingEmail ? 'Sending...' : 'Send Email Receipt'}
                           </Button>
                         )}
-                        {emailError && <p className="text-xs text-red-500">{emailError}</p>}
+                        {emailError && <p className="text-xs text-error-500">{emailError}</p>}
                       </div>
                     )}
 
@@ -874,7 +874,7 @@ export default function StoreModePage() {
                           />
                         </div>
                         {smsSent ? (
-                          <div className="flex items-center gap-1.5 text-green-600 text-sm">
+                          <div className="flex items-center gap-1.5 text-success-600 text-sm">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                             Sent
                           </div>
@@ -883,7 +883,7 @@ export default function StoreModePage() {
                             {sendingSMS ? 'Sending...' : 'Send Text Receipt'}
                           </Button>
                         )}
-                        {smsError && <p className="text-xs text-red-500">{smsError}</p>}
+                        {smsError && <p className="text-xs text-error-500">{smsError}</p>}
                       </div>
                     )}
                   </div>

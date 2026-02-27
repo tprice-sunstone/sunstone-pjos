@@ -398,7 +398,7 @@ function MoreSheet({ isOpen, onClose, onSunnyOpen }: { isOpen: boolean; onClose:
             <Link
               href="/admin"
               onClick={onClose}
-              className="flex items-center gap-3 px-3 min-h-[48px] rounded-lg text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors"
+              className="flex items-center gap-3 px-3 min-h-[48px] rounded-lg text-sm font-medium text-warning-600 hover:bg-warning-50 transition-colors"
             >
               <AdminShieldIcon className="w-5 h-5 shrink-0" />
               Platform Admin
@@ -491,7 +491,7 @@ function TabletSidebar({ onSunnyOpen }: { onSunnyOpen: () => void }) {
             href="/admin"
             title={expanded ? undefined : 'Platform Admin'}
             className={cn(
-              'flex items-center gap-3 rounded-lg text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px]',
+              'flex items-center gap-3 rounded-lg text-sm font-medium text-warning-600 hover:bg-warning-50 transition-colors min-h-[44px]',
               expanded ? 'px-3' : 'justify-center px-0'
             )}
           >
@@ -576,11 +576,11 @@ function DesktopSidebar({ onSunnyOpen }: { onSunnyOpen: () => void }) {
         {isPlatformAdmin && (
           <Link
             href="/admin"
-            className="flex items-center gap-3 px-3 min-h-[48px] rounded-lg text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors"
+            className="flex items-center gap-3 px-3 min-h-[48px] rounded-lg text-sm font-medium text-warning-600 hover:bg-warning-50 transition-colors"
           >
             <AdminShieldIcon className="w-5 h-5 shrink-0" />
             <span>Platform Admin</span>
-            <span className="ml-auto text-[10px] uppercase tracking-wider bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-semibold">
+            <span className="ml-auto text-[10px] uppercase tracking-wider bg-warning-100 text-warning-600 px-1.5 py-0.5 rounded font-semibold">
               Admin
             </span>
           </Link>
@@ -628,8 +628,8 @@ function TrialBanner() {
     if (daysRemaining > 7) return null;
 
     return (
-      <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2 text-sm text-amber-800">
+      <div className="bg-warning-50 border-b border-warning-200 px-4 py-2.5 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2 text-sm text-warning-600">
           <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -641,13 +641,13 @@ function TrialBanner() {
         <div className="flex items-center gap-2 shrink-0 ml-4">
           <Link
             href="/dashboard/settings?tab=subscription"
-            className="text-sm font-medium text-amber-800 hover:text-amber-900 underline underline-offset-2"
+            className="text-sm font-medium text-warning-600 hover:text-warning-600 underline underline-offset-2"
           >
             View Plans
           </Link>
           <button
             onClick={() => setDismissed(true)}
-            className="text-amber-400 hover:text-amber-600 p-1"
+            className="text-warning-400 hover:text-warning-600 p-1"
             aria-label="Dismiss"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

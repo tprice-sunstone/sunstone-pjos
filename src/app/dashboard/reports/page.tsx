@@ -707,7 +707,7 @@ export default function ReportsPage() {
                     <div className="border-t border-[var(--border-default)] mt-1 pt-4">
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-text-primary">Net Profit</span>
-                        <span className={`text-xl font-semibold ${aggregated.netProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                        <span className={`text-xl font-semibold ${aggregated.netProfit >= 0 ? 'text-success-600' : 'text-error-500'}`}>
                           {money(aggregated.netProfit)}
                         </span>
                       </div>
@@ -752,7 +752,7 @@ export default function ReportsPage() {
                           <p className="text-xs text-text-tertiary">{m.salesCount} sale{m.salesCount !== 1 ? 's' : ''}</p>
                         </div>
                         <div className="text-right">
-                          <p className={`text-sm font-semibold ${m.profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                          <p className={`text-sm font-semibold ${m.profit >= 0 ? 'text-success-600' : 'text-error-500'}`}>
                             {money(m.profit)}
                           </p>
                           <p className="text-xs text-text-tertiary">{money(m.revenue)} rev</p>
@@ -820,7 +820,7 @@ export default function ReportsPage() {
                         <div className="text-right shrink-0">
                           {salesCount > 0 ? (
                             <>
-                              <p className={`text-sm font-semibold ${profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                              <p className={`text-sm font-semibold ${profit >= 0 ? 'text-success-600' : 'text-error-500'}`}>
                                 {money(profit)}
                               </p>
                               <p className="text-xs text-text-tertiary">{salesCount} sale{salesCount !== 1 ? 's' : ''}</p>
@@ -851,8 +851,8 @@ export default function ReportsPage() {
 
 function KPICard({ label, value, tone }: { label: string; value: string; tone?: 'positive' | 'negative' }) {
   let valueColor = 'text-text-primary';
-  if (tone === 'positive') valueColor = 'text-green-600';
-  if (tone === 'negative') valueColor = 'text-red-500';
+  if (tone === 'positive') valueColor = 'text-success-600';
+  if (tone === 'negative') valueColor = 'text-error-500';
 
   return (
     <Card>
@@ -870,7 +870,7 @@ function ReportRow({ label, value, negative, subtle, bold }: {
   return (
     <div className="flex items-center justify-between py-2">
       <span className={`text-sm ${bold ? 'font-semibold text-text-primary' : subtle ? 'text-text-tertiary' : 'text-text-secondary'}`}>{label}</span>
-      <span className={`text-sm ${bold ? 'font-semibold text-text-primary' : negative ? 'text-red-500' : subtle ? 'text-text-tertiary' : 'text-text-primary'}`}>{value}</span>
+      <span className={`text-sm ${bold ? 'font-semibold text-text-primary' : negative ? 'text-error-500' : subtle ? 'text-text-tertiary' : 'text-text-primary'}`}>{value}</span>
     </div>
   );
 }

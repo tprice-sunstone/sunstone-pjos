@@ -262,7 +262,7 @@ export default function MaterialsSection({ tenantId }: MaterialsSectionProps) {
                     {!m.is_system && (
                       <button
                         onClick={() => handleDelete(m)}
-                        className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50 min-w-[32px] min-h-[32px] flex items-center justify-center"
+                        className="text-[var(--text-tertiary)] hover:text-error-500 transition-colors p-1.5 rounded-lg hover:bg-error-50 min-w-[32px] min-h-[32px] flex items-center justify-center"
                         title="Delete"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

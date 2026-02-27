@@ -60,21 +60,29 @@ const config: Config = {
         // Functional colors
         success: {
           50: 'var(--success-50)',
+          100: 'var(--success-100)',
+          200: 'var(--success-200)',
           500: 'var(--success-500)',
           600: 'var(--success-600)',
         },
         warning: {
           50: 'var(--warning-50)',
+          100: 'var(--warning-100)',
+          200: 'var(--warning-200)',
           500: 'var(--warning-500)',
           600: 'var(--warning-600)',
         },
         error: {
           50: 'var(--error-50)',
+          100: 'var(--error-100)',
+          200: 'var(--error-200)',
           500: 'var(--error-500)',
           600: 'var(--error-600)',
         },
         info: {
           50: 'var(--info-50)',
+          100: 'var(--info-100)',
+          200: 'var(--info-200)',
           500: 'var(--info-500)',
           600: 'var(--info-600)',
         },

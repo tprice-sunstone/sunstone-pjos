@@ -463,7 +463,7 @@ function EventPLReportPage() {
                 <div className="border-t border-[var(--border-default)] mt-1 pt-4">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-text-primary">Net Profit</span>
-                    <span className={`text-xl font-semibold ${report.netProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    <span className={`text-xl font-semibold ${report.netProfit >= 0 ? 'text-success-600' : 'text-error-500'}`}>
                       {money(report.netProfit)}
                     </span>
                   </div>
@@ -574,8 +574,8 @@ function EventPLReportPage() {
 
 function KPICard({ label, value, tone }: { label: string; value: string; tone?: 'positive' | 'negative' }) {
   let valueColor = 'text-text-primary';
-  if (tone === 'positive') valueColor = 'text-green-600';
-  if (tone === 'negative') valueColor = 'text-red-500';
+  if (tone === 'positive') valueColor = 'text-success-600';
+  if (tone === 'negative') valueColor = 'text-error-500';
 
   return (
     <Card>
@@ -593,7 +593,7 @@ function ReportRow({ label, value, negative, subtle, bold }: {
   return (
     <div className="flex items-center justify-between py-2">
       <span className={`text-sm ${bold ? 'font-semibold text-text-primary' : subtle ? 'text-text-tertiary' : 'text-text-secondary'}`}>{label}</span>
-      <span className={`text-sm ${bold ? 'font-semibold text-text-primary' : negative ? 'text-red-500' : subtle ? 'text-text-tertiary' : 'text-text-primary'}`}>{value}</span>
+      <span className={`text-sm ${bold ? 'font-semibold text-text-primary' : negative ? 'text-error-500' : subtle ? 'text-text-tertiary' : 'text-text-primary'}`}>{value}</span>
     </div>
   );
 }

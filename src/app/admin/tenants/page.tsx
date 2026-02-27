@@ -219,7 +219,7 @@ export default function AdminTenantsPage() {
                     onClick={() => toggleExpand(t.id)}
                     className={cn(
                       'cursor-pointer transition-colors hover:bg-[var(--surface-subtle)]',
-                      expandedId === t.id && 'bg-amber-50/50'
+                      expandedId === t.id && 'bg-warning-50'
                     )}
                   >
                     <td className="px-4 py-3">
@@ -247,11 +247,11 @@ export default function AdminTenantsPage() {
                     <td className="px-4 py-3 text-[var(--text-secondary)]">{new Date(t.created_at).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       {t.is_suspended ? (
-                        <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700">
+                        <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-error-50 text-error-600">
                           Suspended
                         </span>
                       ) : (
-                        <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700">
+                        <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-success-50 text-success-600">
                           Active
                         </span>
                       )}
@@ -372,8 +372,8 @@ function TenantDetailPanel({
           className={cn(
             'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50',
             tenant.is_suspended
-              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-              : 'bg-red-50 text-red-700 hover:bg-red-100'
+              ? 'bg-success-50 text-success-600 hover:bg-success-100'
+              : 'bg-error-50 text-error-600 hover:bg-error-100'
           )}
         >
           {tenant.is_suspended ? 'Unsuspend' : 'Suspend'}
@@ -404,8 +404,8 @@ function MiniStat({ label, value }: { label: string; value: number }) {
 function TierBadge({ tier }: { tier: string }) {
   const styles: Record<string, string> = {
     free: 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]',
-    pro: 'bg-blue-50 text-blue-700',
-    business: 'bg-amber-50 text-amber-700',
+    pro: 'bg-info-50 text-info-600',
+    business: 'bg-warning-50 text-warning-600',
   };
   return (
     <span className={cn('inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium', styles[tier] || styles.free)}>

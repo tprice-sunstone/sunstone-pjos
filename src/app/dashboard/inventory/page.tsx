@@ -416,7 +416,7 @@ export default function InventoryPage() {
                       e.stopPropagation();
                       handleDelete(item);
                     }}
-                    className="text-[var(--text-tertiary)] hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                    className="text-[var(--text-tertiary)] hover:text-error-500 p-1.5 rounded-lg hover:bg-error-50 transition-colors"
                     title="Delete"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

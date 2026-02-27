@@ -27,9 +27,9 @@ import UpgradePrompt from '@/components/ui/UpgradePrompt';
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   draft: { bg: 'bg-[var(--surface-subtle)]', text: 'text-[var(--text-secondary)]', label: 'Draft' },
-  sending: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Sending…' },
-  completed: { bg: 'bg-green-100', text: 'text-green-700', label: 'Sent' },
-  failed: { bg: 'bg-red-100', text: 'text-red-700', label: 'Failed' },
+  sending: { bg: 'bg-info-100', text: 'text-info-600', label: 'Sending…' },
+  completed: { bg: 'bg-success-100', text: 'text-success-600', label: 'Sent' },
+  failed: { bg: 'bg-error-100', text: 'text-error-600', label: 'Failed' },
 };
 
 export default function BroadcastsPage() {
@@ -154,18 +154,18 @@ export default function BroadcastsPage() {
                   {b.status === 'completed' && (
                     <div className="flex items-center gap-4 text-xs flex-shrink-0">
                       <div className="text-center">
-                        <div className="font-semibold text-green-600">{b.sent_count}</div>
+                        <div className="font-semibold text-success-600">{b.sent_count}</div>
                         <div className="text-text-tertiary">Sent</div>
                       </div>
                       {b.failed_count > 0 && (
                         <div className="text-center">
-                          <div className="font-semibold text-red-600">{b.failed_count}</div>
+                          <div className="font-semibold text-error-600">{b.failed_count}</div>
                           <div className="text-text-tertiary">Failed</div>
                         </div>
                       )}
                       {b.skipped_count > 0 && (
                         <div className="text-center">
-                          <div className="font-semibold text-amber-600">{b.skipped_count}</div>
+                          <div className="font-semibold text-warning-600">{b.skipped_count}</div>
                           <div className="text-text-tertiary">Skipped</div>
                         </div>
                       )}
@@ -510,8 +510,8 @@ function NewBroadcastFlow({
                   />
                   {channel === 'sms' && (
                     <span className={`text-xs font-medium ${
-                      customBody.length <= 160 ? 'text-green-600' :
-                      customBody.length <= 320 ? 'text-amber-600' : 'text-red-600'
+                      customBody.length <= 160 ? 'text-success-600' :
+                      customBody.length <= 320 ? 'text-warning-600' : 'text-error-600'
                     }`}>
                       {customBody.length} / 160 characters
                     </span>
@@ -534,17 +534,17 @@ function NewBroadcastFlow({
                     <div className="text-lg font-bold text-text-primary">{preview.total}</div>
                     <div className="text-xs text-text-tertiary">Total</div>
                   </div>
-                  <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <div className="text-lg font-bold text-green-700">{preview.sendable}</div>
-                    <div className="text-xs text-green-600">Will Send</div>
+                  <div className="bg-success-50 rounded-lg p-3 text-center">
+                    <div className="text-lg font-bold text-success-600">{preview.sendable}</div>
+                    <div className="text-xs text-success-600">Will Send</div>
                   </div>
-                  <div className="bg-amber-50 rounded-lg p-3 text-center">
-                    <div className="text-lg font-bold text-amber-700">{preview.missingContact}</div>
-                    <div className="text-xs text-amber-600">No Contact</div>
+                  <div className="bg-warning-50 rounded-lg p-3 text-center">
+                    <div className="text-lg font-bold text-warning-600">{preview.missingContact}</div>
+                    <div className="text-xs text-warning-600">No Contact</div>
                   </div>
-                  <div className="bg-red-50 rounded-lg p-3 text-center">
-                    <div className="text-lg font-bold text-red-700">{preview.noConsent}</div>
-                    <div className="text-xs text-red-600">No Consent</div>
+                  <div className="bg-error-50 rounded-lg p-3 text-center">
+                    <div className="text-lg font-bold text-error-600">{preview.noConsent}</div>
+                    <div className="text-xs text-error-600">No Consent</div>
                   </div>
                 </div>
 
@@ -594,11 +594,11 @@ function NewBroadcastFlow({
                             <td className="px-3 py-2 text-text-secondary font-mono text-xs">{r.contact || '—'}</td>
                             <td className="px-3 py-2 text-center">
                               {r.willSend ? (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-700">Send</span>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-success-100 text-success-600">Send</span>
                               ) : !r.contact ? (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">No contact</span>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-warning-100 text-warning-600">No contact</span>
                               ) : (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700">No consent</span>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-error-100 text-error-600">No consent</span>
                               )}
                             </td>
                           </tr>
@@ -618,8 +618,8 @@ function NewBroadcastFlow({
           <div className="text-center py-8">
             {sending ? (
               <>
-                <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center animate-pulse">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-info-100 flex items-center justify-center animate-pulse">
+                  <svg className="w-6 h-6 text-info-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
                   </svg>
                 </div>
@@ -628,8 +628,8 @@ function NewBroadcastFlow({
               </>
             ) : (
               <>
-                <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-                  <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-success-100 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-success-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                   </svg>
                 </div>
@@ -770,17 +770,17 @@ function BroadcastDetail({
                   <div className="text-lg font-bold text-text-primary">{broadcast.total_recipients}</div>
                   <div className="text-xs text-text-tertiary">Total</div>
                 </div>
-                <div className="bg-green-50 rounded-lg p-3 text-center">
-                  <div className="text-lg font-bold text-green-700">{broadcast.sent_count}</div>
-                  <div className="text-xs text-green-600">Sent</div>
+                <div className="bg-success-50 rounded-lg p-3 text-center">
+                  <div className="text-lg font-bold text-success-600">{broadcast.sent_count}</div>
+                  <div className="text-xs text-success-600">Sent</div>
                 </div>
-                <div className="bg-red-50 rounded-lg p-3 text-center">
-                  <div className="text-lg font-bold text-red-700">{broadcast.failed_count}</div>
-                  <div className="text-xs text-red-600">Failed</div>
+                <div className="bg-error-50 rounded-lg p-3 text-center">
+                  <div className="text-lg font-bold text-error-600">{broadcast.failed_count}</div>
+                  <div className="text-xs text-error-600">Failed</div>
                 </div>
-                <div className="bg-amber-50 rounded-lg p-3 text-center">
-                  <div className="text-lg font-bold text-amber-700">{broadcast.skipped_count}</div>
-                  <div className="text-xs text-amber-600">Skipped</div>
+                <div className="bg-warning-50 rounded-lg p-3 text-center">
+                  <div className="text-lg font-bold text-warning-600">{broadcast.skipped_count}</div>
+                  <div className="text-xs text-warning-600">Skipped</div>
                 </div>
               </div>
             )}
@@ -802,9 +802,9 @@ function BroadcastDetail({
                     </thead>
                     <tbody>
                       {detail.messages.map((m: any) => {
-                        const msgStyle = m.status === 'sent' ? 'bg-green-100 text-green-700'
-                          : m.status === 'failed' ? 'bg-red-100 text-red-700'
-                          : 'bg-amber-100 text-amber-700';
+                        const msgStyle = m.status === 'sent' ? 'bg-success-100 text-success-600'
+                          : m.status === 'failed' ? 'bg-error-100 text-error-600'
+                          : 'bg-warning-100 text-warning-600';
                         return (
                           <tr key={m.id} className="border-t border-border-default">
                             <td className="px-3 py-2 text-text-primary font-mono text-xs">{m.recipient}</td>

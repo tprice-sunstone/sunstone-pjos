@@ -235,8 +235,8 @@ export default function TemplatesPage() {
                   {template.channel === 'sms' && (
                     <div className="flex items-center gap-1">
                       <span className={`text-[10px] font-medium ${
-                        template.body.length <= 160 ? 'text-green-600' :
-                        template.body.length <= 320 ? 'text-amber-600' : 'text-red-600'
+                        template.body.length <= 160 ? 'text-success-600' :
+                        template.body.length <= 320 ? 'text-warning-600' : 'text-error-600'
                       }`}>
                         {template.body.length} chars
                         {template.body.length > 160 && ` · ${Math.ceil(template.body.length / 160)} segments`}
@@ -269,7 +269,7 @@ export default function TemplatesPage() {
                       <div className="w-px bg-border-default" />
                       <button
                         onClick={() => setConfirmDelete(template)}
-                        className="flex-1 px-3 py-2.5 text-xs font-medium text-red-500 hover:bg-red-50 transition-colors"
+                        className="flex-1 px-3 py-2.5 text-xs font-medium text-error-500 hover:bg-error-50 transition-colors"
                       >
                         Delete
                       </button>
@@ -494,8 +494,8 @@ function TemplateEditor({
               {channel === 'sms' && (
                 <div className="flex items-center justify-between mt-1">
                   <span className={`text-xs font-medium ${
-                    body.length <= 160 ? 'text-green-600' :
-                    body.length <= 320 ? 'text-amber-600' : 'text-red-600'
+                    body.length <= 160 ? 'text-success-600' :
+                    body.length <= 320 ? 'text-warning-600' : 'text-error-600'
                   }`}>
                     {body.length} / 160 characters
                     {body.length > 160 && ` (${Math.ceil(body.length / 160)} SMS segments)`}

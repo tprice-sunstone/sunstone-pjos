@@ -146,9 +146,9 @@ export default function ChainPricingConfig({
 
   if (productTypes.length === 0) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-        <p className="text-sm font-medium text-amber-800">Set up Product Types first</p>
-        <p className="text-sm text-amber-700 mt-1">
+      <div className="rounded-xl border border-warning-200 bg-warning-50 p-4">
+        <p className="text-sm font-medium text-warning-600">Set up Product Types first</p>
+        <p className="text-sm text-warning-600 mt-1">
           Go to Settings → Product Types to add bracelet, anklet, necklace, etc. before setting up chain pricing.
         </p>
       </div>
@@ -331,8 +331,8 @@ export default function ChainPricingConfig({
           )}
 
           {showProductValidation && !hasActiveRows && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-              <p className="text-sm text-amber-700">
+            <div className="rounded-lg border border-warning-200 bg-warning-50 px-4 py-3">
+              <p className="text-sm text-warning-600">
                 Enable at least one product type so this chain can be sold.
               </p>
             </div>

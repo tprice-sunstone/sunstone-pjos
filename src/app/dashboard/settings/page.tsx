@@ -1853,14 +1853,14 @@ function SettingsPage() {
 
           {/* Past due warning */}
           {isPastDue && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
+            <div className="bg-error-50 border border-error-200 rounded-2xl p-5">
               <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-5 h-5 text-error-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
                 </svg>
                 <div>
-                  <h3 className="text-base font-semibold text-red-800">Payment Failed</h3>
-                  <p className="text-sm text-red-700 mt-1">
+                  <h3 className="text-base font-semibold text-error-600">Payment Failed</h3>
+                  <p className="text-sm text-error-600 mt-1">
                     Your last payment didn&apos;t go through. Please update your payment method to keep your subscription active.
                   </p>
                   <Button variant="danger" className="mt-3" onClick={handleManageSubscription}>
@@ -1883,7 +1883,7 @@ function SettingsPage() {
                     <span className="text-sm text-text-secondary">
                       ${SUBSCRIPTION_PRICES[tier]}/mo
                     </span>
-                    <span className="text-xs text-green-600 font-medium">Active</span>
+                    <span className="text-xs text-success-600 font-medium">Active</span>
                   </div>
                   <Button variant="secondary" onClick={handleManageSubscription}>
                     Manage Subscription
@@ -1900,9 +1900,9 @@ function SettingsPage() {
 
           {/* Starter plan notice (trial expired, no subscription) */}
           {!trialActive && !hasActiveSubscription && !isPastDue && effectiveTier === 'starter' && (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
-              <h3 className="text-base font-semibold text-amber-900">You&apos;re on the Starter plan</h3>
-              <p className="text-sm text-amber-800 mt-1">
+            <div className="bg-warning-50 border border-warning-200 rounded-2xl p-5">
+              <h3 className="text-base font-semibold text-warning-600">You&apos;re on the Starter plan</h3>
+              <p className="text-sm text-warning-600 mt-1">
                 Upgrade to Pro or Business to unlock lower fees, unlimited AI, reports, CRM, and more.
               </p>
             </div>
@@ -1995,7 +1995,7 @@ function SettingsPage() {
                       <td className="py-2.5 pr-4 text-text-secondary">Platform fee</td>
                       <td className="py-2.5 px-3 text-center text-text-primary">3%</td>
                       <td className="py-2.5 px-3 text-center text-text-primary">1.5%</td>
-                      <td className="py-2.5 px-3 text-center text-green-600 font-semibold">0%</td>
+                      <td className="py-2.5 px-3 text-center text-success-600 font-semibold">0%</td>
                     </tr>
                     <tr>
                       <td className="py-2.5 pr-4 text-text-secondary">Sunny AI</td>
@@ -2006,20 +2006,20 @@ function SettingsPage() {
                     <tr>
                       <td className="py-2.5 pr-4 text-text-secondary">Business insights</td>
                       <td className="py-2.5 px-3 text-center text-text-tertiary">—</td>
-                      <td className="py-2.5 px-3 text-center text-green-600">✓</td>
-                      <td className="py-2.5 px-3 text-center text-green-600">✓</td>
+                      <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                      <td className="py-2.5 px-3 text-center text-success-600">✓</td>
                     </tr>
                     <tr>
                       <td className="py-2.5 pr-4 text-text-secondary">Full P&L reports</td>
                       <td className="py-2.5 px-3 text-center text-text-tertiary">—</td>
-                      <td className="py-2.5 px-3 text-center text-green-600">✓</td>
-                      <td className="py-2.5 px-3 text-center text-green-600">✓</td>
+                      <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                      <td className="py-2.5 px-3 text-center text-success-600">✓</td>
                     </tr>
                     <tr>
                       <td className="py-2.5 pr-4 text-text-secondary">CRM</td>
                       <td className="py-2.5 px-3 text-center text-text-tertiary">—</td>
-                      <td className="py-2.5 px-3 text-center text-green-600">✓</td>
-                      <td className="py-2.5 px-3 text-center text-green-600">✓</td>
+                      <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                      <td className="py-2.5 px-3 text-center text-success-600">✓</td>
                     </tr>
                     <tr>
                       <td className="py-2.5 pr-4 text-text-secondary">Team members</td>
@@ -2260,7 +2260,7 @@ function SettingsPage() {
                         {!member.is_owner && (
                           <button
                             onClick={() => setConfirmRemove(member)}
-                            className="p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-50 transition-colors"
+                            className="p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:text-error-500 hover:bg-error-50 transition-colors"
                             title="Remove member"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -2306,7 +2306,7 @@ function SettingsPage() {
                         </Button>
                         <button
                           onClick={() => setConfirmRemove(member)}
-                          className="p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-50 transition-colors"
+                          className="p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:text-error-500 hover:bg-error-50 transition-colors"
                           title="Cancel invite"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

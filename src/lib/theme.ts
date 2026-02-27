@@ -242,8 +242,22 @@ export function applyTheme(theme: ThemeDefinition): void {
   // Accent semantic aliases
   root.style.setProperty('--accent-primary', theme.accent);
   root.style.setProperty('--accent-hover', theme.accentHover);
-  root.style.setProperty('--accent-subtle', scale[50]);
-  root.style.setProperty('--accent-muted', scale[100]);
+
+  if (theme.mode === 'dark') {
+    // Dark themes: light accent steps become dark tints so bg-accent-50
+    // doesn't render as near-white on dark backgrounds
+    const am = hexToHSL(theme.accentMuted);
+    const a100 = hslToHex(am.h, Math.min(am.s + 5, 100), Math.min(am.l + 4, 22));
+    const a200 = hslToHex(am.h, Math.min(am.s + 8, 100), Math.min(am.l + 8, 28));
+    root.style.setProperty('--accent-50', theme.accentMuted);
+    root.style.setProperty('--accent-100', a100);
+    root.style.setProperty('--accent-200', a200);
+    root.style.setProperty('--accent-subtle', theme.accentMuted);
+    root.style.setProperty('--accent-muted', a100);
+  } else {
+    root.style.setProperty('--accent-subtle', scale[50]);
+    root.style.setProperty('--accent-muted', scale[100]);
+  }
 
   // Surfaces
   root.style.setProperty('--surface-base', theme.background);
@@ -291,6 +305,32 @@ export function applyTheme(theme: ThemeDefinition): void {
   root.style.setProperty('--color-success', theme.success);
   root.style.setProperty('--color-warning', theme.warning);
   root.style.setProperty('--color-danger', theme.danger);
+
+  // Functional color variants for dark themes
+  // Light-mode defaults (globals.css) use near-white tints like #fef2f2
+  // that look wrong on dark backgrounds — override with dark tints
+  if (theme.mode === 'dark') {
+    root.style.setProperty('--success-50', '#0D1C15');
+    root.style.setProperty('--success-100', '#12281C');
+    root.style.setProperty('--success-200', '#1A3826');
+    root.style.setProperty('--success-500', '#34D399');
+    root.style.setProperty('--success-600', '#34D399');
+    root.style.setProperty('--warning-50', '#1C1808');
+    root.style.setProperty('--warning-100', '#2A220D');
+    root.style.setProperty('--warning-200', '#3B3014');
+    root.style.setProperty('--warning-500', '#FBBF24');
+    root.style.setProperty('--warning-600', '#FBBF24');
+    root.style.setProperty('--error-50', '#1C1012');
+    root.style.setProperty('--error-100', '#2A1619');
+    root.style.setProperty('--error-200', '#3B2024');
+    root.style.setProperty('--error-500', '#F87171');
+    root.style.setProperty('--error-600', '#F87171');
+    root.style.setProperty('--info-50', '#0F1420');
+    root.style.setProperty('--info-100', '#141C2E');
+    root.style.setProperty('--info-200', '#1C283E');
+    root.style.setProperty('--info-500', '#60A5FA');
+    root.style.setProperty('--info-600', '#60A5FA');
+  }
 
   // Shadow adjustments for dark themes
   if (theme.mode === 'dark') {

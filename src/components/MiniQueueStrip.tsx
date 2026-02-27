@@ -402,7 +402,7 @@ function QueueCard({
                   </button>
                   <button
                     onClick={() => onRemove(entry)}
-                    className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                    className="w-full text-left px-3 py-2 text-sm text-error-600 hover:bg-error-50"
                   >
                     Remove
                   </button>
@@ -426,7 +426,7 @@ function QueueCard({
           <div className="text-[11px] text-[var(--text-tertiary)]">
             {waitTime}
             {entry.waiver_id && (
-              <span className="ml-1 text-green-600">✓</span>
+              <span className="ml-1 text-success-600">✓</span>
             )}
             {entry.phone && !entry.sms_consent && (
               <span className="ml-1 text-amber-500" title="No SMS consent">⊘ No SMS</span>

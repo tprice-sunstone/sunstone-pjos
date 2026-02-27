@@ -171,11 +171,11 @@ export default function AdminUsersPage() {
                   </td>
                   <td className="px-4 py-3">
                     {u.banned ? (
-                      <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700">
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-error-50 text-error-600">
                         Banned
                       </span>
                     ) : (
-                      <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700">
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-success-50 text-success-600">
                         Active
                       </span>
                     )}
@@ -197,7 +197,7 @@ export default function AdminUsersPage() {
                         <button
                           onClick={() => setConfirmAction({ userId: u.id, action: 'unban' })}
                           disabled={actionLoading === u.id}
-                          className="px-2.5 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors disabled:opacity-50"
+                          className="px-2.5 py-1.5 text-xs font-medium text-success-600 hover:bg-success-50 rounded-md transition-colors disabled:opacity-50"
                         >
                           Unban
                         </button>
@@ -205,7 +205,7 @@ export default function AdminUsersPage() {
                         <button
                           onClick={() => setConfirmAction({ userId: u.id, action: 'ban' })}
                           disabled={actionLoading === u.id}
-                          className="px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                          className="px-2.5 py-1.5 text-xs font-medium text-error-600 hover:bg-error-50 rounded-md transition-colors disabled:opacity-50"
                         >
                           Ban
                         </button>

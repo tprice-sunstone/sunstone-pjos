@@ -943,8 +943,8 @@ function TagManagerModal({
 
         {/* Delete confirmation */}
         {confirmDelete && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-700">
+          <div className="mt-4 p-3 bg-error-50 border border-error-200 rounded-lg">
+            <p className="text-sm text-error-600">
               Delete &quot;{confirmDelete.name}&quot;? This will remove it from {confirmDelete.usage_count} client{confirmDelete.usage_count !== 1 ? 's' : ''}.
             </p>
             <div className="flex gap-2 mt-2">

@@ -113,7 +113,7 @@ export default function AdminMentorPage() {
         >
           Pending Gaps
           {pendingCount > 0 && (
-            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-warning-100 text-warning-600">
               {pendingCount}
             </span>
           )}
@@ -160,8 +160,8 @@ function StatCard({ label, value, color, isText }: {
   isText?: boolean;
 }) {
   const colors = {
-    amber: 'bg-amber-50 border-amber-200 text-amber-700',
-    emerald: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+    amber: 'bg-warning-50 border-warning-200 text-warning-600',
+    emerald: 'bg-success-50 border-success-200 text-success-600',
     slate: 'bg-[var(--surface-subtle)] border-[var(--border-default)] text-[var(--text-secondary)]',
   };
 
@@ -266,8 +266,8 @@ function GapsTab({
 
               {/* Approve form */}
               {approveForm?.gapId === gap.id ? (
-                <div className="space-y-3 bg-emerald-50 rounded-lg p-4 border border-emerald-200">
-                  <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Teach Sunny the Correct Answer</p>
+                <div className="space-y-3 bg-success-50 rounded-lg p-4 border border-success-200">
+                  <p className="text-xs font-semibold text-success-600 uppercase tracking-wider">Teach Sunny the Correct Answer</p>
                   <div>
                     <label className="text-xs font-medium text-[var(--text-secondary)]">Category</label>
                     <select
@@ -412,8 +412,8 @@ function KnowledgeTab({
 
       {/* Add form */}
       {showAddForm && (
-        <div className="bg-amber-50 rounded-lg border border-amber-200 p-4 space-y-3">
-          <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider">Manually Teach Sunny</p>
+        <div className="bg-warning-50 rounded-lg border border-warning-200 p-4 space-y-3">
+          <p className="text-xs font-semibold text-warning-600 uppercase tracking-wider">Manually Teach Sunny</p>
           <div>
             <label className="text-xs font-medium text-[var(--text-secondary)]">Category</label>
             <select
@@ -557,13 +557,13 @@ function getTopCategory(gaps: KnowledgeGap[]): string {
 
 function CategoryBadge({ category }: { category: string }) {
   const colors: Record<string, string> = {
-    welding: 'bg-orange-100 text-orange-700',
-    equipment: 'bg-blue-100 text-blue-700',
-    business: 'bg-purple-100 text-purple-700',
-    products: 'bg-pink-100 text-pink-700',
-    marketing: 'bg-teal-100 text-teal-700',
-    troubleshooting: 'bg-red-100 text-red-700',
-    client_experience: 'bg-green-100 text-green-700',
+    welding: 'bg-warning-100 text-warning-600',
+    equipment: 'bg-info-100 text-info-600',
+    business: 'bg-accent-100 text-accent-600',
+    products: 'bg-accent-100 text-accent-600',
+    marketing: 'bg-success-100 text-success-600',
+    troubleshooting: 'bg-error-100 text-error-600',
+    client_experience: 'bg-success-100 text-success-600',
     other: 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]',
   };
 

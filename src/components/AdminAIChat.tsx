@@ -372,7 +372,7 @@ export default function AdminAIChat() {
                   <button
                     key={prompt}
                     onClick={() => sendMessage(prompt)}
-                    className="px-3 py-2 text-xs font-medium text-[var(--text-secondary)] bg-[var(--surface-subtle)] border border-[var(--border-default)] rounded-full hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-colors text-left"
+                    className="px-3 py-2 text-xs font-medium text-[var(--text-secondary)] bg-[var(--surface-subtle)] border border-[var(--border-default)] rounded-full hover:bg-warning-50 hover:border-warning-200 hover:text-warning-600 transition-colors text-left"
                   >
                     {prompt}
                   </button>

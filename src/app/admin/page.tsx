@@ -38,13 +38,13 @@ const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigi
 function insightConfig(type: string): { color: string; border: string; bg: string; iconBg: string; label: string } {
   switch (type) {
     case 'growth':
-      return { color: 'text-emerald-700', border: 'border-l-emerald-500', bg: 'bg-emerald-50', iconBg: 'bg-emerald-100', label: 'Growth' };
+      return { color: 'text-success-600', border: 'border-l-emerald-500', bg: 'bg-success-50', iconBg: 'bg-success-100', label: 'Growth' };
     case 'attention':
-      return { color: 'text-amber-700', border: 'border-l-amber-500', bg: 'bg-amber-50', iconBg: 'bg-amber-100', label: 'Attention' };
+      return { color: 'text-warning-600', border: 'border-l-amber-500', bg: 'bg-warning-50', iconBg: 'bg-warning-100', label: 'Attention' };
     case 'churn_risk':
-      return { color: 'text-red-700', border: 'border-l-red-500', bg: 'bg-red-50', iconBg: 'bg-red-100', label: 'Churn Risk' };
+      return { color: 'text-error-600', border: 'border-l-red-500', bg: 'bg-error-50', iconBg: 'bg-error-100', label: 'Churn Risk' };
     case 'opportunity':
-      return { color: 'text-blue-700', border: 'border-l-blue-500', bg: 'bg-blue-50', iconBg: 'bg-blue-100', label: 'Opportunity' };
+      return { color: 'text-info-600', border: 'border-l-blue-500', bg: 'bg-info-50', iconBg: 'bg-info-100', label: 'Opportunity' };
     case 'milestone':
       return { color: 'text-purple-700', border: 'border-l-purple-500', bg: 'bg-purple-50', iconBg: 'bg-purple-100', label: 'Milestone' };
     default:
@@ -282,7 +282,7 @@ export default function AdminOverviewPage() {
             <p className="text-sm text-[var(--text-secondary)] mb-3">Insights unavailable — check back soon</p>
             <button
               onClick={loadInsights}
-              className="px-4 py-2 bg-amber-50 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-100 transition-colors"
+              className="px-4 py-2 bg-warning-50 text-warning-600 rounded-lg text-sm font-medium hover:bg-warning-100 transition-colors"
             >
               Retry
             </button>
@@ -290,7 +290,7 @@ export default function AdminOverviewPage() {
         ) : insights.length === 0 ? (
           // Empty state
           <div className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-8 text-center">
-            <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-3">
+            <div className="w-12 h-12 rounded-full bg-warning-50 flex items-center justify-center mx-auto mb-3">
               <SparkleIcon className="w-6 h-6 text-amber-500" />
             </div>
             <p className="text-sm text-[var(--text-secondary)]">No insights yet — insights will appear as platform data grows.</p>
@@ -341,8 +341,8 @@ function PlanRow({ tier, count, total, color }: { tier: string; count: number; t
 function TierBadge({ tier }: { tier: string }) {
   const styles: Record<string, string> = {
     free: 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]',
-    pro: 'bg-blue-50 text-blue-700',
-    business: 'bg-amber-50 text-amber-700',
+    pro: 'bg-info-50 text-info-600',
+    business: 'bg-warning-50 text-warning-600',
   };
   return (
     <span className={cn('inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium shrink-0', styles[tier] || styles.free)}>

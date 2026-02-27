@@ -282,7 +282,7 @@ export default function DashboardPage() {
               <span className="inline-flex items-center gap-1">
                 <span
                   className={
-                    stats.weekPctChange >= 0 ? 'text-green-600' : 'text-red-500'
+                    stats.weekPctChange >= 0 ? 'text-success-600' : 'text-error-500'
                   }
                 >
                   {stats.weekPctChange >= 0 ? '↑' : '↓'}{' '}
@@ -315,7 +315,7 @@ export default function DashboardPage() {
           loading={statsLoading}
           value={stats ? String(stats.lowStockCount) : '0'}
           valueColor={
-            stats && stats.lowStockCount > 0 ? 'text-amber-600' : undefined
+            stats && stats.lowStockCount > 0 ? 'text-warning-600' : undefined
           }
           subtitle={
             stats?.lowStockCritical
@@ -523,18 +523,18 @@ const INSIGHT_STYLES: Record<
 > = {
   growth: {
     border: 'border-l-green-500',
-    iconBg: 'bg-green-50',
-    iconColor: 'text-green-600',
+    iconBg: 'bg-success-50',
+    iconColor: 'text-success-600',
   },
   attention: {
     border: 'border-l-amber-500',
-    iconBg: 'bg-amber-50',
-    iconColor: 'text-amber-600',
+    iconBg: 'bg-warning-50',
+    iconColor: 'text-warning-600',
   },
   tip: {
     border: 'border-l-blue-500',
-    iconBg: 'bg-blue-50',
-    iconColor: 'text-blue-600',
+    iconBg: 'bg-info-50',
+    iconColor: 'text-info-600',
   },
   milestone: {
     border: 'border-l-purple-500',

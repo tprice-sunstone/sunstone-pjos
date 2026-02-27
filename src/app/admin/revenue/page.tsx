@@ -258,8 +258,8 @@ export default function AdminRevenuePage() {
 function TierBadge({ tier }: { tier: string }) {
   const styles: Record<string, string> = {
     free: 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]',
-    pro: 'bg-blue-50 text-blue-700',
-    business: 'bg-amber-50 text-amber-700',
+    pro: 'bg-info-50 text-info-600',
+    business: 'bg-warning-50 text-warning-600',
   };
   return (
     <span className={cn('inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium', styles[tier] || styles.free)}>

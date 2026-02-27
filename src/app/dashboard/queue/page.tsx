@@ -175,7 +175,7 @@ export default function QueuePage() {
           {/* Waiting */}
           {waiting.length > 0 && (
             <section>
-              <h2 className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-3">
+              <h2 className="text-xs font-semibold text-warning-600 uppercase tracking-wider mb-3">
                 Waiting ({waiting.length})
               </h2>
               <div className="space-y-2">
@@ -221,7 +221,7 @@ function QueueCard({ entry, onStatusChange }: {
             <div className="flex items-center gap-1.5">
               <span className="font-medium text-text-primary">{entry.name}</span>
               {entry.phone && !entry.sms_consent && (
-                <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-600 bg-amber-50 rounded px-1.5 py-0.5" title="SMS consent not given — notify in person">
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-warning-600 bg-warning-50 rounded px-1.5 py-0.5" title="SMS consent not given — notify in person">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                   </svg>
@@ -244,7 +244,7 @@ function QueueCard({ entry, onStatusChange }: {
           )}
           {entry.status === 'notified' && (
             <>
-              <Button variant="ghost" size="sm" className="text-emerald-600" onClick={() => onStatusChange(entry.id, 'served')}>
+              <Button variant="ghost" size="sm" className="text-success-600" onClick={() => onStatusChange(entry.id, 'served')}>
                 Served
               </Button>
               <Button variant="ghost" size="sm" className="text-text-tertiary" onClick={() => onStatusChange(entry.id, 'no_show')}>

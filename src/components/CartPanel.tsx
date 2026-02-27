@@ -105,7 +105,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                     {item.quantity > 1 && <span>{item.quantity} x </span>}
                     <span className="">${item.unit_price.toFixed(2)}</span>
                     {item.discount_type && item.discount_value > 0 && (
-                      <span className="text-green-600 font-medium">
+                      <span className="text-success-600 font-medium">
                         (-{item.discount_type === 'flat' ? `$${item.discount_value.toFixed(2)}` : `${item.discount_value}%`})
                       </span>
                     )}
@@ -129,7 +129,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                       }}
                       className={`p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg transition-colors ${
                         item.discount_type && item.discount_value > 0
-                          ? 'text-green-600 bg-green-50 hover:bg-green-100'
+                          ? 'text-success-600 bg-success-50 hover:bg-success-100'
                           : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] opacity-0 group-hover:opacity-100'
                       }`}
                       title="Item discount"
@@ -141,7 +141,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                   )}
                   <button
                     onClick={() => cart.removeItem(item.id)}
-                    className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg hover:bg-red-50 opacity-0 group-hover:opacity-100"
+                    className="text-[var(--text-tertiary)] hover:text-error-500 transition-colors p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg hover:bg-error-50 opacity-0 group-hover:opacity-100"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -199,7 +199,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                     {item.discount_type && item.discount_value > 0 && (
                       <button
                         onClick={() => clearItemDiscount(item.id)}
-                        className="h-9 px-2 rounded-lg text-red-500 hover:bg-red-50 text-xs font-medium transition-colors"
+                        className="h-9 px-2 rounded-lg text-error-500 hover:bg-error-50 text-xs font-medium transition-colors"
                       >
                         Clear
                       </button>
@@ -223,7 +223,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
         {cart.items.length > 0 && canDiscount && (
           <div>
             {hasCartDiscount ? (
-              <div className="flex items-center justify-between text-green-600">
+              <div className="flex items-center justify-between text-success-600">
                 <button
                   onClick={() => {
                     setShowCartDiscount(true);
@@ -294,7 +294,7 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                   {hasCartDiscount && (
                     <button
                       onClick={clearCartDiscount}
-                      className="h-9 px-2 rounded-lg text-red-500 hover:bg-red-50 text-xs font-medium transition-colors"
+                      className="h-9 px-2 rounded-lg text-error-500 hover:bg-error-50 text-xs font-medium transition-colors"
                     >
                       Clear
                     </button>
@@ -313,14 +313,14 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
 
         {/* Read-only discount display for non-privileged users */}
         {cart.items.length > 0 && !canDiscount && hasCartDiscount && (
-          <div className="flex items-center justify-between text-green-600">
+          <div className="flex items-center justify-between text-success-600">
             <span className="text-xs">Discount</span>
             <span className="">-${(cart.discount_amount).toFixed(2)}</span>
           </div>
         )}
 
         {cart.discount_amount > 0 && !hasCartDiscount && (
-          <div className="flex justify-between text-green-600">
+          <div className="flex justify-between text-success-600">
             <span>Item discounts</span>
             <span className="">-${cart.discount_amount.toFixed(2)}</span>
           </div>
