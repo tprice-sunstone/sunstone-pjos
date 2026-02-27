@@ -27,18 +27,44 @@ export default function DashboardPage() {
   const [cardsLoading, setCardsLoading] = useState(true);
   const [eventsThisWeek, setEventsThisWeek] = useState<number>(0);
 
+  // ── Fallback cards — shown if API fails or returns nothing ────────────
+  const clientFallbackCards: DashboardCard[] = [
+    {
+      type: 'revenue_snapshot',
+      priority: 5,
+      data: {
+        monthRevenue: 0,
+        lastMonthRevenue: 0,
+        pctChange: null,
+        salesCount: 0,
+        eventsCount: 0,
+        dailyBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      },
+    },
+    {
+      type: 'sunstone_product',
+      priority: 50,
+      data: {
+        title: 'Set Up Your Inventory',
+        body: 'Add your chains, charms, and supplies to start tracking stock and pricing products automatically.',
+        actionLabel: 'Add Inventory',
+        actionRoute: '/dashboard/inventory',
+      },
+    },
+  ];
+
   // ── Fetch dashboard cards ──────────────────────────────────────────────
   const fetchCards = useCallback(async (refresh = false) => {
     setCardsLoading(true);
     try {
       const url = refresh ? '/api/dashboard/cards?refresh=1' : '/api/dashboard/cards';
       const res = await fetch(url);
-      if (!res.ok) throw new Error('Failed to fetch cards');
       const data = await res.json();
-      setCards(data.cards || []);
+      const fetched = Array.isArray(data?.cards) ? data.cards : [];
+      setCards(fetched.length > 0 ? fetched : clientFallbackCards);
     } catch (err) {
       console.error('Failed to fetch dashboard cards:', err);
-      setCards([]);
+      setCards(clientFallbackCards);
     } finally {
       setCardsLoading(false);
     }

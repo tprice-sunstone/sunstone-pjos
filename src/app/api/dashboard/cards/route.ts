@@ -4,6 +4,10 @@
 // GET: Generates context-aware dashboard cards from real tenant data.
 // Pure data queries — no AI/LLM calls. Cached for 24 hours per tenant.
 // Returns structured data payloads that card components render directly.
+//
+// Resilience: Each card generator is wrapped in try/catch so one failing
+// query never kills the entire dashboard. Revenue + Sunstone tip are
+// guaranteed to always appear.
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -29,6 +33,37 @@ function daysUntil(dateStr: string): number {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Default fallback cards — returned when API cannot reach the database
+// ─────────────────────────────────────────────────────────────────────────────
+
+function fallbackCards(): DashboardCard[] {
+  return [
+    {
+      type: 'revenue_snapshot',
+      priority: 5,
+      data: {
+        monthRevenue: 0,
+        lastMonthRevenue: 0,
+        pctChange: null,
+        salesCount: 0,
+        eventsCount: 0,
+        dailyBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      },
+    },
+    {
+      type: 'sunstone_product',
+      priority: 50,
+      data: {
+        title: 'Set Up Your Inventory',
+        body: 'Add your chains, charms, and supplies to start tracking stock and pricing products automatically.',
+        actionLabel: 'Add Inventory',
+        actionRoute: '/dashboard/inventory',
+      },
+    },
+  ];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/dashboard/cards
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -40,10 +75,18 @@ export async function GET(request: NextRequest) {
       error: authError,
     } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+      // Return fallback cards instead of 401 — dashboard should never be blank
+      console.warn('Dashboard cards: not authenticated, returning fallback');
+      return NextResponse.json({ cards: fallbackCards(), cached: false, fallback: true });
     }
 
-    const db = await createServiceRoleClient();
+    let db;
+    try {
+      db = await createServiceRoleClient();
+    } catch (err) {
+      console.error('Dashboard cards: failed to create service client:', err);
+      return NextResponse.json({ cards: fallbackCards(), cached: false, fallback: true });
+    }
 
     const { data: membership } = await db
       .from('tenant_members')
@@ -53,7 +96,8 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (!membership) {
-      return NextResponse.json({ error: 'No tenant found' }, { status: 403 });
+      console.warn('Dashboard cards: no tenant membership for user', user.id);
+      return NextResponse.json({ cards: fallbackCards(), cached: false, fallback: true });
     }
 
     const tenantId = membership.tenant_id;
@@ -68,8 +112,10 @@ export async function GET(request: NextRequest) {
           .eq('tenant_id', tenantId)
           .single();
 
-        if (cached && new Date(cached.expires_at) > new Date()) {
-          return NextResponse.json({ cards: cached.cards, cached: true });
+        if (cached && cached.cards && Array.isArray(cached.cards) && cached.cards.length > 0) {
+          if (new Date(cached.expires_at) > new Date()) {
+            return NextResponse.json({ cards: cached.cards, cached: true });
+          }
         }
       } catch {
         // Cache table may not exist — continue to generate
@@ -78,6 +124,12 @@ export async function GET(request: NextRequest) {
 
     // Generate cards
     const cards = await generateCards(db, tenantId);
+
+    // Safety net: if generateCards returned nothing, use fallback
+    if (cards.length === 0) {
+      console.warn('Dashboard cards: generateCards returned empty, using fallback');
+      return NextResponse.json({ cards: fallbackCards(), cached: false, fallback: true });
+    }
 
     // Try to cache (upsert) — non-critical if table doesn't exist
     try {
@@ -100,15 +152,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ cards, cached: false });
   } catch (err) {
     console.error('Dashboard cards error:', err);
-    return NextResponse.json(
-      { error: 'Failed to generate dashboard cards' },
-      { status: 500 }
-    );
+    // Return fallback cards instead of 500 — dashboard should never be blank
+    return NextResponse.json({ cards: fallbackCards(), cached: false, fallback: true });
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Card Generation
+// Card Generation — each section wrapped in try/catch for resilience
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function generateCards(
@@ -126,301 +176,361 @@ async function generateCards(
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const fourteenDaysFromNow = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
-  // Run all queries in parallel
-  const [
-    eventsResult,
-    thisMonthSalesResult,
-    lastMonthSalesResult,
-    dailySalesResult,
-    eventsThisMonthResult,
-    lowStockResult,
-    staleClientsResult,
-    clientCountResult,
-    broadcastsResult,
-    upcomingEventsResult,
-  ] = await Promise.all([
-    // Next event (within 7 days)
-    db
-      .from('events')
-      .select('id, name, location, start_time, booth_fee')
-      .eq('tenant_id', tenantId)
-      .gte('start_time', now.toISOString())
-      .order('start_time', { ascending: true })
-      .limit(1),
+  // Run all queries in parallel — wrapped in try/catch so one table missing
+  // doesn't kill everything. Each result defaults to empty if query fails.
+  let eventsResult: { data: any[] | null } = { data: [] };
+  let thisMonthSalesResult: { data: any[] | null } = { data: [] };
+  let lastMonthSalesResult: { data: any[] | null } = { data: [] };
+  let dailySalesResult: { data: any[] | null } = { data: [] };
+  let eventsThisMonthResult: { count: number | null } = { count: 0 };
+  let lowStockResult: { data: any[] | null } = { data: [] };
+  let staleClientsResult: { data: any[] | null } = { data: [] };
+  let clientCountResult: { count: number | null } = { count: 0 };
+  let broadcastsResult: { data: any[] | null } = { data: [] };
+  let upcomingEventsResult: { data: any[] | null } = { data: [] };
 
-    // This month sales
-    db
-      .from('sales')
-      .select('subtotal, created_at')
-      .eq('tenant_id', tenantId)
-      .eq('status', 'completed')
-      .gte('created_at', thisMonthStart.toISOString()),
+  try {
+    [
+      eventsResult,
+      thisMonthSalesResult,
+      lastMonthSalesResult,
+      dailySalesResult,
+      eventsThisMonthResult,
+      lowStockResult,
+      staleClientsResult,
+      clientCountResult,
+      broadcastsResult,
+      upcomingEventsResult,
+    ] = await Promise.all([
+      // Next event
+      db
+        .from('events')
+        .select('id, name, location, start_time, booth_fee')
+        .eq('tenant_id', tenantId)
+        .gte('start_time', now.toISOString())
+        .order('start_time', { ascending: true })
+        .limit(1),
 
-    // Last month sales
-    db
-      .from('sales')
-      .select('subtotal')
-      .eq('tenant_id', tenantId)
-      .eq('status', 'completed')
-      .gte('created_at', lastMonthStart.toISOString())
-      .lt('created_at', lastMonthEnd.toISOString()),
-
-    // Daily sales for bar chart (last 12 days)
-    (() => {
-      const twelveAgo = new Date(now.getTime() - 12 * 24 * 60 * 60 * 1000);
-      return db
+      // This month sales
+      db
         .from('sales')
         .select('subtotal, created_at')
         .eq('tenant_id', tenantId)
         .eq('status', 'completed')
-        .gte('created_at', twelveAgo.toISOString());
-    })(),
+        .gte('created_at', thisMonthStart.toISOString()),
 
-    // Events this month (for revenue card subtitle)
-    db
-      .from('events')
-      .select('id', { count: 'exact', head: true })
-      .eq('tenant_id', tenantId)
-      .gte('start_time', thisMonthStart.toISOString())
-      .lt('start_time', new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString()),
+      // Last month sales
+      db
+        .from('sales')
+        .select('subtotal')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'completed')
+        .gte('created_at', lastMonthStart.toISOString())
+        .lt('created_at', lastMonthEnd.toISOString()),
 
-    // Inventory items (all active)
-    db
-      .from('inventory_items')
-      .select('id, name, quantity_on_hand, reorder_threshold')
-      .eq('tenant_id', tenantId)
-      .eq('is_active', true),
+      // Daily sales for bar chart (last 12 days)
+      (() => {
+        const twelveAgo = new Date(now.getTime() - 12 * 24 * 60 * 60 * 1000);
+        return db
+          .from('sales')
+          .select('subtotal, created_at')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'completed')
+          .gte('created_at', twelveAgo.toISOString());
+      })(),
 
-    // Stale clients: created 60+ days ago, check last sale
-    db
-      .from('clients')
-      .select('id, first_name, last_name, created_at')
-      .eq('tenant_id', tenantId)
-      .lt('created_at', sixtyDaysAgo.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(20),
+      // Events this month (for revenue card subtitle)
+      db
+        .from('events')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .gte('start_time', thisMonthStart.toISOString())
+        .lt('start_time', new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString()),
 
-    // Total client count
-    db
-      .from('clients')
-      .select('id', { count: 'exact', head: true })
-      .eq('tenant_id', tenantId),
+      // Inventory items (all active)
+      db
+        .from('inventory_items')
+        .select('id, name, quantity_on_hand, reorder_threshold')
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true),
 
-    // Recent broadcasts (last 7 days)
-    db
-      .from('broadcasts')
-      .select('id, name, status, sent_count, total_recipients, sent_at, created_at')
-      .eq('tenant_id', tenantId)
-      .eq('status', 'completed')
-      .gte('sent_at', sevenDaysAgo.toISOString())
-      .order('sent_at', { ascending: false })
-      .limit(5),
+      // Stale clients: created 60+ days ago
+      db
+        .from('clients')
+        .select('id, first_name, last_name, created_at')
+        .eq('tenant_id', tenantId)
+        .lt('created_at', sixtyDaysAgo.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(20),
 
-    // Upcoming events in next 14 days (for nudge check)
-    db
-      .from('events')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .gte('start_time', now.toISOString())
-      .lt('start_time', fourteenDaysFromNow.toISOString()),
-  ]);
+      // Total client count
+      db
+        .from('clients')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId),
+
+      // Recent broadcasts (last 7 days)
+      db
+        .from('broadcasts')
+        .select('id, name, status, sent_count, total_recipients, sent_at, created_at')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'completed')
+        .gte('sent_at', sevenDaysAgo.toISOString())
+        .order('sent_at', { ascending: false })
+        .limit(5),
+
+      // Upcoming events in next 14 days (for nudge check)
+      db
+        .from('events')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .gte('start_time', now.toISOString())
+        .lt('start_time', fourteenDaysFromNow.toISOString()),
+    ]);
+  } catch (err) {
+    console.error('Dashboard cards: parallel queries failed:', err);
+    // Continue with defaults — revenue $0 card will still be generated below
+  }
 
   // ── Next Event Card ─────────────────────────────────────────────────────
-  const upcomingEvents = eventsResult.data || [];
-  if (upcomingEvents.length > 0) {
-    const next = upcomingEvents[0];
-    const days = daysUntil(next.start_time);
-    if (days <= 7) {
+  try {
+    const upcomingEvents = eventsResult.data || [];
+    if (upcomingEvents.length > 0) {
+      const next = upcomingEvents[0];
+      const days = daysUntil(next.start_time);
+      if (days <= 7) {
+        cards.push({
+          type: 'next_event',
+          priority: days <= 3 ? 1 : 10,
+          data: {
+            eventName: next.name,
+            date: formatDate(next.start_time),
+            location: next.location,
+            daysUntil: days,
+            boothFee: next.booth_fee || 0,
+          },
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Dashboard cards: next_event failed:', err);
+  }
+
+  // ── Revenue Snapshot (ALWAYS shown — $0 if no sales) ────────────────────
+  try {
+    const thisMonthSales = thisMonthSalesResult.data || [];
+    const lastMonthSales = lastMonthSalesResult.data || [];
+    const dailySalesRaw = dailySalesResult.data || [];
+
+    const monthRevenue = thisMonthSales.reduce((s: number, r: any) => s + (Number(r.subtotal) || 0), 0);
+    const lastMonthRevenue = lastMonthSales.reduce((s: number, r: any) => s + (Number(r.subtotal) || 0), 0);
+    const pctChange = lastMonthRevenue > 0
+      ? ((monthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+      : null;
+
+    // Build 12-day bar chart data
+    const dailyTotals: number[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+      const dayTotal = dailySalesRaw
+        .filter((s: any) => {
+          const d = new Date(s.created_at);
+          return d >= dayStart && d < dayEnd;
+        })
+        .reduce((sum: number, s: any) => sum + (Number(s.subtotal) || 0), 0);
+      dailyTotals.push(dayTotal);
+    }
+    const maxDaily = Math.max(...dailyTotals, 1);
+    const dailyBars = dailyTotals.map((d) => d / maxDaily);
+
+    cards.push({
+      type: 'revenue_snapshot',
+      priority: 5,
+      data: {
+        monthRevenue,
+        lastMonthRevenue,
+        pctChange: pctChange !== null ? Math.round(pctChange) : null,
+        salesCount: thisMonthSales.length,
+        eventsCount: eventsThisMonthResult.count || 0,
+        dailyBars,
+      },
+    });
+  } catch (err) {
+    console.error('Dashboard cards: revenue_snapshot failed:', err);
+    // Push a $0 revenue card even if the calculation fails
+    cards.push({
+      type: 'revenue_snapshot',
+      priority: 5,
+      data: {
+        monthRevenue: 0,
+        lastMonthRevenue: 0,
+        pctChange: null,
+        salesCount: 0,
+        eventsCount: 0,
+        dailyBars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      },
+    });
+  }
+
+  // ── Inventory Alert ─────────────────────────────────────────────────────
+  try {
+    const allStock = lowStockResult.data || [];
+    const lowItems = allStock
+      .filter((i: any) => i.quantity_on_hand <= i.reorder_threshold)
+      .sort((a: any, b: any) => {
+        const ra = a.reorder_threshold > 0 ? a.quantity_on_hand / a.reorder_threshold : 0;
+        const rb = b.reorder_threshold > 0 ? b.quantity_on_hand / b.reorder_threshold : 0;
+        return ra - rb;
+      })
+      .slice(0, 4);
+
+    if (lowItems.length > 0) {
       cards.push({
-        type: 'next_event',
-        priority: days <= 3 ? 1 : 10,
+        type: 'inventory_alert',
+        priority: lowItems.some((i: any) => i.quantity_on_hand === 0) ? 2 : 15,
         data: {
-          eventName: next.name,
-          date: formatDate(next.start_time),
-          location: next.location,
-          daysUntil: days,
-          boothFee: next.booth_fee || 0,
+          items: lowItems.map((i: any) => ({
+            name: i.name,
+            stock: i.quantity_on_hand,
+            threshold: i.reorder_threshold,
+            status:
+              i.quantity_on_hand === 0
+                ? 'critical'
+                : i.quantity_on_hand <= i.reorder_threshold * 0.5
+                  ? 'critical'
+                  : 'low',
+          })),
         },
       });
     }
-  }
-
-  // ── Revenue Snapshot (always shown) ─────────────────────────────────────
-  const thisMonthSales = thisMonthSalesResult.data || [];
-  const lastMonthSales = lastMonthSalesResult.data || [];
-  const dailySalesRaw = dailySalesResult.data || [];
-
-  const monthRevenue = thisMonthSales.reduce((s, r) => s + (r.subtotal || 0), 0);
-  const lastMonthRevenue = lastMonthSales.reduce((s, r) => s + (r.subtotal || 0), 0);
-  const pctChange = lastMonthRevenue > 0
-    ? ((monthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
-    : null;
-
-  // Build 12-day bar chart data
-  const dailyTotals: number[] = [];
-  for (let i = 11; i >= 0; i--) {
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
-    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-    const dayTotal = dailySalesRaw
-      .filter((s) => {
-        const d = new Date(s.created_at);
-        return d >= dayStart && d < dayEnd;
-      })
-      .reduce((sum, s) => sum + (s.subtotal || 0), 0);
-    dailyTotals.push(dayTotal);
-  }
-  const maxDaily = Math.max(...dailyTotals, 1);
-  const dailyBars = dailyTotals.map((d) => d / maxDaily);
-
-  cards.push({
-    type: 'revenue_snapshot',
-    priority: 5,
-    data: {
-      monthRevenue,
-      lastMonthRevenue,
-      pctChange: pctChange !== null ? Math.round(pctChange) : null,
-      salesCount: thisMonthSales.length,
-      eventsCount: eventsThisMonthResult.count || 0,
-      dailyBars,
-    },
-  });
-
-  // ── Inventory Alert ─────────────────────────────────────────────────────
-  const allStock = lowStockResult.data || [];
-  const lowItems = allStock
-    .filter((i) => i.quantity_on_hand <= i.reorder_threshold)
-    .sort((a, b) => {
-      const ra = a.reorder_threshold > 0 ? a.quantity_on_hand / a.reorder_threshold : 0;
-      const rb = b.reorder_threshold > 0 ? b.quantity_on_hand / b.reorder_threshold : 0;
-      return ra - rb;
-    })
-    .slice(0, 4);
-
-  if (lowItems.length > 0) {
-    cards.push({
-      type: 'inventory_alert',
-      priority: lowItems.some((i) => i.quantity_on_hand === 0) ? 2 : 15,
-      data: {
-        items: lowItems.map((i) => ({
-          name: i.name,
-          stock: i.quantity_on_hand,
-          threshold: i.reorder_threshold,
-          status:
-            i.quantity_on_hand === 0
-              ? 'critical'
-              : i.quantity_on_hand <= i.reorder_threshold * 0.5
-                ? 'critical'
-                : 'low',
-        })),
-      },
-    });
+  } catch (err) {
+    console.error('Dashboard cards: inventory_alert failed:', err);
   }
 
   // ── Suggested Outreach ──────────────────────────────────────────────────
-  // Clients who haven't purchased in 60+ days
-  const staleClients = staleClientsResult.data || [];
-  if (staleClients.length > 0) {
-    // Check last sale for each stale client
-    const clientsWithReason: { name: string; reason: string }[] = [];
+  try {
+    const staleClients = staleClientsResult.data || [];
+    if (staleClients.length > 0) {
+      const clientsWithReason: { name: string; reason: string }[] = [];
 
-    for (const client of staleClients.slice(0, 5)) {
-      const { data: lastSale } = await db
-        .from('sales')
-        .select('created_at')
-        .eq('tenant_id', tenantId)
-        .eq('client_id', client.id)
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      for (const client of staleClients.slice(0, 5)) {
+        try {
+          const { data: lastSale } = await db
+            .from('sales')
+            .select('created_at')
+            .eq('tenant_id', tenantId)
+            .eq('client_id', client.id)
+            .eq('status', 'completed')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
 
-      if (lastSale) {
-        const daysSince = Math.floor(
-          (now.getTime() - new Date(lastSale.created_at).getTime()) / (1000 * 60 * 60 * 24)
-        );
-        if (daysSince >= 60) {
-          const name = [client.first_name, client.last_name].filter(Boolean).join(' ') || 'Unknown';
-          clientsWithReason.push({
-            name,
-            reason: `Last purchase ${daysSince} days ago`,
-          });
+          if (lastSale) {
+            const daysSince = Math.floor(
+              (now.getTime() - new Date(lastSale.created_at).getTime()) / (1000 * 60 * 60 * 24)
+            );
+            if (daysSince >= 60) {
+              const name = [client.first_name, client.last_name].filter(Boolean).join(' ') || 'Unknown';
+              clientsWithReason.push({
+                name,
+                reason: `Last purchase ${daysSince} days ago`,
+              });
+            }
+          } else {
+            const name = [client.first_name, client.last_name].filter(Boolean).join(' ') || 'Unknown';
+            clientsWithReason.push({
+              name,
+              reason: 'No purchases yet',
+            });
+          }
+        } catch {
+          // Individual client lookup failed — skip this client
         }
-      } else {
-        // Never purchased but was created 60+ days ago
-        const name = [client.first_name, client.last_name].filter(Boolean).join(' ') || 'Unknown';
-        clientsWithReason.push({
-          name,
-          reason: 'No purchases yet',
-        });
+
+        if (clientsWithReason.length >= 3) break;
       }
 
-      if (clientsWithReason.length >= 3) break;
+      if (clientsWithReason.length > 0) {
+        cards.push({
+          type: 'suggested_outreach',
+          priority: 25,
+          data: { clients: clientsWithReason },
+        });
+      }
     }
-
-    if (clientsWithReason.length > 0) {
-      cards.push({
-        type: 'suggested_outreach',
-        priority: 25,
-        data: { clients: clientsWithReason },
-      });
-    }
+  } catch (err) {
+    console.error('Dashboard cards: suggested_outreach failed:', err);
   }
 
   // ── Networking Nudge ────────────────────────────────────────────────────
-  const upcomingIn14 = upcomingEventsResult.data || [];
-  const totalClients = clientCountResult.count || 0;
+  try {
+    const upcomingIn14 = upcomingEventsResult.data || [];
+    const totalClients = clientCountResult.count || 0;
 
-  if (upcomingIn14.length === 0) {
-    cards.push({
-      type: 'networking_nudge',
-      priority: 30,
-      data: {
-        title: 'Book Your Next Event',
-        body: totalClients > 0
-          ? `You have ${totalClients} clients waiting to see you. Events drive repeat sales and grow your audience.`
-          : 'Events are where you grow — get your next one on the calendar and start building your client list.',
-        primaryLabel: 'Create Event',
-        primaryRoute: '/dashboard/events',
-        secondaryLabel: 'Browse Tips',
-        secondaryRoute: '/dashboard/reports',
-      },
-    });
+    if (upcomingIn14.length === 0) {
+      cards.push({
+        type: 'networking_nudge',
+        priority: 30,
+        data: {
+          title: 'Book Your Next Event',
+          body: totalClients > 0
+            ? `You have ${totalClients} clients waiting to see you. Events drive repeat sales and grow your audience.`
+            : 'Events are where you grow — get your next one on the calendar and start building your client list.',
+          primaryLabel: 'Create Event',
+          primaryRoute: '/dashboard/events',
+          secondaryLabel: 'Browse Tips',
+          secondaryRoute: '/dashboard/reports',
+        },
+      });
+    }
+  } catch (err) {
+    console.error('Dashboard cards: networking_nudge failed:', err);
   }
 
   // ── Recent Messages ─────────────────────────────────────────────────────
-  const recentBroadcasts = broadcastsResult.data || [];
-  if (recentBroadcasts.length > 0) {
-    const messages = recentBroadcasts.slice(0, 3).map((b) => {
-      const sentDate = b.sent_at ? new Date(b.sent_at) : new Date(b.created_at);
-      const hoursAgo = Math.floor((now.getTime() - sentDate.getTime()) / (1000 * 60 * 60));
-      const timeStr = hoursAgo < 1 ? 'Just now'
-        : hoursAgo < 24 ? `${hoursAgo}h ago`
-        : `${Math.floor(hoursAgo / 24)}d ago`;
+  try {
+    const recentBroadcasts = broadcastsResult.data || [];
+    if (recentBroadcasts.length > 0) {
+      const messages = recentBroadcasts.slice(0, 3).map((b: any) => {
+        const sentDate = b.sent_at ? new Date(b.sent_at) : new Date(b.created_at);
+        const hoursAgo = Math.floor((now.getTime() - sentDate.getTime()) / (1000 * 60 * 60));
+        const timeStr = hoursAgo < 1 ? 'Just now'
+          : hoursAgo < 24 ? `${hoursAgo}h ago`
+          : `${Math.floor(hoursAgo / 24)}d ago`;
 
-      return {
-        sender: 'Sunstone',
-        initials: 'S',
-        text: `${b.name} — sent to ${b.sent_count} recipients`,
-        time: timeStr,
-        isSystem: true,
-      };
-    });
+        return {
+          sender: 'Sunstone',
+          initials: 'S',
+          text: `${b.name} — sent to ${b.sent_count} recipients`,
+          time: timeStr,
+          isSystem: true,
+        };
+      });
 
-    cards.push({
-      type: 'recent_messages',
-      priority: 40,
-      data: { messages },
-    });
+      cards.push({
+        type: 'recent_messages',
+        priority: 40,
+        data: { messages },
+      });
+    }
+  } catch (err) {
+    console.error('Dashboard cards: recent_messages failed:', err);
   }
 
-  // ── Sunstone Product Tip ────────────────────────────────────────────────
-  const tip = getSunstoneTip(allStock.length, totalClients, upcomingEvents.length);
-  if (tip) {
-    // Show if no nudge card exists, or always for starter tenants
-    const hasNudge = cards.some((c) => c.type === 'networking_nudge');
-    if (!hasNudge) {
+  // ── Sunstone Product Tip (ALWAYS shown) ────────────────────────────────
+  // Always include a tip card. For new/starter tenants this is a setup guide.
+  // For established tenants it rotates through feature tips.
+  try {
+    const allStock = lowStockResult.data || [];
+    const totalClients = clientCountResult.count || 0;
+    const upcomingEvents = eventsResult.data || [];
+    const tip = getSunstoneTip(allStock.length, totalClients, upcomingEvents.length);
+    if (tip) {
       cards.push({ type: 'sunstone_product', priority: 50, data: tip });
     }
+  } catch (err) {
+    console.error('Dashboard cards: sunstone_product failed:', err);
   }
 
   cards.sort((a, b) => a.priority - b.priority);
