@@ -1515,6 +1515,384 @@ export const PJ_UNIVERSITY_AND_SUNNY_ROLE = {
 };
 
 // =============================================================================
+// SECTION 9: PJOS PLATFORM GUIDE
+// =============================================================================
+// This section teaches Sunny how the Sunstone PJOS app itself works so she can
+// answer questions like "how do I create an event?" or "where are my reports?"
+// =============================================================================
+export const PJOS_PLATFORM_GUIDE = {
+  // ---------------------------------------------------------------------------
+  // 9.1 Getting Started / Onboarding
+  // ---------------------------------------------------------------------------
+  gettingStarted: {
+    overview: 'When you first sign up for PJOS, you create your account, set up your business profile, and customize your branding. Everything lives under Settings in the sidebar.',
+    steps: [
+      '1. Create your account at sunstonepj.app and verify your email.',
+      '2. Once logged in, go to Settings in the sidebar.',
+      '3. Under Business Information, fill in your business name, business type, phone, and website.',
+      '4. Scroll to Branding — upload your logo and pick an accent color that matches your brand.',
+      '5. Set up a payment processor (Square or Stripe) under Payment Processing so you can take card payments.',
+      '6. Add at least one Tax Profile if your state requires sales tax.',
+      '7. Customize your Waiver Text so it fits your business.',
+      '8. Head to Inventory and add your chains, jump rings, charms, and connectors.',
+      '9. You are ready to create your first event or start selling in Store Mode!',
+    ],
+    tips: [
+      'You can always come back to Settings to update anything.',
+      'Your logo shows up on waivers, receipts, and your customer-facing pages.',
+      'Pick an accent color that matches your brand — it shows throughout the app.',
+    ],
+    trialNote: 'New accounts start with a 14-day Pro trial so you can explore all the features. After the trial, you can upgrade or continue on the Starter plan.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.2 Events
+  // ---------------------------------------------------------------------------
+  events: {
+    overview: 'Events are how you organize your pop-ups, private parties, and bridal events in PJOS. Each event gets its own sales tracking, queue, and QR code.',
+    creatingAnEvent: [
+      '1. Go to Events in the sidebar.',
+      '2. Click the "+ New Event" button in the top right.',
+      '3. Fill in the event name, location, date/time, and booth fee.',
+      '4. Choose a tax profile if applicable.',
+      '5. Optionally limit which product types are available for this event.',
+      '6. Click "Create Event" and you are all set!',
+    ],
+    eventTypes: {
+      popup: 'Farmers markets, craft fairs, festivals — your typical public event.',
+      privateParty: 'House parties, bridal showers, birthday parties — intimate private gatherings.',
+      bridal: 'Bridal events, wedding parties — set these up the same way, just name them accordingly.',
+    },
+    eventTabs: 'Your Events page has three views: Live Now (events happening right now with a green dot), Upcoming (future events), and Past Events (completed events with P&L data).',
+    startingEventMode: [
+      '1. Find your event on the Events page.',
+      '2. Click "Go Live" (for active events) or "Event Mode" (for upcoming events).',
+      '3. This takes you to the Event Mode POS where you can start ringing up customers.',
+    ],
+    qrCode: 'Every event gets a QR code. Click the QR icon on the event card to display it. You can go full-screen to display it at your booth — customers scan it to fill out your waiver and join your queue.',
+    editingEvents: 'Click the Edit button on any event card to update the name, time, location, booth fee, or product availability.',
+    viewingPL: 'For past events, click "View P&L" to see a full profit-and-loss breakdown including revenue, costs, and your actual profit.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.3 Event Mode POS
+  // ---------------------------------------------------------------------------
+  eventModePOS: {
+    overview: 'Event Mode POS is your sales screen during a live event. It walks you through adding items to the cart, applying discounts and tips, and completing the sale.',
+    addingChainItems: [
+      '1. Pick the product type (Bracelet, Anklet, Necklace, etc.).',
+      '2. Pick the material (Gold Filled, Sterling Silver, etc.).',
+      '3. Pick the specific chain from your inventory.',
+      '4. Enter the measurement in inches — the price calculates automatically based on your pricing.',
+      '5. The item gets added to your cart.',
+    ],
+    addingOtherItems: 'Jump rings, charms, connectors, and other items appear as quick-add buttons. Just tap them to add to the cart.',
+    customItems: 'Need to add something special? Use the Custom Item form — type a name and price, and it goes right into the cart.',
+    discounts: {
+      perItem: 'You can apply a discount to individual items in the cart.',
+      cartLevel: 'You can also apply a discount to the entire cart total.',
+    },
+    tips: 'During checkout, your customer can add a tip. You will see preset amounts (like $3, $5, $10, $15, $20) or they can enter a custom amount.',
+    paymentMethods: 'Choose how they are paying: Card, Cash, Venmo, or Other. For card payments, you will need your payment processor (Square or Stripe) connected in Settings.',
+    completingASale: [
+      '1. Review the cart — items, discounts, tax, and tip.',
+      '2. Select the payment method.',
+      '3. Complete the sale.',
+      '4. Send a receipt via email or SMS if the customer wants one, or download a PDF.',
+      '5. Click "Start New Sale" to help the next customer.',
+    ],
+    inventoryDeduction: 'When you sell a chain item, the app automatically deducts the inches used from your inventory. Jump rings used are also tracked.',
+    queueIntegration: 'During Event Mode, you will see a mini queue strip showing who is next in line. This helps you call the next customer without leaving the sales screen.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.4 Store Mode POS
+  // ---------------------------------------------------------------------------
+  storeModePOS: {
+    overview: 'Store Mode is for everyday sales when you are not at an event — walk-ins at your salon, studio, or shop.',
+    howToAccess: 'From the Events page, click the "Store Mode" button at the top. You can also access it from the sidebar if configured.',
+    differences: [
+      'Store Mode has no event context — sales are tracked under "Store" instead of a specific event.',
+      'All your inventory items are available (no event-based product filtering).',
+      'Customers are walk-ups rather than from an event queue.',
+      'You will see "Today\'s Sales" with a count and running total at the top.',
+    ],
+    sameFeatures: 'The actual sales process is identical to Event Mode — same product selection steps, cart, discounts, tips, and payment methods.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.5 Inventory
+  // ---------------------------------------------------------------------------
+  inventory: {
+    overview: 'The Inventory page is where you manage all your chains, jump rings, charms, connectors, and other supplies.',
+    addingItems: [
+      '1. Go to Inventory in the sidebar.',
+      '2. Click "+ Add Item" in the top right.',
+      '3. Fill in the basics: name, type (Chain, Jump Ring, Charm, Connector, or Other), material, and supplier.',
+      '4. Enter your stock levels: quantity on hand and reorder threshold.',
+      '5. Enter your cost (what you paid) and sell price (what you charge).',
+      '6. Click "Add Item" to save.',
+    ],
+    chainProducts: {
+      overview: 'Chains are special — you buy them by the inch (or foot) and sell them by the piece. The app handles this conversion for you.',
+      buyByInch: 'Enter your chain quantity in inches and your cost per inch.',
+      sellByPiece: 'Set up product types in Settings (like Bracelet, Anklet, Necklace) with prices. When you sell a bracelet, the app calculates the price based on inches measured.',
+      perInchPricing: 'Alternatively, you can price chains per inch and the price scales with the measurement.',
+    },
+    jumpRingTracking: 'Jump rings track quantity on hand. When you complete a sale, jump rings are automatically deducted based on the product type (most use 1 jump ring, hand chains use 2).',
+    restocking: 'Update your quantity on hand anytime by editing the item. The reorder threshold triggers a visual alert when stock runs low.',
+    lowStockAlerts: 'When an item drops below its reorder threshold, you will see it flagged. Keep an eye on your chain footage and jump ring counts before events.',
+    searchAndFilter: 'Use the search bar to find items by name, material, or SKU. Filter by type (Chain, Jump Ring, etc.) or toggle "Show inactive" to see deactivated items.',
+    deactivating: 'Click the eye icon to deactivate an item without deleting it. Deactivated items will not show up in your POS but the data is preserved.',
+    productTypes: 'Set up your product types in Settings (like Bracelet, Anklet, Necklace, Ring, Hand Chain). Each product type defines how many jump rings it needs — most use 1, hand chains use 2.',
+    materials: 'Set up your materials in Settings (like Sterling Silver, 14K Gold Filled Yellow, etc.). These help you organize inventory and show the right options during sales.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.6 Clients
+  // ---------------------------------------------------------------------------
+  clients: {
+    overview: 'The Clients page shows everyone who has signed a waiver or been added to your client list. Think of it as your customer database.',
+    viewingClients: [
+      '1. Go to Clients in the sidebar.',
+      '2. Browse or search by name, email, or phone.',
+      '3. Click on a client to see their signed waivers.',
+    ],
+    clientDetails: 'Each client card shows their name, phone, email, and how many waivers they have signed. Click to see all their waiver history.',
+    waiverHistory: 'In the client detail view, you can see every waiver they have signed, when they signed it, and which event it was for. You can download any waiver as a PDF.',
+    addingManually: [
+      '1. Click "+ Add Client" at the top of the Clients page.',
+      '2. Enter their first name, last name, and optionally their email and phone.',
+      '3. Click "Add Client" to save.',
+    ],
+    copyWaiverLink: 'Click the "Copy Waiver Link" button at the top to get a shareable link. Send this to customers so they can fill out their waiver before they arrive — saves time at events!',
+    tierNote: 'Full CRM features are available on Pro and Business plans. Starter plan users can still view clients who have signed waivers.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.7 Queue Management
+  // ---------------------------------------------------------------------------
+  queueManagement: {
+    overview: 'The Queue system keeps your line organized at events. Customers join by scanning your QR code and filling out a waiver, then appear in your queue automatically.',
+    howCustomersJoin: [
+      '1. Display your event QR code at your booth (click the QR icon on your event card, then go full-screen).',
+      '2. Customers scan the QR code with their phone.',
+      '3. They fill out the digital waiver and sign it.',
+      '4. Once submitted, they automatically appear in your queue as "Waiting."',
+    ],
+    managingTheQueue: [
+      '1. Go to Queue in the sidebar.',
+      '2. Select which event\'s queue you want to view from the dropdown.',
+      '3. You will see sections for Waiting, Notified, Served, and No Show.',
+    ],
+    notifyingCustomers: 'Click the "Notify Next" button to send an SMS to the next person in line letting them know it is their turn. Their status changes from "Waiting" to "Notified."',
+    statusFlow: {
+      waiting: 'Customer has signed the waiver and is in line.',
+      notified: 'You sent them an SMS that it is their turn.',
+      served: 'You have completed their service — mark them as served when done.',
+      noShow: 'They did not show up — mark as no-show to move on.',
+    },
+    smsNotifications: 'When you notify a customer, the app sends them a text message if they provided their phone number on the waiver.',
+    realTimeUpdates: 'The queue updates in real time — new customers appear automatically as they scan and submit their waiver.',
+    eventModeMiniQueue: 'While in Event Mode POS, a mini queue strip shows at the top so you can see who is next without leaving the sales screen.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.8 Digital Waivers
+  // ---------------------------------------------------------------------------
+  digitalWaivers: {
+    overview: 'PJOS has a built-in digital waiver system. Customers fill out and sign the waiver on their phone before you even start their service.',
+    howItWorks: [
+      '1. Customer scans your event QR code (or you share the waiver link directly).',
+      '2. They fill out their info: name, email, phone.',
+      '3. They read and sign the waiver with their finger on screen.',
+      '4. The signed waiver is saved to your account and the customer joins the queue.',
+    ],
+    signatureCapture: 'Customers sign right on their phone screen with their finger. The signature is captured and stored with the waiver.',
+    pdfGeneration: 'Every signed waiver can be downloaded as a PDF from the Clients page — great for your records.',
+    customWaiverText: 'Customize your waiver wording in Settings under "Waiver Text." Write it to match your business and your local requirements.',
+    sharingTheLink: 'Two ways to share: (1) Display the QR code at your booth for walk-ups, or (2) Copy the waiver link from the Clients page and text/email it to customers in advance.',
+    preEventStrategy: 'For private parties and booked appointments, send the waiver link ahead of time. Customers arrive already signed in and in the queue — you can start welding immediately.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.9 Business Reports
+  // ---------------------------------------------------------------------------
+  businessReports: {
+    overview: 'The Reports page shows you how your business is doing with revenue breakdowns, sales trends, and event-by-event performance.',
+    accessingReports: 'Go to your Dashboard — you will see an overview with key metrics. For detailed reports, you will find revenue breakdowns, sales trends, and event P&L data.',
+    overviewTab: {
+      metricsCards: 'At the top you will see Total Revenue, Total Sales Count, Average Sale Value, and Net Profit.',
+      filters: 'Filter by date range (YTD, this month, last month, quarterly, or custom) and by source (all sales, events only, or store only).',
+      revenueBreakdown: 'See your revenue split into subtotal, tax collected, tips, platform fees, and discounts. Your COGS (cost of goods sold) shows chain material costs and jump ring costs.',
+      paymentBreakdown: 'See how customers are paying — Card, Cash, Venmo, or Other.',
+    },
+    eventsTab: 'View a list of past events with full P&L for each one. See sales count, revenue, costs, and profit per event. Click any event for the detailed breakdown.',
+    csvExport: 'Download your data as a CSV file for your own spreadsheets or for your accountant.',
+    tierNote: 'Full reports with detailed breakdowns are available on Pro and Business plans. Starter plan users see basic metrics.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.10 Settings
+  // ---------------------------------------------------------------------------
+  settingsGuide: {
+    overview: 'Settings is where you configure everything about your PJOS account. It has three tabs: General, Subscription, and Team.',
+    generalTab: {
+      businessInfo: 'Update your business name, type, phone, and website.',
+      branding: 'Upload your logo (shows on waivers and receipts) and pick your accent color. There are 8 beautiful presets or enter any hex color.',
+      paymentProcessing: 'Connect Square or Stripe to accept card payments. Enter your API credentials in the Payment Processing section.',
+      taxProfiles: 'Add tax profiles with a name and rate (like "State Sales Tax — 6.5%"). Assign them to events so tax calculates automatically.',
+      productTypes: 'Set up product types like Bracelet, Anklet, Necklace, Ring, Hand Chain. Each one defines how many jump rings it uses. You can reorder them.',
+      materials: 'Add your materials (Sterling Silver, 14K Gold Filled, etc.) to organize your inventory.',
+      suppliers: 'Add your suppliers for tracking where your inventory comes from.',
+      waiverText: 'Customize the waiver your customers see and sign. Write it to cover your local requirements.',
+    },
+    subscriptionTab: 'See your current plan, trial status, and plan features. Upgrade or manage your subscription here.',
+    teamTab: 'View your team members, their roles, and invite new ones. Manage who has access to what.',
+    feeHandling: 'Under "Subscription & Fees" you can choose whether to pass the platform fee to your customers (added to their total) or absorb it yourself.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.11 Subscription & Billing
+  // ---------------------------------------------------------------------------
+  subscriptionAndBilling: {
+    overview: 'PJOS has three subscription tiers designed to grow with your business.',
+    tiers: {
+      starter: {
+        price: 'Free',
+        platformFee: '3% per transaction',
+        features: ['Basic POS (Event Mode and Store Mode)', 'Inventory management', 'Queue and waivers', '5 Sunny AI questions per month', '1 team member'],
+        bestFor: 'Artists just getting started who want to try the platform.',
+      },
+      pro: {
+        price: '$129/month',
+        platformFee: '1.5% per transaction',
+        features: ['Everything in Starter', 'Unlimited Sunny AI questions', 'Full business reports with P&L', 'AI insights', 'Client CRM', 'Up to 3 team members'],
+        bestFor: 'Active artists who do regular events and want full business intelligence.',
+      },
+      business: {
+        price: '$279/month',
+        platformFee: '0% — no platform fees',
+        features: ['Everything in Pro', 'Unlimited team members', 'Priority support', 'Zero platform fees'],
+        bestFor: 'High-volume artists or teams who want zero fees and unlimited team access.',
+      },
+    },
+    trial: 'New accounts get a 14-day Pro trial to explore all features. After the trial, you keep your data and can upgrade or continue on the free Starter plan.',
+    upgrading: 'Go to Settings → Subscription tab to see your current plan and upgrade. Payment is handled through Stripe.',
+    whatHappensAfterTrial: 'If your trial expires without upgrading, you move to the Starter plan. You keep all your data, events, inventory, and clients — you just lose access to Pro features like full reports, CRM, and unlimited Sunny questions.',
+    feeExplainer: 'The platform fee is a small percentage added to each sale. On Starter it is 3%, on Pro it is 1.5%, and on Business it is 0%. You can choose to pass this fee to your customer or absorb it yourself in Settings.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.12 Team Management
+  // ---------------------------------------------------------------------------
+  teamManagement: {
+    overview: 'If you have staff or helpers, you can invite them to your PJOS account with different roles and permissions.',
+    invitingMembers: [
+      '1. Go to Settings → Team tab.',
+      '2. Click "Invite Team Member."',
+      '3. Enter their email address and select their role.',
+      '4. They will receive an email invitation to join your account.',
+    ],
+    roles: {
+      admin: 'Full access to everything — settings, reports, inventory, events, team management. This is you, the business owner.',
+      manager: 'Can manage events, inventory, clients, and run the POS. Cannot change settings or manage the subscription.',
+      staff: 'Can use the POS and manage the queue during events. Limited access to other areas.',
+    },
+    permissions: 'Each role has specific permissions. Admins see everything, managers see most things, and staff see what they need to serve customers.',
+    tierLimits: {
+      starter: '1 team member (just you).',
+      pro: 'Up to 3 team members.',
+      business: 'Unlimited team members.',
+    },
+    removing: 'To remove a team member, go to Settings → Team and click the delete icon next to their name.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.13 Ask Sunny
+  // ---------------------------------------------------------------------------
+  askSunny: {
+    overview: 'Sunny is your AI mentor built right into PJOS. She knows permanent jewelry techniques, Sunstone products, business strategy, and how the app works.',
+    howToAccess: 'Look for the chat icon in the bottom-right corner of any dashboard page. Click it to open Sunny.',
+    whatSunnyHelps: [
+      'Welding technique and settings — "What joule setting for 24g gold filled?"',
+      'Business advice — "How should I price my bracelets?"',
+      'Event planning — "How much inventory should I bring to a 6-hour market?"',
+      'App guidance — "How do I create an event?" or "Where do I find my reports?"',
+      'Product knowledge — "What is the difference between gold filled and solid gold?"',
+      'Troubleshooting — "My welds keep breaking, what am I doing wrong?"',
+    ],
+    questionLimits: {
+      starter: '5 questions per month on the Starter plan.',
+      proAndBusiness: 'Unlimited questions on Pro and Business plans.',
+    },
+    tips: [
+      'Be specific with your questions — "What setting for 24g silver on the Zapp Plus 2?" gives better answers than "help with settings."',
+      'Sunny can see your actual inventory, events, queue, and client data — ask her questions about YOUR business.',
+      'If Sunny does not know something, she will flag it for the Sunstone team to add to her knowledge.',
+    ],
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.14 Platform Troubleshooting
+  // ---------------------------------------------------------------------------
+  platformTroubleshooting: {
+    paymentProcessorNotConnected: {
+      symptom: 'You cannot take card payments or get an error when trying to charge a card.',
+      fix: [
+        '1. Go to Settings → General tab.',
+        '2. Scroll to Payment Processing.',
+        '3. Select Square or Stripe and enter your API credentials.',
+        '4. Make sure you are using your production (live) keys, not test/sandbox keys.',
+        '5. Save your settings and try again.',
+      ],
+      tip: 'If you do not have a Square or Stripe account yet, sign up for one first. You can always use Cash, Venmo, or Other payment methods in the meantime.',
+    },
+    inventoryNotDeducting: {
+      symptom: 'Your chain footage or jump ring count does not go down after a sale.',
+      fix: [
+        '1. Make sure the item is marked as active in Inventory.',
+        '2. Check that your product types are set up in Settings and match your inventory items.',
+        '3. Verify the chain is set up with per-inch pricing so the measurement can deduct correctly.',
+        '4. If the issue persists, try editing the inventory item and re-saving it.',
+      ],
+    },
+    smsNotSending: {
+      symptom: 'Customers are not receiving text notifications from the queue.',
+      fix: [
+        '1. Verify the customer entered a valid phone number on the waiver.',
+        '2. Check that you clicked "Notify Next" — the status should change to "Notified."',
+        '3. SMS delivery can sometimes be delayed by the carrier — give it a minute.',
+        '4. If it consistently fails, contact Sunstone support at 385-999-5240.',
+      ],
+    },
+    cantInviteTeamMembers: {
+      symptom: 'The "Invite Team Member" button is not working or you cannot add more people.',
+      fix: [
+        '1. Check your subscription tier — Starter allows 1 member, Pro allows 3, Business is unlimited.',
+        '2. If you have hit your limit, upgrade your plan in Settings → Subscription.',
+        '3. Make sure you are entering a valid email address.',
+        '4. The invited person needs to check their email (including spam folder) for the invitation.',
+      ],
+    },
+    qrCodeNotWorking: {
+      symptom: 'Customers cannot scan the QR code or it does not load.',
+      fix: [
+        '1. Make sure the QR code is displayed clearly — use the full-screen mode.',
+        '2. Check your internet connection — the customer\'s phone needs internet to load the waiver.',
+        '3. If the QR is too small, try the full-screen option or print it larger.',
+        '4. As a backup, use the "Copy Waiver Link" button on the Clients page and share the link directly.',
+      ],
+    },
+    reportsNotShowing: {
+      symptom: 'You cannot see detailed reports or see an upgrade prompt.',
+      fix: 'Full reports with detailed P&L breakdowns are available on Pro and Business plans. If you are on the Starter plan, you will see basic metrics only. Upgrade in Settings → Subscription to unlock full reports.',
+    },
+    generalTip: 'For any issue you cannot resolve, contact Sunstone support at 385-999-5240 by call or text. They can also help with account-specific issues.',
+  },
+};
+
+// =============================================================================
 // COMBINED EXPORT (for easy import in PJOS)
 // =============================================================================
 export const SUNNY_MENTOR_KNOWLEDGE = {
@@ -1526,4 +1904,5 @@ export const SUNNY_MENTOR_KNOWLEDGE = {
   clientExperience: CLIENT_EXPERIENCE_KNOWLEDGE,
   marketing: MARKETING_KNOWLEDGE,
   pjUniversityAndSunnyRole: PJ_UNIVERSITY_AND_SUNNY_ROLE,
+  pjosPlatformGuide: PJOS_PLATFORM_GUIDE,
 };

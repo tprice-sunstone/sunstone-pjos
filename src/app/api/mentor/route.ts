@@ -21,6 +21,7 @@ import {
   CLIENT_EXPERIENCE_KNOWLEDGE,
   MARKETING_KNOWLEDGE,
   PJ_UNIVERSITY_AND_SUNNY_ROLE,
+  PJOS_PLATFORM_GUIDE,
 } from '@/lib/mentor-knowledge';
 
 // ============================================================================
@@ -336,6 +337,99 @@ const SUBSECTIONS: Subsection[] = [
       mentoring: PJ_UNIVERSITY_AND_SUNNY_ROLE.mentoring,
     },
     keywords: ['pj university', 'course', 'class', 'module', 'certificate', 'certified', 'fast track', '30 day', 'mentoring', 'training'],
+  },
+
+  // ── PJOS PLATFORM GUIDE ──
+  {
+    id: 'app-getting-started',
+    label: 'Getting Started with PJOS',
+    data: PJOS_PLATFORM_GUIDE.gettingStarted,
+    keywords: ['get started', 'getting started', 'set up', 'setup', 'onboard', 'new account', 'just signed up', 'first time', 'how to start', 'where do i begin', 'new to the app', 'create account', 'profile', 'business profile', 'upload logo', 'brand color', 'accent color'],
+  },
+  {
+    id: 'app-events',
+    label: 'Creating & Managing Events in PJOS',
+    data: PJOS_PLATFORM_GUIDE.events,
+    keywords: ['create event', 'new event', 'add event', 'set up event', 'event setup', 'go live', 'event mode', 'start event', 'qr code', 'edit event', 'event tab', 'upcoming event', 'past event', 'event p&l', 'booth fee', 'how do i make an event'],
+    priority: 1,
+  },
+  {
+    id: 'app-event-pos',
+    label: 'Event Mode POS — Ringing Up Sales',
+    data: PJOS_PLATFORM_GUIDE.eventModePOS,
+    keywords: ['ring up', 'ring someone up', 'sell', 'sale', 'checkout', 'charge', 'add to cart', 'cart', 'take payment', 'pos', 'point of sale', 'custom item', 'how to sell', 'complete sale', 'receipt', 'tip', 'discount', 'event mode pos', 'sales screen'],
+    priority: 1,
+  },
+  {
+    id: 'app-store-pos',
+    label: 'Store Mode POS',
+    data: PJOS_PLATFORM_GUIDE.storeModePOS,
+    keywords: ['store mode', 'walk in', 'walk-in', 'walkin', 'not at event', 'everyday sale', 'salon sale', 'studio sale', 'shop sale', 'store sale'],
+  },
+  {
+    id: 'app-inventory',
+    label: 'Managing Inventory in PJOS',
+    data: PJOS_PLATFORM_GUIDE.inventory,
+    keywords: ['add inventory', 'add item', 'add chain', 'add jump ring', 'chain list', 'my chains', 'inventory page', 'stock level', 'restock', 'reorder', 'low stock', 'deactivate', 'product type', 'material setup', 'chain pricing', 'buy by inch', 'sell by piece', 'how to add', 'movement history', 'sku'],
+    priority: 1,
+  },
+  {
+    id: 'app-clients',
+    label: 'Client List & CRM in PJOS',
+    data: PJOS_PLATFORM_GUIDE.clients,
+    keywords: ['client list', 'clients', 'customer list', 'crm', 'customer database', 'waiver history', 'add client', 'customer info', 'find client', 'client page', 'copy waiver link', 'waiver link'],
+  },
+  {
+    id: 'app-queue',
+    label: 'Queue Management in PJOS',
+    data: PJOS_PLATFORM_GUIDE.queueManagement,
+    keywords: ['queue', 'line', 'wait list', 'waitlist', 'check in', 'checkin', 'check-in', 'next customer', 'notify', 'notify next', 'get people checked in', 'how people check in', 'waiting', 'no show', 'served', 'who is next', 'sms', 'text notification', 'customer line'],
+    priority: 1,
+  },
+  {
+    id: 'app-waivers',
+    label: 'Digital Waivers in PJOS',
+    data: PJOS_PLATFORM_GUIDE.digitalWaivers,
+    keywords: ['waiver', 'digital waiver', 'sign waiver', 'signature', 'waiver link', 'send waiver', 'waiver pdf', 'download waiver', 'consent form', 'liability form', 'waiver before event', 'pre-event waiver', 'customize waiver'],
+  },
+  {
+    id: 'app-reports',
+    label: 'Business Reports in PJOS',
+    data: PJOS_PLATFORM_GUIDE.businessReports,
+    keywords: ['report', 'reports', 'sales numbers', 'how much did i make', 'revenue', 'profit', 'p&l', 'profit and loss', 'csv', 'export', 'analytics', 'dashboard numbers', 'business data', 'where are my numbers', 'how is my business doing', 'sales report', 'event report'],
+    priority: 1,
+  },
+  {
+    id: 'app-settings',
+    label: 'Settings & Configuration in PJOS',
+    data: PJOS_PLATFORM_GUIDE.settingsGuide,
+    keywords: ['settings', 'configure', 'setup', 'tax profile', 'tax rate', 'payment processor', 'connect square', 'connect stripe', 'business info', 'logo', 'waiver text', 'product types', 'materials', 'suppliers', 'fee handling', 'change settings', 'update settings'],
+  },
+  {
+    id: 'app-subscription',
+    label: 'Subscription & Billing in PJOS',
+    data: PJOS_PLATFORM_GUIDE.subscriptionAndBilling,
+    keywords: ['subscription', 'plan', 'tier', 'starter', 'pro plan', 'business plan', 'upgrade', 'pricing', 'how much is', 'trial', 'free trial', 'trial expire', 'trial ending', 'billing', 'monthly', 'platform fee', 'cancel', 'downgrade', 'what plan am i on', 'cost of app', 'app price'],
+    priority: 1,
+  },
+  {
+    id: 'app-team',
+    label: 'Team Management in PJOS',
+    data: PJOS_PLATFORM_GUIDE.teamManagement,
+    keywords: ['team', 'invite', 'add team', 'team member', 'staff', 'manager', 'role', 'permission', 'add my girls', 'add my helper', 'add employee', 'remove member', 'how many people', 'team limit'],
+  },
+  {
+    id: 'app-sunny',
+    label: 'Using Sunny AI Mentor',
+    data: PJOS_PLATFORM_GUIDE.askSunny,
+    keywords: ['sunny', 'ai mentor', 'chat', 'ask question', 'question limit', 'how to use sunny', 'what can sunny do', 'sunny help', 'mentor chat', 'ai help'],
+  },
+  {
+    id: 'app-troubleshooting',
+    label: 'PJOS App Troubleshooting',
+    data: PJOS_PLATFORM_GUIDE.platformTroubleshooting,
+    keywords: ['app problem', 'app issue', 'not working', 'can\'t connect', 'card reader not working', 'payment not working', 'square not working', 'stripe not working', 'inventory not updating', 'sms not sending', 'text not sending', 'qr not working', 'can\'t invite', 'reports not showing', 'app trouble', 'app broken', 'something wrong', 'app help', 'app error'],
+    priority: 1,
   },
 ];
 
