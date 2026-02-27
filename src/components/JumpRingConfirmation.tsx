@@ -154,7 +154,7 @@ export default function JumpRingConfirmation({ confirmations, saleId, tenantId, 
               <button
                 onClick={() => updateCount(item.cart_item_id, item.actual_count - 1)}
                 disabled={item.actual_count <= 0}
-                className="w-8 h-8 rounded-lg border border-[var(--border-default)] bg-white flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="w-8 h-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
@@ -168,7 +168,7 @@ export default function JumpRingConfirmation({ confirmations, saleId, tenantId, 
               <button
                 onClick={() => updateCount(item.cart_item_id, item.actual_count + 1)}
                 disabled={item.actual_count >= 10}
-                className="w-8 h-8 rounded-lg border border-[var(--border-default)] bg-white flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="w-8 h-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />

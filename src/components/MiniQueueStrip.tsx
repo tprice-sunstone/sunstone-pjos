@@ -211,15 +211,15 @@ export default function MiniQueueStrip({
 
   const getCardStyle = (entry: QueueEntry, index: number) => {
     if (entry.status === 'serving') {
-      return 'border-2 border-[var(--accent-primary)] bg-white shadow-sm';
+      return 'border-2 border-[var(--accent-primary)] bg-[var(--surface-raised)] shadow-sm';
     }
     if (mode === 'store') {
       // All "Ready" cards have equal weight
-      return 'border border-[var(--border-default)] bg-white';
+      return 'border border-[var(--border-default)] bg-[var(--surface-raised)]';
     }
     // Event mode hierarchy
-    if (index === 0 && !servingEntry) return 'border-2 border-[var(--accent-primary)] bg-white shadow-sm';
-    if (index === 0 || (index === 1 && !servingEntry)) return 'border border-[var(--border-default)] bg-white';
+    if (index === 0 && !servingEntry) return 'border-2 border-[var(--accent-primary)] bg-[var(--surface-raised)] shadow-sm';
+    if (index === 0 || (index === 1 && !servingEntry)) return 'border border-[var(--border-default)] bg-[var(--surface-raised)]';
     return 'border border-[var(--border-subtle)] bg-[var(--surface-raised)] opacity-75';
   };
 
@@ -241,7 +241,7 @@ export default function MiniQueueStrip({
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-white border-b border-[var(--border-default)]">
+    <div className="bg-[var(--surface-base)] border-b border-[var(--border-default)]">
       {/* Collapsed bar */}
       <button
         onClick={() => !isServingActive && setExpanded(!expanded)}
@@ -385,7 +385,7 @@ function QueueCard({
             {openMenu === entry.id && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setOpenMenu(null)} />
-                <div className="absolute right-0 top-8 z-20 bg-white border border-[var(--border-default)] rounded-lg shadow-lg py-1 min-w-[140px]">
+                <div className="absolute right-0 top-8 z-20 bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-lg shadow-lg py-1 min-w-[140px]">
                   {!isServing && (
                     <button
                       onClick={() => onStartSale(entry)}

@@ -82,8 +82,8 @@ export default function AdminMentorPage() {
     <div>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Sunny's Learning</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Sunny's Learning</h1>
+        <p className="text-sm text-[var(--text-secondary)] mt-1">
           Review what Sunny couldn't answer and teach her new knowledge
         </p>
       </div>
@@ -101,14 +101,14 @@ export default function AdminMentorPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 rounded-lg p-1 mb-6 w-fit">
+      <div className="flex gap-1 bg-[var(--surface-subtle)] rounded-lg p-1 mb-6 w-fit">
         <button
           onClick={() => setTab('gaps')}
           className={cn(
             'px-4 py-2 rounded-md text-sm font-medium transition-colors',
             tab === 'gaps'
-              ? 'bg-white text-slate-800 shadow-sm'
-              : 'text-slate-500 hover:text-slate-700'
+              ? 'bg-[var(--surface-raised)] text-[var(--text-primary)] shadow-sm'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-secondary)]'
           )}
         >
           Pending Gaps
@@ -123,8 +123,8 @@ export default function AdminMentorPage() {
           className={cn(
             'px-4 py-2 rounded-md text-sm font-medium transition-colors',
             tab === 'knowledge'
-              ? 'bg-white text-slate-800 shadow-sm'
-              : 'text-slate-500 hover:text-slate-700'
+              ? 'bg-[var(--surface-raised)] text-[var(--text-primary)] shadow-sm'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-secondary)]'
           )}
         >
           Active Knowledge
@@ -162,7 +162,7 @@ function StatCard({ label, value, color, isText }: {
   const colors = {
     amber: 'bg-amber-50 border-amber-200 text-amber-700',
     emerald: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-    slate: 'bg-slate-50 border-slate-200 text-slate-600',
+    slate: 'bg-[var(--surface-subtle)] border-[var(--border-default)] text-[var(--text-secondary)]',
   };
 
   return (
@@ -220,13 +220,13 @@ function GapsTab({
   }
 
   if (loading) {
-    return <div className="text-sm text-slate-500 py-8 text-center">Loading gaps…</div>;
+    return <div className="text-sm text-[var(--text-secondary)] py-8 text-center">Loading gaps…</div>;
   }
 
   if (gaps.length === 0) {
     return (
-      <div className="bg-white rounded-lg border border-slate-200 p-8 text-center">
-        <p className="text-slate-500 text-sm">No pending knowledge gaps — Sunny's doing great! ✨</p>
+      <div className="bg-[var(--surface-raised)] rounded-lg border border-[var(--border-default)] p-8 text-center">
+        <p className="text-[var(--text-secondary)] text-sm">No pending knowledge gaps — Sunny's doing great! ✨</p>
       </div>
     );
   }
@@ -234,33 +234,33 @@ function GapsTab({
   return (
     <div className="space-y-3">
       {gaps.map(gap => (
-        <div key={gap.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div key={gap.id} className="bg-[var(--surface-raised)] rounded-lg border border-[var(--border-default)] overflow-hidden">
           {/* Summary row */}
           <button
             onClick={() => setExpandedId(expandedId === gap.id ? null : gap.id)}
-            className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-slate-50 transition-colors"
+            className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-[var(--surface-subtle)] transition-colors"
           >
             <CategoryBadge category={gap.topic || gap.category || 'other'} />
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-slate-800 truncate">{gap.user_message}</p>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-sm text-[var(--text-primary)] truncate">{gap.user_message}</p>
+              <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
                 {gap.tenant_name} · {new Date(gap.created_at).toLocaleDateString()}
               </p>
             </div>
-            <ChevronIcon className={cn('w-4 h-4 text-slate-400 transition-transform', expandedId === gap.id && 'rotate-180')} />
+            <ChevronIcon className={cn('w-4 h-4 text-[var(--text-tertiary)] transition-transform', expandedId === gap.id && 'rotate-180')} />
           </button>
 
           {/* Expanded detail */}
           {expandedId === gap.id && (
-            <div className="px-4 pb-4 border-t border-slate-100 pt-3 space-y-3">
+            <div className="px-4 pb-4 border-t border-[var(--border-subtle)] pt-3 space-y-3">
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Artist Asked</p>
-                <p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3">{gap.user_message}</p>
+                <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Artist Asked</p>
+                <p className="text-sm text-[var(--text-secondary)] bg-[var(--surface-subtle)] rounded-lg p-3">{gap.user_message}</p>
               </div>
               {gap.sunny_response && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Sunny Responded</p>
-                  <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 whitespace-pre-wrap">{gap.sunny_response}</p>
+                  <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Sunny Responded</p>
+                  <p className="text-sm text-[var(--text-secondary)] bg-[var(--surface-subtle)] rounded-lg p-3 whitespace-pre-wrap">{gap.sunny_response}</p>
                 </div>
               )}
 
@@ -269,11 +269,11 @@ function GapsTab({
                 <div className="space-y-3 bg-emerald-50 rounded-lg p-4 border border-emerald-200">
                   <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Teach Sunny the Correct Answer</p>
                   <div>
-                    <label className="text-xs font-medium text-slate-600">Category</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">Category</label>
                     <select
                       value={approveForm.category}
                       onChange={e => setApproveForm({ ...approveForm, category: e.target.value })}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-md border border-[var(--border-strong)] px-3 py-2 text-sm"
                     >
                       {CATEGORIES.map(c => (
                         <option key={c} value={c}>{c.replace('_', ' ')}</option>
@@ -281,20 +281,20 @@ function GapsTab({
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-600">Question</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">Question</label>
                     <input
                       value={approveForm.question}
                       onChange={e => setApproveForm({ ...approveForm, question: e.target.value })}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-md border border-[var(--border-strong)] px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-600">Answer</label>
+                    <label className="text-xs font-medium text-[var(--text-secondary)]">Answer</label>
                     <textarea
                       value={approveForm.answer}
                       onChange={e => setApproveForm({ ...approveForm, answer: e.target.value })}
                       rows={4}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      className="mt-1 w-full rounded-md border border-[var(--border-strong)] px-3 py-2 text-sm"
                     />
                   </div>
                   <div className="flex gap-2">
@@ -307,7 +307,7 @@ function GapsTab({
                     </button>
                     <button
                       onClick={() => setApproveForm(null)}
-                      className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition-colors"
+                      className="px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                     >
                       Cancel
                     </button>
@@ -329,7 +329,7 @@ function GapsTab({
                   <button
                     onClick={() => dismissGap(gap.id)}
                     disabled={actionLoading === gap.id}
-                    className="px-3 py-2 text-xs text-slate-500 hover:text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                    className="px-3 py-2 text-xs text-[var(--text-secondary)] hover:text-[var(--text-secondary)] border border-[var(--border-strong)] rounded-lg hover:bg-[var(--surface-subtle)] transition-colors"
                   >
                     {actionLoading === gap.id ? 'Dismissing…' : 'Dismiss'}
                   </button>
@@ -395,7 +395,7 @@ function KnowledgeTab({
   }
 
   if (loading) {
-    return <div className="text-sm text-slate-500 py-8 text-center">Loading knowledge…</div>;
+    return <div className="text-sm text-[var(--text-secondary)] py-8 text-center">Loading knowledge…</div>;
   }
 
   return (
@@ -415,11 +415,11 @@ function KnowledgeTab({
         <div className="bg-amber-50 rounded-lg border border-amber-200 p-4 space-y-3">
           <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider">Manually Teach Sunny</p>
           <div>
-            <label className="text-xs font-medium text-slate-600">Category</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Category</label>
             <select
               value={newKnowledge.category}
               onChange={e => setNewKnowledge({ ...newKnowledge, category: e.target.value })}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-[var(--border-strong)] px-3 py-2 text-sm"
             >
               {CATEGORIES.map(c => (
                 <option key={c} value={c}>{c.replace('_', ' ')}</option>
@@ -427,22 +427,22 @@ function KnowledgeTab({
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600">Question</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Question</label>
             <input
               value={newKnowledge.question}
               onChange={e => setNewKnowledge({ ...newKnowledge, question: e.target.value })}
               placeholder="What question does this answer?"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-[var(--border-strong)] px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600">Answer</label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">Answer</label>
             <textarea
               value={newKnowledge.answer}
               onChange={e => setNewKnowledge({ ...newKnowledge, answer: e.target.value })}
               placeholder="The correct answer Sunny should give"
               rows={4}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-[var(--border-strong)] px-3 py-2 text-sm"
             />
           </div>
           <div className="flex gap-2">
@@ -455,7 +455,7 @@ function KnowledgeTab({
             </button>
             <button
               onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition-colors"
+              className="px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
             >
               Cancel
             </button>
@@ -465,17 +465,17 @@ function KnowledgeTab({
 
       {/* Knowledge list */}
       {additions.length === 0 ? (
-        <div className="bg-white rounded-lg border border-slate-200 p-8 text-center">
-          <p className="text-slate-500 text-sm">No knowledge additions yet. Use the button above to teach Sunny new things.</p>
+        <div className="bg-[var(--surface-raised)] rounded-lg border border-[var(--border-default)] p-8 text-center">
+          <p className="text-[var(--text-secondary)] text-sm">No knowledge additions yet. Use the button above to teach Sunny new things.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {additions.map(addition => (
-            <div key={addition.id} className="bg-white rounded-lg border border-slate-200 p-4">
+            <div key={addition.id} className="bg-[var(--surface-raised)] rounded-lg border border-[var(--border-default)] p-4">
               <div className="flex items-start gap-3">
                 <CategoryBadge category={addition.category} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800">{addition.question}</p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{addition.question}</p>
 
                   {editingId === addition.id ? (
                     <div className="mt-2 space-y-2">
@@ -483,30 +483,30 @@ function KnowledgeTab({
                         value={editAnswer}
                         onChange={e => setEditAnswer(e.target.value)}
                         rows={3}
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                        className="w-full rounded-md border border-[var(--border-strong)] px-3 py-2 text-sm"
                       />
                       <div className="flex gap-2">
                         <button
                           onClick={() => updateAddition(addition.id, { answer: editAnswer })}
                           disabled={actionLoading}
-                          className="px-3 py-1.5 bg-slate-700 text-white text-xs rounded-md hover:bg-slate-800 disabled:opacity-50"
+                          className="px-3 py-1.5 bg-[var(--surface-base)] text-white text-xs rounded-md hover:bg-[var(--surface-base)] disabled:opacity-50"
                         >
                           Save
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
-                          className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700"
+                          className="px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-secondary)]"
                         >
                           Cancel
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-600 mt-1 whitespace-pre-wrap">{addition.answer}</p>
+                    <p className="text-sm text-[var(--text-secondary)] mt-1 whitespace-pre-wrap">{addition.answer}</p>
                   )}
 
                   <div className="flex items-center gap-3 mt-2">
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-[var(--text-tertiary)]">
                       {new Date(addition.created_at).toLocaleDateString()} ·{' '}
                       {addition.source_gap_id ? 'From gap' : 'Manual'}
                     </span>
@@ -564,7 +564,7 @@ function CategoryBadge({ category }: { category: string }) {
     marketing: 'bg-teal-100 text-teal-700',
     troubleshooting: 'bg-red-100 text-red-700',
     client_experience: 'bg-green-100 text-green-700',
-    other: 'bg-slate-100 text-slate-600',
+    other: 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]',
   };
 
   return (

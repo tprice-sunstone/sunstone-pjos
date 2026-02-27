@@ -32,7 +32,7 @@ export function AdminShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-screen overflow-hidden bg-[var(--surface-subtle)]">
       {/* Desktop Sidebar */}
       <DesktopSidebar userEmail={userEmail} />
 
@@ -47,7 +47,7 @@ export function AdminShell({
               className="lg:hidden fixed inset-0 bg-black/30 z-40"
               onClick={() => setMobileMenuOpen(false)}
             />
-            <div className="lg:hidden fixed left-0 top-0 bottom-0 w-72 bg-slate-900 z-50 p-4">
+            <div className="lg:hidden fixed left-0 top-0 bottom-0 w-72 bg-[var(--surface-base)] z-50 p-4">
               <MobileSidebarContent
                 userEmail={userEmail}
                 onClose={() => setMobileMenuOpen(false)}
@@ -113,16 +113,16 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
   };
 
   return (
-    <aside className="hidden lg:flex w-64 bg-slate-900 flex-col shrink-0">
+    <aside className="hidden lg:flex w-64 bg-[var(--surface-base)] flex-col shrink-0">
       {/* Brand */}
-      <div className="px-5 py-5 border-b border-slate-700/50">
+      <div className="px-5 py-5 border-b border-[var(--border-default)]">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shrink-0 shadow-sm">
             <span className="text-white font-bold text-sm">S</span>
           </div>
           <div className="min-w-0">
             <div className="text-sm font-bold text-white truncate">Sunstone Admin</div>
-            <div className="text-xs text-slate-400 truncate">{userEmail}</div>
+            <div className="text-xs text-[var(--text-tertiary)] truncate">{userEmail}</div>
           </div>
         </div>
       </div>
@@ -141,7 +141,7 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
                 'flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm font-medium transition-colors',
                 isActive
                   ? 'bg-amber-500/15 text-amber-400'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-base)]'
               )}
             >
               <item.icon className="w-5 h-5 shrink-0" />
@@ -157,11 +157,11 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-4 border-t border-slate-700/50 space-y-1">
+      <div className="px-3 py-4 border-t border-[var(--border-default)] space-y-1">
         {/* Back to Dashboard */}
         <Link
           href="/dashboard"
-          className="flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+          className="flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-base)] transition-colors"
         >
           <BackIcon className="w-5 h-5 shrink-0" />
           Back to Dashboard
@@ -170,7 +170,7 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
         {/* Logout */}
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+          className="w-full flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-base)] transition-colors"
         >
           <LogoutIcon className="w-5 h-5 shrink-0" />
           Sign Out
@@ -186,10 +186,10 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
 
 function MobileHeader({ onToggle }: { onToggle: () => void }) {
   return (
-    <div className="lg:hidden flex items-center gap-3 px-4 h-14 bg-slate-900 border-b border-slate-700/50 shrink-0">
+    <div className="lg:hidden flex items-center gap-3 px-4 h-14 bg-[var(--surface-base)] border-b border-[var(--border-default)] shrink-0">
       <button
         onClick={onToggle}
-        className="w-10 h-10 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 transition-colors"
+        className="w-10 h-10 flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-base)] transition-colors"
       >
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
@@ -234,7 +234,7 @@ function MobileSidebarContent({
         </div>
         <button
           onClick={onClose}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-700"
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-base)]"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -257,7 +257,7 @@ function MobileSidebarContent({
                 'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors',
                 isActive
                   ? 'bg-amber-500/15 text-amber-400'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-base)]'
               )}
             >
               <item.icon className="w-5 h-5 shrink-0" />
@@ -273,19 +273,19 @@ function MobileSidebarContent({
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-slate-700/50 pt-4 space-y-1">
-        <div className="px-3 text-xs text-slate-500 mb-2 truncate">{userEmail}</div>
+      <div className="border-t border-[var(--border-default)] pt-4 space-y-1">
+        <div className="px-3 text-xs text-[var(--text-secondary)] mb-2 truncate">{userEmail}</div>
         <Link
           href="/dashboard"
           onClick={onClose}
-          className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+          className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-base)] transition-colors"
         >
           <BackIcon className="w-5 h-5 shrink-0" />
           Back to Dashboard
         </Link>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-base)] transition-colors"
         >
           <LogoutIcon className="w-5 h-5 shrink-0" />
           Sign Out

@@ -324,7 +324,7 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
       {/* ── Chat Panel ── */}
       <div
         className={cn(
-          'fixed z-50 flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out',
+          'fixed z-50 flex flex-col bg-[var(--surface-base)] shadow-2xl transition-transform duration-300 ease-in-out',
           'lg:right-0 lg:top-0 lg:bottom-0 lg:w-[400px] lg:border-l lg:border-border-default',
           'max-lg:left-0 max-lg:right-0 max-lg:bottom-0 max-lg:rounded-t-2xl max-lg:max-h-[calc(100vh-60px)]',
           isOpen
@@ -385,7 +385,7 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
 
         {/* Input area — or upgrade prompt if limit reached */}
         {limitReached ? (
-          <div className="p-3 border-t border-border-default shrink-0 bg-white safe-area-bottom">
+          <div className="p-3 border-t border-border-default shrink-0 bg-[var(--surface-base)] safe-area-bottom">
             <UpgradePrompt
               feature="Unlimited Sunny Access"
               variant="inline"
@@ -393,7 +393,7 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
             />
           </div>
         ) : (
-          <div className="p-3 border-t border-border-default shrink-0 bg-white safe-area-bottom">
+          <div className="p-3 border-t border-border-default shrink-0 bg-[var(--surface-base)] safe-area-bottom">
             <div className="flex items-end gap-2">
               <textarea
                 ref={inputRef}
@@ -533,7 +533,7 @@ function ProductCarousel({ products }: { products: Product[] }) {
             href={product.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-shrink-0 w-36 rounded-xl border border-border-default bg-white hover:shadow-md transition-shadow overflow-hidden group"
+            className="flex-shrink-0 w-36 rounded-xl border border-border-default bg-[var(--surface-raised)] hover:shadow-md transition-shadow overflow-hidden group"
           >
             {product.imageUrl ? (
               <div className="w-full h-24 bg-surface-raised overflow-hidden">

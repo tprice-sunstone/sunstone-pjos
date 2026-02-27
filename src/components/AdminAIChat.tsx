@@ -53,13 +53,13 @@ function renderMarkdown(text: string): string {
     .replace(/>/g, '&gt;');
 
   // Code blocks
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-slate-800 text-slate-200 rounded-md p-3 my-2 text-xs overflow-x-auto "><code>$2</code></pre>');
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-[var(--surface-base)] text-[var(--text-tertiary)] rounded-md p-3 my-2 text-xs overflow-x-auto "><code>$2</code></pre>');
 
   // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code class="bg-slate-100 px-1 py-0.5 rounded text-xs  text-slate-800">$1</code>');
+  html = html.replace(/`([^`]+)`/g, '<code class="bg-[var(--surface-subtle)] px-1 py-0.5 rounded text-xs  text-[var(--text-primary)]">$1</code>');
 
   // Bold
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-slate-900">$1</strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-[var(--text-primary)]">$1</strong>');
 
   // Italic
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
@@ -83,23 +83,23 @@ function renderMarkdown(text: string): string {
 
     if (h1Match) {
       if (inList) { processed.push(listType === 'ol' ? '</ol>' : '</ul>'); inList = false; listType = null; }
-      processed.push(`<h3 class="text-base font-bold text-slate-900 mt-4 mb-2">${h1Match[1]}</h3>`);
+      processed.push(`<h3 class="text-base font-bold text-[var(--text-primary)] mt-4 mb-2">${h1Match[1]}</h3>`);
       continue;
     }
     if (h2Match) {
       if (inList) { processed.push(listType === 'ol' ? '</ol>' : '</ul>'); inList = false; listType = null; }
-      processed.push(`<h4 class="text-sm font-bold text-slate-800 mt-3 mb-1.5">${h2Match[1]}</h4>`);
+      processed.push(`<h4 class="text-sm font-bold text-[var(--text-primary)] mt-3 mb-1.5">${h2Match[1]}</h4>`);
       continue;
     }
     if (h3Match) {
       if (inList) { processed.push(listType === 'ol' ? '</ol>' : '</ul>'); inList = false; listType = null; }
-      processed.push(`<h5 class="text-sm font-semibold text-slate-700 mt-2 mb-1">${h3Match[1]}</h5>`);
+      processed.push(`<h5 class="text-sm font-semibold text-[var(--text-secondary)] mt-2 mb-1">${h3Match[1]}</h5>`);
       continue;
     }
 
     if (line.match(/^---+$/)) {
       if (inList) { processed.push(listType === 'ol' ? '</ol>' : '</ul>'); inList = false; listType = null; }
-      processed.push('<hr class="border-slate-200 my-3" />');
+      processed.push('<hr class="border-[var(--border-default)] my-3" />');
       continue;
     }
 
@@ -109,14 +109,14 @@ function renderMarkdown(text: string): string {
     if (bulletMatch) {
       if (!inList || listType !== 'ul') {
         if (inList) processed.push(listType === 'ol' ? '</ol>' : '</ul>');
-        processed.push('<ul class="list-disc list-inside space-y-0.5 my-1.5 text-slate-700">');
+        processed.push('<ul class="list-disc list-inside space-y-0.5 my-1.5 text-[var(--text-secondary)]">');
         inList = true; listType = 'ul';
       }
       processed.push(`<li class="text-sm">${bulletMatch[2]}</li>`);
     } else if (numberMatch) {
       if (!inList || listType !== 'ol') {
         if (inList) processed.push(listType === 'ol' ? '</ol>' : '</ul>');
-        processed.push('<ol class="list-decimal list-inside space-y-0.5 my-1.5 text-slate-700">');
+        processed.push('<ol class="list-decimal list-inside space-y-0.5 my-1.5 text-[var(--text-secondary)]">');
         inList = true; listType = 'ol';
       }
       processed.push(`<li class="text-sm">${numberMatch[2]}</li>`);
@@ -126,7 +126,7 @@ function renderMarkdown(text: string): string {
         inList = false; listType = null;
       }
       if (line.trim()) {
-        processed.push(`<p class="my-1 text-sm text-slate-700">${line}</p>`);
+        processed.push(`<p class="my-1 text-sm text-[var(--text-secondary)]">${line}</p>`);
       } else {
         processed.push('<br/>');
       }
@@ -144,14 +144,14 @@ function renderMarkdown(text: string): string {
 function TypingIndicator() {
   return (
     <div className="flex items-start gap-2 px-4">
-      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center flex-shrink-0 mt-0.5">
+      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[var(--surface-base)] to-[var(--surface-base)] flex items-center justify-center flex-shrink-0 mt-0.5">
         <AtlasIconSmall className="w-3.5 h-3.5 text-amber-400" />
       </div>
-      <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-4 py-3">
+      <div className="bg-[var(--surface-subtle)] rounded-2xl rounded-tl-sm px-4 py-3">
         <div className="flex gap-1.5">
-          <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-          <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-          <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          <span className="w-2 h-2 bg-[var(--text-tertiary)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+          <span className="w-2 h-2 bg-[var(--text-tertiary)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+          <span className="w-2 h-2 bg-[var(--text-tertiary)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
         </div>
       </div>
     </div>
@@ -286,7 +286,7 @@ export default function AdminAIChat() {
         onClick={() => setIsOpen(true)}
         className={cn(
           'fixed z-40 flex items-center gap-2 px-4 py-3 rounded-full',
-          'bg-gradient-to-r from-slate-700 to-slate-900 text-white shadow-lg',
+          'bg-gradient-to-r from-[var(--surface-base)] to-[var(--surface-base)] text-white shadow-lg',
           'hover:shadow-xl hover:scale-105 active:scale-95',
           'transition-all duration-200 ease-out',
           'bottom-6 right-6',
@@ -316,9 +316,9 @@ export default function AdminAIChat() {
       {/* ================================================================ */}
       <div
         className={cn(
-          'fixed z-50 flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-out',
+          'fixed z-50 flex flex-col bg-[var(--surface-raised)] shadow-2xl transition-transform duration-300 ease-out',
           // Desktop: right side panel
-          'lg:right-0 lg:top-0 lg:bottom-0 lg:w-[440px] lg:border-l lg:border-slate-200',
+          'lg:right-0 lg:top-0 lg:bottom-0 lg:w-[440px] lg:border-l lg:border-[var(--border-default)]',
           // Mobile: slide up sheet (max-lg prevents bleeding into desktop)
           'max-lg:left-0 max-lg:right-0 max-lg:bottom-0 max-lg:rounded-t-2xl max-lg:max-h-[calc(100vh-60px)]',
           // Open/close
@@ -331,19 +331,19 @@ export default function AdminAIChat() {
         {/* ============================================================ */}
         {/* Header                                                       */}
         {/* ============================================================ */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-gradient-to-r from-slate-800 to-slate-900 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-default)] bg-gradient-to-r from-[var(--surface-base)] to-[var(--surface-base)] shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
               <AtlasIconSmall className="w-4 h-4 text-white" />
             </div>
             <div>
               <h2 className="text-base font-bold text-white">Atlas</h2>
-              <p className="text-xs text-slate-400">Platform Intelligence</p>
+              <p className="text-xs text-[var(--text-tertiary)]">Platform Intelligence</p>
             </div>
           </div>
           <button
             onClick={() => setIsOpen(false)}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors text-slate-400"
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors text-[var(--text-tertiary)]"
             aria-label="Close Atlas"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -358,13 +358,13 @@ export default function AdminAIChat() {
         <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full px-4 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center mb-4 shadow-lg">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--surface-base)] to-[var(--surface-base)] flex items-center justify-center mb-4 shadow-lg">
                 <AtlasIcon className="w-8 h-8 text-amber-400" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-1">
+              <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">
                 Platform Intelligence
               </h3>
-              <p className="text-sm text-slate-500 mb-6 max-w-xs">
+              <p className="text-sm text-[var(--text-secondary)] mb-6 max-w-xs">
                 I have real-time access to all platform data — revenue, tenants, sales, Sunny&#39;s activity, inventory, events, and more. Ask me anything.
               </p>
               <div className="flex flex-wrap gap-2 justify-center max-w-sm">
@@ -372,7 +372,7 @@ export default function AdminAIChat() {
                   <button
                     key={prompt}
                     onClick={() => sendMessage(prompt)}
-                    className="px-3 py-2 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-full hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-colors text-left"
+                    className="px-3 py-2 text-xs font-medium text-[var(--text-secondary)] bg-[var(--surface-subtle)] border border-[var(--border-default)] rounded-full hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-colors text-left"
                   >
                     {prompt}
                   </button>
@@ -384,22 +384,22 @@ export default function AdminAIChat() {
               <div key={msg.id}>
                 {msg.role === 'user' ? (
                   <div className="flex justify-end px-1">
-                    <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-br-sm text-sm text-white bg-slate-800">
+                    <div className="max-w-[80%] px-4 py-2.5 rounded-2xl rounded-br-sm text-sm text-white bg-[var(--surface-base)]">
                       {msg.content}
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-start gap-2 px-1">
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[var(--surface-base)] to-[var(--surface-base)] flex items-center justify-center flex-shrink-0 mt-0.5">
                       <AtlasIconSmall className="w-3.5 h-3.5 text-amber-400" />
                     </div>
                     <div className="max-w-[88%]">
                       <div
-                        className="bg-slate-50 rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed border border-slate-100"
+                        className="bg-[var(--surface-subtle)] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed border border-[var(--border-subtle)]"
                         dangerouslySetInnerHTML={{
                           __html: msg.content
                             ? renderMarkdown(msg.content)
-                            : '<span class="text-slate-400">...</span>',
+                            : '<span class="text-[var(--text-tertiary)]">...</span>',
                         }}
                       />
                     </div>
@@ -419,7 +419,7 @@ export default function AdminAIChat() {
         {/* ============================================================ */}
         {/* Input                                                        */}
         {/* ============================================================ */}
-        <div className="shrink-0 border-t border-slate-200 bg-white px-3 py-3">
+        <div className="shrink-0 border-t border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-3">
           <div className="flex items-end gap-2">
             <textarea
               ref={inputRef}
@@ -430,9 +430,9 @@ export default function AdminAIChat() {
               rows={1}
               disabled={isStreaming}
               className={cn(
-                'flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5',
-                'text-sm text-slate-900 placeholder:text-slate-400',
-                'focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-400',
+                'flex-1 resize-none rounded-xl border border-[var(--border-default)] bg-[var(--surface-subtle)] px-4 py-2.5',
+                'text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]',
+                'focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)]',
                 'disabled:opacity-50',
                 'max-h-24'
               )}
@@ -449,8 +449,8 @@ export default function AdminAIChat() {
               className={cn(
                 'w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0',
                 input.trim() && !isStreaming
-                  ? 'bg-slate-800 text-amber-400 hover:bg-slate-700 active:scale-95'
-                  : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                  ? 'bg-[var(--surface-base)] text-amber-400 hover:bg-[var(--surface-base)] active:scale-95'
+                  : 'bg-[var(--surface-subtle)] text-[var(--text-tertiary)] cursor-not-allowed'
               )}
               style={{ minHeight: 42, minWidth: 42 }}
             >

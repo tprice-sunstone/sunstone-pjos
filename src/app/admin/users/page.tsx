@@ -76,14 +76,14 @@ export default function AdminUsersPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
           Users
         </h1>
-        <div className="bg-white rounded-xl border border-slate-200 p-8 animate-pulse">
-          <div className="h-10 w-64 bg-slate-100 rounded mb-6" />
+        <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-8 animate-pulse">
+          <div className="h-10 w-64 bg-[var(--surface-subtle)] rounded mb-6" />
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-12 bg-slate-50 rounded" />
+              <div key={i} className="h-12 bg-[var(--surface-subtle)] rounded" />
             ))}
           </div>
         </div>
@@ -94,23 +94,23 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
           Users
         </h1>
-        <div className="text-sm text-slate-500">{users.length} total</div>
+        <div className="text-sm text-[var(--text-secondary)]">{users.length} total</div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200">
+      <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)]">
         {/* Search */}
-        <div className="p-4 border-b border-slate-100">
+        <div className="p-4 border-b border-[var(--border-subtle)]">
           <div className="relative max-w-md">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)]" />
             <input
               type="text"
               placeholder="Search by email, name, or tenant…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 transition"
+              className="w-full pl-10 pr-4 py-2.5 text-sm border border-[var(--border-default)] rounded-lg bg-[var(--surface-subtle)] focus:bg-[var(--surface-raised)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] transition"
             />
           </div>
         </div>
@@ -119,40 +119,40 @@ export default function AdminUsersPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100">
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Email</th>
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Name</th>
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Tenant(s)</th>
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Role</th>
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Created</th>
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Last Sign-in</th>
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Status</th>
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Actions</th>
+              <tr className="border-b border-[var(--border-subtle)]">
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Email</th>
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Name</th>
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Tenant(s)</th>
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Role</th>
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Created</th>
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Last Sign-in</th>
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Status</th>
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-4 py-12 text-center text-[var(--text-tertiary)]">
                     {search ? 'No users match your search' : 'No users yet'}
                   </td>
                 </tr>
               )}
               {filtered.map(u => (
-                <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={u.id} className="hover:bg-[var(--surface-subtle)] transition-colors">
                   <td className="px-4 py-3">
-                    <span className="font-medium text-slate-900">{u.email}</span>
+                    <span className="font-medium text-[var(--text-primary)]">{u.email}</span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{u.name || '—'}</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">{u.name || '—'}</td>
                   <td className="px-4 py-3">
                     {u.tenants.length === 0 ? (
-                      <span className="text-slate-400">None</span>
+                      <span className="text-[var(--text-tertiary)]">None</span>
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {u.tenants.map(t => (
                           <span
                             key={t.tenant_id}
-                            className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-700"
+                            className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--surface-subtle)] text-[var(--text-secondary)]"
                           >
                             {t.tenant_name}
                           </span>
@@ -160,13 +160,13 @@ export default function AdminUsersPage() {
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">
                     {u.tenants.length > 0 ? u.tenants[0].role : '—'}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">
                     {new Date(u.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">
                     {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString() : 'Never'}
                   </td>
                   <td className="px-4 py-3">
@@ -186,7 +186,7 @@ export default function AdminUsersPage() {
                       <button
                         onClick={() => performAction(u.id, 'reset-password')}
                         disabled={actionLoading === u.id}
-                        className="px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors disabled:opacity-50"
+                        className="px-2.5 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] rounded-md transition-colors disabled:opacity-50"
                         title="Send password reset"
                       >
                         Reset PW
@@ -249,11 +249,11 @@ function ConfirmModal({
 }) {
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
-        <h3 className="text-lg font-semibold text-slate-900 mb-2">
+      <div className="bg-[var(--surface-raised)] rounded-xl shadow-xl max-w-sm w-full p-6">
+        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
           {action === 'ban' ? 'Ban User' : 'Unban User'}
         </h3>
-        <p className="text-sm text-slate-600 mb-6">
+        <p className="text-sm text-[var(--text-secondary)] mb-6">
           {action === 'ban'
             ? `Are you sure you want to ban ${user?.email}? They will be unable to sign in.`
             : `Unban ${user?.email}? They will regain access to their account.`}
@@ -261,7 +261,7 @@ function ConfirmModal({
         <div className="flex items-center justify-end gap-3">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+            className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] rounded-lg transition-colors"
           >
             Cancel
           </button>

@@ -151,14 +151,14 @@ export default function AdminTenantsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
           Tenants
         </h1>
-        <div className="bg-white rounded-xl border border-slate-200 p-8 animate-pulse">
-          <div className="h-10 w-64 bg-slate-100 rounded mb-6" />
+        <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-8 animate-pulse">
+          <div className="h-10 w-64 bg-[var(--surface-subtle)] rounded mb-6" />
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-12 bg-slate-50 rounded" />
+              <div key={i} className="h-12 bg-[var(--surface-subtle)] rounded" />
             ))}
           </div>
         </div>
@@ -169,23 +169,23 @@ export default function AdminTenantsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
           Tenants
         </h1>
-        <div className="text-sm text-slate-500">{tenants.length} total</div>
+        <div className="text-sm text-[var(--text-secondary)]">{tenants.length} total</div>
       </div>
 
       {/* Search */}
-      <div className="bg-white rounded-xl border border-slate-200">
-        <div className="p-4 border-b border-slate-100">
+      <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)]">
+        <div className="p-4 border-b border-[var(--border-subtle)]">
           <div className="relative max-w-md">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)]" />
             <input
               type="text"
               placeholder="Search by name, email, or slug…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 transition"
+              className="w-full pl-10 pr-4 py-2.5 text-sm border border-[var(--border-default)] rounded-lg bg-[var(--surface-subtle)] focus:bg-[var(--surface-raised)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)] transition"
             />
           </div>
         </div>
@@ -194,21 +194,21 @@ export default function AdminTenantsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100">
+              <tr className="border-b border-[var(--border-subtle)]">
                 <SortHeader label="Business" sortKey="name" current={sortBy} asc={sortAsc} onSort={handleSort} />
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Owner</th>
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Owner</th>
                 <SortHeader label="Plan" sortKey="subscription_tier" current={sortBy} asc={sortAsc} onSort={handleSort} />
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Payment</th>
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Onboarded</th>
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Payment</th>
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Onboarded</th>
                 <SortHeader label="Sales" sortKey="sales_count" current={sortBy} asc={sortAsc} onSort={handleSort} />
                 <SortHeader label="Created" sortKey="created_at" current={sortBy} asc={sortAsc} onSort={handleSort} />
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Status</th>
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-4 py-12 text-center text-[var(--text-tertiary)]">
                     {search ? 'No tenants match your search' : 'No tenants yet'}
                   </td>
                 </tr>
@@ -218,7 +218,7 @@ export default function AdminTenantsPage() {
                   <tr
                     onClick={() => toggleExpand(t.id)}
                     className={cn(
-                      'cursor-pointer transition-colors hover:bg-slate-50',
+                      'cursor-pointer transition-colors hover:bg-[var(--surface-subtle)]',
                       expandedId === t.id && 'bg-amber-50/50'
                     )}
                   >
@@ -230,21 +230,21 @@ export default function AdminTenantsPage() {
                         >
                           {t.name.charAt(0)}
                         </div>
-                        <span className="font-medium text-slate-900 truncate max-w-[200px]">{t.name}</span>
+                        <span className="font-medium text-[var(--text-primary)] truncate max-w-[200px]">{t.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-slate-600 truncate max-w-[200px]">{t.owner_email}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)] truncate max-w-[200px]">{t.owner_email}</td>
                     <td className="px-4 py-3"><TierBadge tier={t.subscription_tier} /></td>
-                    <td className="px-4 py-3 text-slate-600">{t.payment_processor}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">{t.payment_processor}</td>
                     <td className="px-4 py-3">
                       {t.onboarding_completed ? (
                         <span className="text-emerald-600">✓</span>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-[var(--text-tertiary)]">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3  text-slate-700">{t.sales_count}</td>
-                    <td className="px-4 py-3 text-slate-500">{new Date(t.created_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3  text-[var(--text-secondary)]">{t.sales_count}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">{new Date(t.created_at).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       {t.is_suspended ? (
                         <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-700">
@@ -261,9 +261,9 @@ export default function AdminTenantsPage() {
                   {/* Expanded detail */}
                   {expandedId === t.id && (
                     <tr key={`${t.id}-detail`}>
-                      <td colSpan={8} className="bg-slate-50/50 px-6 py-6">
+                      <td colSpan={8} className="bg-[var(--surface-subtle)] px-6 py-6">
                         {detailLoading ? (
-                          <div className="text-sm text-slate-400 animate-pulse">Loading details…</div>
+                          <div className="text-sm text-[var(--text-tertiary)] animate-pulse">Loading details…</div>
                         ) : detail ? (
                           <TenantDetailPanel
                             detail={detail}
@@ -320,9 +320,9 @@ function TenantDetailPanel({
 
       {/* Owner info */}
       {detail.owner && (
-        <div className="text-sm text-slate-600">
-          Owner: <span className="font-medium text-slate-900">{detail.owner.email}</span>
-          <span className="text-slate-400 ml-2">
+        <div className="text-sm text-[var(--text-secondary)]">
+          Owner: <span className="font-medium text-[var(--text-primary)]">{detail.owner.email}</span>
+          <span className="text-[var(--text-tertiary)] ml-2">
             (joined {new Date(detail.owner.created_at).toLocaleDateString()})
           </span>
         </div>
@@ -331,13 +331,13 @@ function TenantDetailPanel({
       {/* Recent sales */}
       {detail.recent_sales.length > 0 && (
         <div>
-          <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Recent Sales</h4>
-          <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+          <h4 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-2">Recent Sales</h4>
+          <div className="bg-[var(--surface-raised)] rounded-lg border border-[var(--border-default)] divide-y divide-[var(--border-subtle)]">
             {detail.recent_sales.slice(0, 5).map(s => (
               <div key={s.id} className="px-4 py-2 flex items-center justify-between text-sm">
-                <span className="text-slate-500">{new Date(s.created_at).toLocaleDateString()}</span>
+                <span className="text-[var(--text-secondary)]">{new Date(s.created_at).toLocaleDateString()}</span>
                 <div className="flex items-center gap-4">
-                  <span className=" text-slate-900">{formatCurrency(Number(s.total))}</span>
+                  <span className=" text-[var(--text-primary)]">{formatCurrency(Number(s.total))}</span>
                   <span className=" text-amber-600 text-xs">
                     +{formatCurrency(Number(s.platform_fee_amount))} fee
                   </span>
@@ -352,12 +352,12 @@ function TenantDetailPanel({
       <div className="flex flex-wrap items-center gap-3 pt-2">
         {/* Plan tier select */}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-600">Plan:</span>
+          <span className="text-sm text-[var(--text-secondary)]">Plan:</span>
           <select
             value={tenant.subscription_tier}
             onChange={e => onUpdatePlan(e.target.value)}
             disabled={actionLoading}
-            className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-200"
+            className="text-sm border border-[var(--border-default)] rounded-lg px-3 py-1.5 bg-[var(--surface-raised)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
           >
             <option value="free">Free</option>
             <option value="pro">Pro</option>
@@ -380,7 +380,7 @@ function TenantDetailPanel({
         </button>
 
         {/* TODO: View as tenant */}
-        <span className="text-xs text-slate-400 ml-2">
+        <span className="text-xs text-[var(--text-tertiary)] ml-2">
           View as tenant — coming soon
         </span>
       </div>
@@ -394,16 +394,16 @@ function TenantDetailPanel({
 
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-white rounded-lg border border-slate-200 px-4 py-3">
-      <div className="text-lg font-bold text-slate-900 ">{value}</div>
-      <div className="text-xs text-slate-500">{label}</div>
+    <div className="bg-[var(--surface-raised)] rounded-lg border border-[var(--border-default)] px-4 py-3">
+      <div className="text-lg font-bold text-[var(--text-primary)] ">{value}</div>
+      <div className="text-xs text-[var(--text-secondary)]">{label}</div>
     </div>
   );
 }
 
 function TierBadge({ tier }: { tier: string }) {
   const styles: Record<string, string> = {
-    free: 'bg-slate-100 text-slate-600',
+    free: 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]',
     pro: 'bg-blue-50 text-blue-700',
     business: 'bg-amber-50 text-amber-700',
   };
@@ -430,7 +430,7 @@ function SortHeader({
   const active = current === sortKey;
   return (
     <th
-      className="text-left text-xs font-medium text-slate-500 px-4 py-3 cursor-pointer hover:text-slate-900 transition-colors select-none"
+      className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3 cursor-pointer hover:text-[var(--text-primary)] transition-colors select-none"
       onClick={() => onSort(sortKey)}
     >
       <span className="inline-flex items-center gap-1">

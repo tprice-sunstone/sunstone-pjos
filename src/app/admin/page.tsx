@@ -48,7 +48,7 @@ function insightConfig(type: string): { color: string; border: string; bg: strin
     case 'milestone':
       return { color: 'text-purple-700', border: 'border-l-purple-500', bg: 'bg-purple-50', iconBg: 'bg-purple-100', label: 'Milestone' };
     default:
-      return { color: 'text-slate-700', border: 'border-l-slate-400', bg: 'bg-slate-50', iconBg: 'bg-slate-100', label: 'Info' };
+      return { color: 'text-[var(--text-secondary)]', border: 'border-l-[var(--text-tertiary)]', bg: 'bg-[var(--surface-subtle)]', iconBg: 'bg-[var(--surface-subtle)]', label: 'Info' };
   }
 }
 
@@ -146,12 +146,12 @@ export default function AdminOverviewPage() {
       {/* Page Header */}
       <div>
         <h1
-          className="text-2xl font-bold text-slate-900"
+          className="text-2xl font-bold text-[var(--text-primary)]"
           style={{ fontFamily: 'var(--font-display, Georgia)' }}
         >
           Platform Overview
         </h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-sm text-[var(--text-secondary)] mt-1">
           Sunstone PJOS — platform health at a glance
         </p>
       </div>
@@ -162,9 +162,9 @@ export default function AdminOverviewPage() {
       {statsLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-slate-200 p-5 animate-pulse">
-              <div className="h-3 w-20 bg-slate-100 rounded mb-3" />
-              <div className="h-8 w-16 bg-slate-100 rounded" />
+            <div key={i} className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-5 animate-pulse">
+              <div className="h-3 w-20 bg-[var(--surface-subtle)] rounded mb-3" />
+              <div className="h-8 w-16 bg-[var(--surface-subtle)] rounded" />
             </div>
           ))}
         </div>
@@ -181,31 +181,31 @@ export default function AdminOverviewPage() {
           {/* Plan Breakdown + Recent Signups */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Plan Breakdown */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">
+            <div className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-5">
+              <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-4">
                 Plan Breakdown
               </h3>
               <div className="space-y-3">
-                <PlanRow tier="Free" count={stats.planBreakdown.free} total={stats.totalTenants} color="bg-slate-300" />
+                <PlanRow tier="Free" count={stats.planBreakdown.free} total={stats.totalTenants} color="bg-[var(--text-tertiary)]" />
                 <PlanRow tier="Pro" count={stats.planBreakdown.pro} total={stats.totalTenants} color="bg-blue-500" />
                 <PlanRow tier="Business" count={stats.planBreakdown.business} total={stats.totalTenants} color="bg-amber-500" />
               </div>
             </div>
 
             {/* Recent Signups */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">
+            <div className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-5">
+              <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-4">
                 Recent Signups
               </h3>
               {stats.recentSignups.length === 0 ? (
-                <p className="text-sm text-slate-400">No tenants yet</p>
+                <p className="text-sm text-[var(--text-tertiary)]">No tenants yet</p>
               ) : (
-                <div className="space-y-0 divide-y divide-slate-100">
+                <div className="space-y-0 divide-y divide-[var(--border-subtle)]">
                   {stats.recentSignups.map((s, i) => (
                     <div key={i} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate">{s.name}</p>
-                        <p className="text-xs text-slate-400">{new Date(s.created_at).toLocaleDateString()}</p>
+                        <p className="text-sm font-medium text-[var(--text-primary)] truncate">{s.name}</p>
+                        <p className="text-xs text-[var(--text-tertiary)]">{new Date(s.created_at).toLocaleDateString()}</p>
                       </div>
                       <TierBadge tier={s.tier} />
                     </div>
@@ -216,8 +216,8 @@ export default function AdminOverviewPage() {
           </div>
         </>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-          <p className="text-slate-500">Failed to load stats. Try refreshing.</p>
+        <div className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-8 text-center">
+          <p className="text-[var(--text-secondary)]">Failed to load stats. Try refreshing.</p>
         </div>
       )}
 
@@ -233,12 +233,12 @@ export default function AdminOverviewPage() {
             </div>
             <div>
               <h2
-                className="text-lg font-bold text-slate-900"
+                className="text-lg font-bold text-[var(--text-primary)]"
                 style={{ fontFamily: 'var(--font-display, Georgia)' }}
               >
                 Platform Intelligence
               </h2>
-              <p className="text-xs text-slate-500">AI-powered analysis of your platform data</p>
+              <p className="text-xs text-[var(--text-secondary)]">AI-powered analysis of your platform data</p>
             </div>
           </div>
           <button
@@ -247,8 +247,8 @@ export default function AdminOverviewPage() {
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
               insightsLoading
-                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800'
+                ? 'bg-[var(--surface-subtle)] text-[var(--text-tertiary)] cursor-not-allowed'
+                : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] hover:text-[var(--text-primary)]'
             )}
           >
             <RefreshIcon className={cn('w-3.5 h-3.5', insightsLoading && 'animate-spin')} />
@@ -261,13 +261,13 @@ export default function AdminOverviewPage() {
           // Skeleton loading state
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-white rounded-xl border border-slate-200 p-5 animate-pulse">
+              <div key={i} className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-5 animate-pulse">
                 <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-slate-100 shrink-0" />
+                  <div className="w-9 h-9 rounded-lg bg-[var(--surface-subtle)] shrink-0" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-4 w-48 bg-slate-100 rounded" />
-                    <div className="h-3 w-full bg-slate-50 rounded" />
-                    <div className="h-3 w-3/4 bg-slate-50 rounded" />
+                    <div className="h-4 w-48 bg-[var(--surface-subtle)] rounded" />
+                    <div className="h-3 w-full bg-[var(--surface-subtle)] rounded" />
+                    <div className="h-3 w-3/4 bg-[var(--surface-subtle)] rounded" />
                   </div>
                 </div>
               </div>
@@ -275,11 +275,11 @@ export default function AdminOverviewPage() {
           </div>
         ) : insightsError ? (
           // Error state
-          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
-              <AlertCircleIcon className="w-6 h-6 text-slate-400" />
+          <div className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-8 text-center">
+            <div className="w-12 h-12 rounded-full bg-[var(--surface-subtle)] flex items-center justify-center mx-auto mb-3">
+              <AlertCircleIcon className="w-6 h-6 text-[var(--text-tertiary)]" />
             </div>
-            <p className="text-sm text-slate-600 mb-3">Insights unavailable — check back soon</p>
+            <p className="text-sm text-[var(--text-secondary)] mb-3">Insights unavailable — check back soon</p>
             <button
               onClick={loadInsights}
               className="px-4 py-2 bg-amber-50 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-100 transition-colors"
@@ -289,11 +289,11 @@ export default function AdminOverviewPage() {
           </div>
         ) : insights.length === 0 ? (
           // Empty state
-          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+          <div className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-8 text-center">
             <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-3">
               <SparkleIcon className="w-6 h-6 text-amber-500" />
             </div>
-            <p className="text-sm text-slate-600">No insights yet — insights will appear as platform data grows.</p>
+            <p className="text-sm text-[var(--text-secondary)]">No insights yet — insights will appear as platform data grows.</p>
           </div>
         ) : (
           // Insight cards
@@ -314,9 +314,9 @@ export default function AdminOverviewPage() {
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
-      <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{label}</div>
-      <div className="text-2xl font-bold text-slate-900 tracking-tight ">{value}</div>
+    <div className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-5">
+      <div className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">{label}</div>
+      <div className="text-2xl font-bold text-[var(--text-primary)] tracking-tight ">{value}</div>
     </div>
   );
 }
@@ -326,12 +326,12 @@ function PlanRow({ tier, count, total, color }: { tier: string; count: number; t
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-sm text-slate-700 font-medium">{tier}</span>
-        <span className="text-sm text-slate-500">
-          {count} <span className="text-slate-400">({pct}%)</span>
+        <span className="text-sm text-[var(--text-secondary)] font-medium">{tier}</span>
+        <span className="text-sm text-[var(--text-secondary)]">
+          {count} <span className="text-[var(--text-tertiary)]">({pct}%)</span>
         </span>
       </div>
-      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+      <div className="h-2 bg-[var(--surface-subtle)] rounded-full overflow-hidden">
         <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -340,7 +340,7 @@ function PlanRow({ tier, count, total, color }: { tier: string; count: number; t
 
 function TierBadge({ tier }: { tier: string }) {
   const styles: Record<string, string> = {
-    free: 'bg-slate-100 text-slate-600',
+    free: 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]',
     pro: 'bg-blue-50 text-blue-700',
     business: 'bg-amber-50 text-amber-700',
   };
@@ -356,7 +356,7 @@ function InsightCard({ insight }: { insight: Insight }) {
 
   return (
     <div className={cn(
-      'bg-white rounded-xl border border-slate-200 p-5 border-l-4 transition-colors',
+      'bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-5 border-l-4 transition-colors',
       config.border
     )}>
       <div className="flex items-start gap-3">
@@ -368,9 +368,9 @@ function InsightCard({ insight }: { insight: Insight }) {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h4 className="text-sm font-semibold text-slate-900 leading-snug">{insight.title}</h4>
+            <h4 className="text-sm font-semibold text-[var(--text-primary)] leading-snug">{insight.title}</h4>
           </div>
-          <p className="text-sm text-slate-600 leading-relaxed">{insight.body}</p>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{insight.body}</p>
           <span className={cn('inline-block mt-2 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full', config.bg, config.color)}>
             {config.label}
           </span>

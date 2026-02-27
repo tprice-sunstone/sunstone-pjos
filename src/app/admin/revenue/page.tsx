@@ -51,14 +51,14 @@ export default function AdminRevenuePage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
           Revenue
         </h1>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-slate-200 p-6 animate-pulse">
-              <div className="h-4 w-20 bg-slate-100 rounded mb-3" />
-              <div className="h-8 w-24 bg-slate-100 rounded" />
+            <div key={i} className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-6 animate-pulse">
+              <div className="h-4 w-20 bg-[var(--surface-subtle)] rounded mb-3" />
+              <div className="h-8 w-24 bg-[var(--surface-subtle)] rounded" />
             </div>
           ))}
         </div>
@@ -84,11 +84,11 @@ export default function AdminRevenuePage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
           Revenue
         </h1>
         {/* Time range selector */}
-        <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1">
+        <div className="flex items-center bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-lg p-1">
           {(['7d', '30d', '90d', 'all'] as TimeRange[]).map(range => (
             <button
               key={range}
@@ -96,8 +96,8 @@ export default function AdminRevenuePage() {
               className={cn(
                 'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
                 timeRange === range
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'bg-[var(--surface-base)] text-white'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               )}
             >
               {range === 'all' ? 'All Time' : range.toUpperCase()}
@@ -108,25 +108,25 @@ export default function AdminRevenuePage() {
 
       {/* ── Top-line Stats ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="text-xs font-medium text-slate-500 mb-1">Platform Fees</div>
+        <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-6">
+          <div className="text-xs font-medium text-[var(--text-secondary)] mb-1">Platform Fees</div>
           <div className="text-2xl font-bold text-amber-600 ">
             {formatCurrency(timeRange === 'all' ? data.totals.platform_fees : filteredTotals.fees)}
           </div>
-          <div className="text-xs text-slate-400 mt-1">
+          <div className="text-xs text-[var(--text-tertiary)] mt-1">
             {timeRange === 'all' ? data.totals.sales_count : filteredTotals.count} sales
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="text-xs font-medium text-slate-500 mb-1">Gross Merchandise Value</div>
-          <div className="text-2xl font-bold text-slate-900 ">
+        <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-6">
+          <div className="text-xs font-medium text-[var(--text-secondary)] mb-1">Gross Merchandise Value</div>
+          <div className="text-2xl font-bold text-[var(--text-primary)] ">
             {formatCurrency(timeRange === 'all' ? data.totals.gmv : filteredTotals.gmv)}
           </div>
-          <div className="text-xs text-slate-400 mt-1">Total sales value</div>
+          <div className="text-xs text-[var(--text-tertiary)] mt-1">Total sales value</div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="text-xs font-medium text-slate-500 mb-1">Take Rate</div>
-          <div className="text-2xl font-bold text-slate-900 ">
+        <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-6">
+          <div className="text-xs font-medium text-[var(--text-secondary)] mb-1">Take Rate</div>
+          <div className="text-2xl font-bold text-[var(--text-primary)] ">
             {((timeRange === 'all' ? data.totals.gmv : filteredTotals.gmv) > 0
               ? (
                   ((timeRange === 'all' ? data.totals.platform_fees : filteredTotals.fees) /
@@ -136,14 +136,14 @@ export default function AdminRevenuePage() {
               : '0.00'
             )}%
           </div>
-          <div className="text-xs text-slate-400 mt-1">Fee ÷ GMV</div>
+          <div className="text-xs text-[var(--text-tertiary)] mt-1">Fee ÷ GMV</div>
         </div>
       </div>
 
       {/* ── Daily Revenue Chart (simple bar chart) ── */}
       {filteredDaily.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="text-sm font-semibold text-slate-900 mb-4">Daily Platform Fees</h2>
+        <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-6">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Daily Platform Fees</h2>
           <div className="flex items-end gap-[2px] h-40 overflow-x-auto pb-2">
             {filteredDaily.map((d, i) => {
               const height = maxDailyFee > 0 ? (d.fees / maxDailyFee) * 100 : 0;
@@ -155,14 +155,14 @@ export default function AdminRevenuePage() {
                     title={`${d.date}: ${formatCurrency(d.fees)}`}
                   />
                   {/* Tooltip on hover */}
-                  <div className="hidden group-hover:block absolute bottom-full mb-2 bg-slate-900 text-white text-[10px] rounded-md px-2 py-1 whitespace-nowrap z-10 pointer-events-none">
+                  <div className="hidden group-hover:block absolute bottom-full mb-2 bg-[var(--surface-base)] text-white text-[10px] rounded-md px-2 py-1 whitespace-nowrap z-10 pointer-events-none">
                     {d.date}: {formatCurrency(d.fees)}
                   </div>
                 </div>
               );
             })}
           </div>
-          <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+          <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)] mt-1">
             <span>{filteredDaily[0]?.date}</span>
             <span>{filteredDaily[filteredDaily.length - 1]?.date}</span>
           </div>
@@ -170,8 +170,8 @@ export default function AdminRevenuePage() {
       )}
 
       {/* ── By Plan Tier ── */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <h2 className="text-sm font-semibold text-slate-900 mb-4">Revenue by Plan Tier</h2>
+      <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-6">
+        <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Revenue by Plan Tier</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {(['free', 'pro', 'business'] as const).map(tier => {
             const tierData = data.by_tier[tier] || { gmv: 0, fees: 0, count: 0 };
@@ -183,21 +183,21 @@ export default function AdminRevenuePage() {
             return (
               <div
                 key={tier}
-                className={cn('border border-slate-100 rounded-lg p-4 border-l-4', tierColors[tier])}
+                className={cn('border border-[var(--border-subtle)] rounded-lg p-4 border-l-4', tierColors[tier])}
               >
-                <div className="text-sm font-medium text-slate-700 capitalize mb-2">{tier}</div>
+                <div className="text-sm font-medium text-[var(--text-secondary)] capitalize mb-2">{tier}</div>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Fees</span>
-                    <span className=" font-medium text-slate-900">{formatCurrency(tierData.fees)}</span>
+                    <span className="text-[var(--text-secondary)]">Fees</span>
+                    <span className=" font-medium text-[var(--text-primary)]">{formatCurrency(tierData.fees)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">GMV</span>
-                    <span className=" text-slate-700">{formatCurrency(tierData.gmv)}</span>
+                    <span className="text-[var(--text-secondary)]">GMV</span>
+                    <span className=" text-[var(--text-secondary)]">{formatCurrency(tierData.gmv)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Sales</span>
-                    <span className=" text-slate-700">{tierData.count}</span>
+                    <span className="text-[var(--text-secondary)]">Sales</span>
+                    <span className=" text-[var(--text-secondary)]">{tierData.count}</span>
                   </div>
                 </div>
               </div>
@@ -207,44 +207,44 @@ export default function AdminRevenuePage() {
       </div>
 
       {/* ── Top Tenants by Platform Fees ── */}
-      <div className="bg-white rounded-xl border border-slate-200">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-semibold text-slate-900">Top Tenants by Platform Fees</h2>
+      <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)]">
+        <div className="px-6 py-4 border-b border-[var(--border-subtle)]">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Top Tenants by Platform Fees</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100">
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">#</th>
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Tenant</th>
-                <th className="text-left text-xs font-medium text-slate-500 px-4 py-3">Plan</th>
-                <th className="text-right text-xs font-medium text-slate-500 px-4 py-3">Platform Fees</th>
-                <th className="text-right text-xs font-medium text-slate-500 px-4 py-3">GMV</th>
-                <th className="text-right text-xs font-medium text-slate-500 px-4 py-3">Sales</th>
+              <tr className="border-b border-[var(--border-subtle)]">
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">#</th>
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Tenant</th>
+                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Plan</th>
+                <th className="text-right text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Platform Fees</th>
+                <th className="text-right text-xs font-medium text-[var(--text-secondary)] px-4 py-3">GMV</th>
+                <th className="text-right text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Sales</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-[var(--border-subtle)]">
               {data.by_tenant.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-12 text-center text-[var(--text-tertiary)]">
                     No revenue data yet
                   </td>
                 </tr>
               )}
               {data.by_tenant.slice(0, 20).map((t, i) => (
-                <tr key={t.tenant_id} className="hover:bg-slate-50/50">
-                  <td className="px-4 py-3 text-slate-400 ">{i + 1}</td>
-                  <td className="px-4 py-3 font-medium text-slate-900">{t.name}</td>
+                <tr key={t.tenant_id} className="hover:bg-[var(--surface-subtle)]">
+                  <td className="px-4 py-3 text-[var(--text-tertiary)] ">{i + 1}</td>
+                  <td className="px-4 py-3 font-medium text-[var(--text-primary)]">{t.name}</td>
                   <td className="px-4 py-3">
                     <TierBadge tier={t.tier} />
                   </td>
                   <td className="px-4 py-3 text-right  text-amber-600 font-medium">
                     {formatCurrency(t.fees)}
                   </td>
-                  <td className="px-4 py-3 text-right  text-slate-700">
+                  <td className="px-4 py-3 text-right  text-[var(--text-secondary)]">
                     {formatCurrency(t.gmv)}
                   </td>
-                  <td className="px-4 py-3 text-right  text-slate-700">{t.count}</td>
+                  <td className="px-4 py-3 text-right  text-[var(--text-secondary)]">{t.count}</td>
                 </tr>
               ))}
             </tbody>
@@ -257,7 +257,7 @@ export default function AdminRevenuePage() {
 
 function TierBadge({ tier }: { tier: string }) {
   const styles: Record<string, string> = {
-    free: 'bg-slate-100 text-slate-600',
+    free: 'bg-[var(--surface-subtle)] text-[var(--text-secondary)]',
     pro: 'bg-blue-50 text-blue-700',
     business: 'bg-amber-50 text-amber-700',
   };
