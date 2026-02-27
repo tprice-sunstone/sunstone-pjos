@@ -230,6 +230,10 @@ function SettingsPage() {
   const [supAddNotes, setSupAddNotes] = useState('');
   const [supSaving, setSupSaving] = useState(false);
 
+  // Queue
+  const [avgServiceMinutes, setAvgServiceMinutes] = useState(10);
+  const [savingQueue, setSavingQueue] = useState(false);
+
   // Waiver
   const [waiverText, setWaiverText] = useState('');
 
@@ -326,6 +330,7 @@ function SettingsPage() {
     setBusinessWebsite((tenant as any).website || '');
     setFeeHandling(tenant.fee_handling);
     setWaiverText(tenant.waiver_text);
+    setAvgServiceMinutes((tenant as any).avg_service_minutes ?? 10);
     setLogoUrl((tenant as any).logo_url || null);
     if (tenant.brand_color && isValidHexColor(tenant.brand_color)) {
       setAccentColor(tenant.brand_color);
@@ -673,6 +678,20 @@ function SettingsPage() {
       .eq('id', tenant.id);
     if (error) { toast.error(error.message); return; }
     toast.success('Fee handling updated');
+    refetch();
+  };
+
+  const saveAvgServiceMinutes = async () => {
+    if (!tenant) return;
+    setSavingQueue(true);
+    const clamped = Math.min(60, Math.max(1, avgServiceMinutes));
+    const { error } = await supabase
+      .from('tenants')
+      .update({ avg_service_minutes: clamped })
+      .eq('id', tenant.id);
+    setSavingQueue(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Average service time updated');
     refetch();
   };
 
@@ -1800,7 +1819,30 @@ function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* ── 8. Waiver Text ── */}
+          {/* ── 8. Queue Settings ── */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Queue Settings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Input
+                label="Average service time per customer (minutes)"
+                type="number"
+                min={1}
+                max={60}
+                value={avgServiceMinutes}
+                onChange={(e) => setAvgServiceMinutes(Number(e.target.value) || 10)}
+                helperText="Used to estimate wait times for customers in your queue"
+              />
+            </CardContent>
+            <CardFooter>
+              <Button variant="primary" onClick={saveAvgServiceMinutes} loading={savingQueue}>
+                Save Queue Settings
+              </Button>
+            </CardFooter>
+          </Card>
+
+          {/* ── 9. Waiver Text ── */}
           <Card>
             <CardHeader>
               <CardTitle>Waiver Text</CardTitle>

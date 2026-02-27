@@ -61,6 +61,8 @@ export interface Tenant {
   // Waiver
   waiver_text: string;
   waiver_required: boolean;
+  // Queue
+  avg_service_minutes: number;
   // Other
   min_monthly_transactions: number;
   is_suspended: boolean;

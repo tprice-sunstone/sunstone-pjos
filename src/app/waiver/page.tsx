@@ -252,7 +252,7 @@ function WaiverPageInner() {
       const { count } = await positionQuery;
       const nextPos = (count || 0) + 1;
 
-      await supabase.from('queue_entries').insert({
+      const { data: queueEntry } = await supabase.from('queue_entries').insert({
         tenant_id: tenant!.id,
         event_id: resolvedEventId,
         client_id: clientId,
@@ -262,7 +262,19 @@ function WaiverPageInner() {
         position: nextPos,
         waiver_id: waiver?.id,
         sms_consent: smsConsent,
-      });
+      }).select('id').single();
+
+      // Send queue position SMS (fire-and-forget, don't block submission)
+      if (queueEntry?.id && smsConsent && form.phone) {
+        fetch('/api/queue/position-notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            queueEntryId: queueEntry.id,
+            tenantId: tenant!.id,
+          }),
+        }).catch(() => {}); // silent — don't fail the waiver flow
+      }
 
       setStep('done');
     } catch (err: any) {
