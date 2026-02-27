@@ -40,7 +40,8 @@ import {
   ModalBody,
   ModalFooter,
 } from '@/components/ui';
-import { applyAccentColor, isValidHexColor, generateAccentScale } from '@/lib/theme';
+import { applyAccentColor, applyTheme, isValidHexColor, generateAccentScale } from '@/lib/theme';
+import { THEMES, LIGHT_THEMES, DARK_THEMES, getThemeById, DEFAULT_THEME_ID, type ThemeDefinition } from '@/lib/themes';
 import MaterialsSection from '@/components/settings/MaterialsSection';
 import type { TaxProfile, FeeHandling, BusinessType, ProductType, Supplier, SubscriptionTier } from '@/types';
 import { PLATFORM_FEE_RATES, SUBSCRIPTION_PRICES } from '@/types';
@@ -181,7 +182,8 @@ function SettingsPage() {
   const [businessWebsite, setBusinessWebsite] = useState('');
   const [savingBusiness, setSavingBusiness] = useState(false);
 
-  // Brand color
+  // Theme & brand color
+  const [selectedThemeId, setSelectedThemeId] = useState(DEFAULT_THEME_ID);
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [colorInput, setColorInput] = useState(DEFAULT_ACCENT);
   const [savingBrand, setSavingBrand] = useState(false);
@@ -332,6 +334,9 @@ function SettingsPage() {
     setWaiverText(tenant.waiver_text);
     setAvgServiceMinutes((tenant as any).avg_service_minutes ?? 10);
     setLogoUrl((tenant as any).logo_url || null);
+    if (tenant.theme_id) {
+      setSelectedThemeId(tenant.theme_id);
+    }
     if (tenant.brand_color && isValidHexColor(tenant.brand_color)) {
       setAccentColor(tenant.brand_color);
       setColorInput(tenant.brand_color);
@@ -573,17 +578,31 @@ function SettingsPage() {
     refetch();
   };
 
-  const saveBrandColor = async () => {
-    if (!tenant || !isValidHexColor(accentColor)) return;
+  const saveBranding = async () => {
+    if (!tenant) return;
     setSavingBrand(true);
+    const updatePayload: Record<string, any> = {
+      theme_id: selectedThemeId,
+      brand_color: isValidHexColor(accentColor) ? accentColor : null,
+    };
     const { error } = await supabase
       .from('tenants')
-      .update({ brand_color: accentColor })
+      .update(updatePayload)
       .eq('id', tenant.id);
     setSavingBrand(false);
     if (error) { toast.error(error.message); return; }
-    toast.success('Brand color updated');
+    toast.success('Branding updated');
     refetch();
+  };
+
+  const selectTheme = (themeId: string) => {
+    setSelectedThemeId(themeId);
+    const theme = getThemeById(themeId);
+    // Reset custom accent when switching themes
+    setAccentColor(DEFAULT_ACCENT);
+    setColorInput(DEFAULT_ACCENT);
+    // Apply theme immediately as live preview
+    applyTheme(theme);
   };
 
   const handleColorInputChange = (value: string) => {
@@ -592,14 +611,24 @@ function SettingsPage() {
     if (isValidHexColor(cleaned)) {
       setAccentColor(cleaned);
       setColorInput(cleaned);
-      applyAccentColor(cleaned);
+      // Apply with current theme + custom accent
+      const theme = getThemeById(selectedThemeId);
+      applyTheme(theme, cleaned);
     }
   };
 
   const selectPresetColor = (hex: string) => {
     setAccentColor(hex);
     setColorInput(hex);
-    applyAccentColor(hex);
+    const theme = getThemeById(selectedThemeId);
+    applyTheme(theme, hex);
+  };
+
+  const clearCustomAccent = () => {
+    setAccentColor(DEFAULT_ACCENT);
+    setColorInput(DEFAULT_ACCENT);
+    const theme = getThemeById(selectedThemeId);
+    applyTheme(theme);
   };
 
   // ── Logo Upload ──
@@ -1182,7 +1211,7 @@ function SettingsPage() {
             </CardFooter>
           </Card>
 
-          {/* ── 2. Branding (Logo + Color) ── */}
+          {/* ── 2. Branding (Logo + Theme + Color) ── */}
           <Card>
             <CardHeader>
               <CardTitle>Branding</CardTitle>
@@ -1238,11 +1267,59 @@ function SettingsPage() {
                 </div>
               </div>
 
-              {/* Accent Color */}
+              {/* Theme Selector */}
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-text-primary">Brand Color</label>
+                <label className="block text-sm font-medium text-text-primary">Theme</label>
                 <p className="text-sm text-text-secondary">
-                  Choose an accent color for buttons, links, and highlights.
+                  Choose a theme to set the entire look and feel of your app.
+                </p>
+
+                {/* Light themes */}
+                <div className="space-y-2">
+                  <span className="text-xs font-medium text-text-tertiary uppercase tracking-wider">Light</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                    {LIGHT_THEMES.map((theme) => (
+                      <ThemePreviewCard
+                        key={theme.id}
+                        theme={theme}
+                        isSelected={selectedThemeId === theme.id}
+                        onSelect={() => selectTheme(theme.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dark themes */}
+                <div className="space-y-2">
+                  <span className="text-xs font-medium text-text-tertiary uppercase tracking-wider">Dark</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {DARK_THEMES.map((theme) => (
+                      <ThemePreviewCard
+                        key={theme.id}
+                        theme={theme}
+                        isSelected={selectedThemeId === theme.id}
+                        onSelect={() => selectTheme(theme.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Custom Accent Color Override */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-medium text-text-primary">Custom Accent Color</label>
+                  {isValidHexColor(accentColor) && accentColor !== DEFAULT_ACCENT && (
+                    <button
+                      onClick={clearCustomAccent}
+                      className="text-xs text-text-tertiary hover:text-text-secondary"
+                    >
+                      Reset to theme default
+                    </button>
+                  )}
+                </div>
+                <p className="text-sm text-text-secondary">
+                  Override the theme&apos;s accent color for buttons, links, and highlights.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   {COLOR_PRESETS.map((preset) => (
@@ -1267,7 +1344,7 @@ function SettingsPage() {
                       label="Custom Hex Color"
                       value={colorInput}
                       onChange={(e) => handleColorInputChange(e.target.value)}
-                      placeholder="#852454"
+                      placeholder="#B76E79"
                       maxLength={7}
                     />
                   </div>
@@ -1276,30 +1353,10 @@ function SettingsPage() {
                     style={{ backgroundColor: isValidHexColor(accentColor) ? accentColor : '#ccc' }}
                   />
                 </div>
-                {isValidHexColor(accentColor) && (() => {
-                  try {
-                    const scale = generateAccentScale(accentColor);
-                    return (
-                      <div className="flex gap-1">
-                        {[scale[50], scale[100], scale[200], scale[300], scale[400], scale[500], scale[600], scale[700], scale[800], scale[900]].map(
-                          (color, i) => (
-                            <div
-                              key={i}
-                              className="flex-1 h-6 rounded first:rounded-l-lg last:rounded-r-lg"
-                              style={{ backgroundColor: color }}
-                            />
-                          )
-                        )}
-                      </div>
-                    );
-                  } catch {
-                    return null;
-                  }
-                })()}
               </div>
             </CardContent>
             <CardFooter>
-              <Button variant="primary" onClick={saveBrandColor} loading={savingBrand}>
+              <Button variant="primary" onClick={saveBranding} loading={savingBrand}>
                 Save Branding
               </Button>
             </CardFooter>
@@ -2466,6 +2523,86 @@ function SettingsPage() {
         </ModalFooter>
       </Modal>
     </div>
+  );
+}
+
+// ============================================================================
+// Theme Preview Card
+// ============================================================================
+
+function ThemePreviewCard({
+  theme,
+  isSelected,
+  onSelect,
+}: {
+  theme: ThemeDefinition;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      onClick={onSelect}
+      className={`relative rounded-xl border-2 overflow-hidden transition-all duration-200 hover:scale-[1.03] ${
+        isSelected
+          ? 'border-[var(--accent-primary)] shadow-md ring-2 ring-[var(--accent-subtle)]'
+          : 'border-transparent hover:border-[var(--border-strong)]'
+      }`}
+    >
+      {/* Mini preview */}
+      <div
+        className="p-3 space-y-2"
+        style={{ backgroundColor: theme.background }}
+      >
+        {/* Fake heading text */}
+        <div
+          className="text-xs font-semibold truncate"
+          style={{ color: theme.textPrimary, fontFamily: `'${theme.headingFont}', serif` }}
+        >
+          {theme.name}
+        </div>
+
+        {/* Fake card */}
+        <div
+          className="rounded-md p-2 space-y-1.5"
+          style={{
+            backgroundColor: theme.surfaceRaised,
+            border: `1px solid ${theme.borderDefault}`,
+          }}
+        >
+          {/* Fake text lines */}
+          <div
+            className="h-1.5 rounded-full w-3/4"
+            style={{ backgroundColor: theme.textSecondary, opacity: 0.4 }}
+          />
+          <div
+            className="h-1.5 rounded-full w-1/2"
+            style={{ backgroundColor: theme.textTertiary, opacity: 0.3 }}
+          />
+        </div>
+
+        {/* Fake accent button */}
+        <div
+          className="rounded-md h-5 flex items-center justify-center"
+          style={{ backgroundColor: theme.accent }}
+        >
+          <span
+            className="text-[8px] font-semibold"
+            style={{ color: theme.textOnAccent }}
+          >
+            Button
+          </span>
+        </div>
+      </div>
+
+      {/* Selected checkmark */}
+      {isSelected && (
+        <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--accent-primary)] flex items-center justify-center">
+          <svg className="w-3 h-3 text-[var(--text-on-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </div>
+      )}
+    </button>
   );
 }
 

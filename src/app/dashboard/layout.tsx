@@ -13,6 +13,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { TenantProvider, useTenant } from '@/hooks/use-tenant';
+import { ThemeProvider } from '@/components/themeprovider';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import type { Permission } from '@/lib/permissions';
@@ -43,33 +44,51 @@ const navItems: NavItem[] = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <TenantProvider>
-      <div className="flex h-screen overflow-hidden bg-surface-base">
-        {/* Desktop sidebar — hidden on mobile */}
-        <DesktopSidebar />
+      <TenantThemeBridge>
+        <div className="flex h-screen overflow-hidden bg-[var(--surface-base)]">
+          {/* Desktop sidebar — hidden on mobile */}
+          <DesktopSidebar />
 
-        {/* Main content area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Mobile top bar */}
-          <MobileTopBar />
+          {/* Main content area */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Mobile top bar */}
+            <MobileTopBar />
 
-          {/* Trial expiry banner */}
-          <TrialBanner />
+            {/* Trial expiry banner */}
+            <TrialBanner />
 
-          {/* Page content */}
-          <main className="flex-1 overflow-y-auto">
-            <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24 lg:pb-8">
-              {children}
-            </div>
-          </main>
+            {/* Page content */}
+            <main className="flex-1 overflow-y-auto">
+              <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24 lg:pb-8">
+                {children}
+              </div>
+            </main>
 
-          {/* Mobile bottom nav */}
-          <MobileBottomNav />
+            {/* Mobile bottom nav */}
+            <MobileBottomNav />
+          </div>
         </div>
-      </div>
 
-      {/* Mentor Chat — available on every dashboard page */}
-      <MentorChat />
+        {/* Mentor Chat — available on every dashboard page */}
+        <MentorChat />
+      </TenantThemeBridge>
     </TenantProvider>
+  );
+}
+
+/**
+ * Bridge between TenantProvider context and ThemeProvider.
+ * Reads the tenant's theme_id and brand_color, passes them to ThemeProvider.
+ */
+function TenantThemeBridge({ children }: { children: React.ReactNode }) {
+  const { tenant } = useTenant();
+  return (
+    <ThemeProvider
+      themeId={tenant?.theme_id || null}
+      accentColor={tenant?.brand_color || null}
+    >
+      {children}
+    </ThemeProvider>
   );
 }
 

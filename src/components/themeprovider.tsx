@@ -1,30 +1,29 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
-import { applyAccentColor, isValidHexColor } from '@/lib/theme';
+import { applyTheme, applyAccentColor, isValidHexColor } from '@/lib/theme';
+import { getThemeById, DEFAULT_THEME_ID } from '@/lib/themes';
 
 interface ThemeProviderProps {
+  themeId?: string | null;
   accentColor?: string | null;
   children: ReactNode;
 }
 
 /**
- * ThemeProvider — Applies tenant accent color as CSS variables.
+ * ThemeProvider — Applies a full theme (colors, surfaces, borders, fonts)
+ * via CSS custom properties.
  *
- * If accentColor is a valid hex, it generates and applies a full
- * accent scale via CSS custom properties, overriding globals.css.
- *
- * If accentColor is null/undefined (no custom brand color saved),
- * it does nothing — the hand-tuned Sunstone palette in globals.css
- * remains active as the default.
+ * - If themeId is set, applies the matching theme from the registry.
+ * - If accentColor is also set, it overrides the theme's accent color.
+ * - If neither is set, Rose Gold defaults from globals.css remain active.
  */
-export function ThemeProvider({ accentColor, children }: ThemeProviderProps) {
+export function ThemeProvider({ themeId, accentColor, children }: ThemeProviderProps) {
   useEffect(() => {
-    if (accentColor && isValidHexColor(accentColor)) {
-      applyAccentColor(accentColor);
-    }
-    // If no accentColor, don't override — globals.css defaults apply
-  }, [accentColor]);
+    const theme = getThemeById(themeId || DEFAULT_THEME_ID);
+    const hasCustomAccent = accentColor && isValidHexColor(accentColor);
+    applyTheme(theme, hasCustomAccent ? accentColor : null);
+  }, [themeId, accentColor]);
 
   return <>{children}</>;
 }

@@ -1,10 +1,13 @@
 // ============================================================================
 // Sunstone OS — Theme Utilities
 // ============================================================================
-// Dynamic accent color generation from a single hex value.
+// Dynamic accent color generation and full theme application.
 // Generates an 11-step color scale using HSL manipulation.
 // The user's chosen color is preserved exactly as the 500 value
 // and used as --accent-primary (button color, links, etc).
+// Also supports applying a complete ThemeDefinition to CSS custom properties.
+
+import type { ThemeDefinition } from './themes';
 
 export interface AccentScale {
   50: string;
@@ -189,4 +192,117 @@ export function applyAccentColor(hex: string): void {
   root.style.setProperty('--accent-hover', scale[600]);
   root.style.setProperty('--accent-subtle', scale[50]);
   root.style.setProperty('--accent-muted', scale[100]);
+}
+
+// ============================================================================
+// Full Theme Application
+// ============================================================================
+
+const THEME_FONT_LINK_ID = 'sunstone-theme-fonts';
+
+/**
+ * Load the theme's Google Fonts by injecting/updating a <link> tag.
+ * Uses font-display: swap via the Google Fonts URL parameter.
+ */
+export function loadThemeFonts(fontImportUrl: string): void {
+  if (typeof document === 'undefined') return;
+
+  let link = document.getElementById(THEME_FONT_LINK_ID) as HTMLLinkElement | null;
+  if (link) {
+    // Update existing link if URL changed
+    if (link.href !== fontImportUrl) {
+      link.href = fontImportUrl;
+    }
+  } else {
+    // Create new link element
+    link = document.createElement('link');
+    link.id = THEME_FONT_LINK_ID;
+    link.rel = 'stylesheet';
+    link.href = fontImportUrl;
+    document.head.appendChild(link);
+  }
+}
+
+/**
+ * Apply a complete theme definition to the document root.
+ * Sets all CSS custom properties and loads the theme's fonts.
+ *
+ * If accentOverride is provided (a valid hex), it replaces the theme's
+ * accent color and generates a full accent scale from that override.
+ */
+export function applyTheme(theme: ThemeDefinition, accentOverride?: string | null): void {
+  if (typeof document === 'undefined') return;
+
+  const root = document.documentElement;
+
+  // Determine the accent color to use
+  const useCustomAccent = accentOverride && isValidHexColor(accentOverride);
+  const accent = useCustomAccent ? accentOverride! : theme.accent;
+  const accentHover = useCustomAccent ? generateAccentScale(accentOverride!)[600] : theme.accentHover;
+  const accentMuted = useCustomAccent ? generateAccentScale(accentOverride!)[50] : theme.accentMuted;
+
+  // Generate full accent scale from the active accent color
+  const scale = generateAccentScale(accent);
+  for (const [key, value] of Object.entries(scale)) {
+    root.style.setProperty(`--accent-${key}`, value);
+  }
+
+  // Accent semantic aliases
+  root.style.setProperty('--accent-primary', accent);
+  root.style.setProperty('--accent-hover', accentHover);
+  root.style.setProperty('--accent-subtle', scale[50]);
+  root.style.setProperty('--accent-muted', scale[100]);
+
+  // Surfaces
+  root.style.setProperty('--surface-base', theme.background);
+  root.style.setProperty('--surface-raised', theme.surfaceRaised);
+  root.style.setProperty('--surface-overlay', theme.surfaceOverlay);
+  root.style.setProperty('--surface-subtle', theme.surfaceSubtle);
+  root.style.setProperty('--surface-sidebar', theme.surfaceSidebar);
+
+  // Text
+  root.style.setProperty('--text-primary', theme.textPrimary);
+  root.style.setProperty('--text-secondary', theme.textSecondary);
+  root.style.setProperty('--text-tertiary', theme.textTertiary);
+  root.style.setProperty('--text-inverse', theme.mode === 'dark' ? theme.background : '#FFFFFF');
+  root.style.setProperty('--text-on-accent', theme.textOnAccent);
+
+  // Borders
+  root.style.setProperty('--border-default', theme.borderDefault);
+  root.style.setProperty('--border-subtle', theme.borderSubtle);
+  root.style.setProperty('--border-strong', theme.borderStrong);
+
+  // Nav state tokens (derived from accent)
+  if (theme.mode === 'light') {
+    root.style.setProperty('--nav-active-bg', accentMuted);
+    root.style.setProperty('--nav-active-text', scale[700]);
+    root.style.setProperty('--nav-active-border', scale[600]);
+  } else {
+    root.style.setProperty('--nav-active-bg', accentMuted);
+    root.style.setProperty('--nav-active-text', accent);
+    root.style.setProperty('--nav-active-border', accent);
+  }
+
+  // Typography
+  const headingStack = `'${theme.headingFont}', Georgia, serif`;
+  const bodyStack = `'${theme.bodyFont}', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  root.style.setProperty('--font-heading', headingStack);
+  root.style.setProperty('--font-body', bodyStack);
+  root.style.setProperty('--font-sans', bodyStack);
+  root.style.setProperty('--font-display', headingStack);
+
+  // Shadow adjustments for dark themes
+  if (theme.mode === 'dark') {
+    root.style.setProperty('--shadow-sm', '0 1px 3px 0 rgba(0, 0, 0, 0.25), 0 1px 2px -1px rgba(0, 0, 0, 0.25)');
+    root.style.setProperty('--shadow-base', '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2)');
+    root.style.setProperty('--shadow-md', '0 10px 15px -3px rgba(0, 0, 0, 0.35), 0 4px 6px -4px rgba(0, 0, 0, 0.2)');
+  } else {
+    // Reset to warm-tinted light shadows
+    root.style.setProperty('--shadow-sm', '0 1px 3px 0 rgba(49, 36, 27, 0.06), 0 1px 2px -1px rgba(49, 36, 27, 0.06)');
+    root.style.setProperty('--shadow-base', '0 4px 6px -1px rgba(49, 36, 27, 0.06), 0 2px 4px -2px rgba(49, 36, 27, 0.04)');
+    root.style.setProperty('--shadow-md', '0 10px 15px -3px rgba(49, 36, 27, 0.08), 0 4px 6px -4px rgba(49, 36, 27, 0.04)');
+  }
+
+  // Load fonts
+  loadThemeFonts(theme.fontImportUrl);
 }
