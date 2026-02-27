@@ -21,8 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
-import MiniQueueStrip from '@/components/MiniQueueStrip';
-import { ProductSelector } from '@/components/pos';
+import { ProductSelector, QueueBadge } from '@/components/pos';
 import type {
   InventoryItem,
   TaxProfile,
@@ -333,7 +332,16 @@ export default function StoreModePage() {
             <div className="text-[11px] text-[var(--text-tertiary)] uppercase tracking-[0.05em] font-medium">Store Mode</div>
           </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Queue Badge */}
+          <QueueBadge
+            tenantId={tenant.id}
+            mode="store"
+            onStartSale={handleQueueStartSale}
+            isServingActive={!!activeQueueEntry}
+            refreshTrigger={queueRefresh}
+          />
+
           {/* QR Code button */}
           <button
             onClick={() => setShowQR(true)}
@@ -360,15 +368,6 @@ export default function StoreModePage() {
           </div>
         </div>
       </header>
-
-      {/* ── Check-In Strip ── */}
-      <MiniQueueStrip
-        tenantId={tenant.id}
-        mode="store"
-        onStartSale={handleQueueStartSale}
-        isServingActive={!!activeQueueEntry}
-        refreshTrigger={queueRefresh}
-      />
 
       {/* ── Serving Banner ── */}
       {activeQueueEntry && step === 'items' && (

@@ -23,8 +23,7 @@ import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/ui/Moda
 import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
 import JumpRingPickerModal from '@/components/JumpRingPickerModal';
-import MiniQueueStrip from '@/components/MiniQueueStrip';
-import { ProductSelector } from '@/components/pos';
+import { ProductSelector, QueueBadge } from '@/components/pos';
 import type { QueueEntry } from '@/components/MiniQueueStrip';
 import type {
   InventoryItem, Event, TaxProfile, PaymentMethod, ProductType, ChainProductPrice, JumpRingResolution, CartItem,
@@ -504,7 +503,19 @@ function EventModePageInner() {
             {event.location && <div className="text-[11px] text-[var(--text-tertiary)] truncate">{event.location}</div>}
           </div>
         </div>
-        <div className="flex items-center gap-3 sm:gap-5 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Queue Badge */}
+          {tenant && eventId && (
+            <QueueBadge
+              tenantId={tenant.id}
+              eventId={eventId}
+              mode="event"
+              onStartSale={handleQueueStartSale}
+              isServingActive={!!activeQueueEntry}
+              refreshTrigger={queueRefresh}
+            />
+          )}
+
           <button onClick={() => setShowQR(true)}
             className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
             aria-label="Show QR code">
@@ -526,19 +537,7 @@ function EventModePageInner() {
         </div>
       </header>
 
-      {/* ── Task B: Mini Queue Strip ── */}
-      {tenant && eventId && (
-        <MiniQueueStrip
-          tenantId={tenant.id}
-          eventId={eventId}
-          mode="event"
-          onStartSale={handleQueueStartSale}
-          isServingActive={!!activeQueueEntry}
-          refreshTrigger={queueRefresh}
-        />
-      )}
-
-      {/* ── Task B: "Serving: [Name]" banner ── */}
+      {/* ── Serving Banner ── */}
       {activeQueueEntry && step === 'items' && (
         <div
           className="flex items-center justify-between px-4 shrink-0"

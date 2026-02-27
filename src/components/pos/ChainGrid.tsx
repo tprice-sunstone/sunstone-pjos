@@ -42,8 +42,8 @@ function getDisplayPrice(chain: InventoryItem, chainPrices: ChainProductPrice[])
   return `$${Number(chain.sell_price).toFixed(2)}`;
 }
 
-const cardBase = 'bg-[var(--surface-raised)] border text-left cursor-pointer transition-all duration-200 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.08)] hover:-translate-y-px active:scale-[0.97]';
-const cardSecondary = `${cardBase} rounded-xl p-5 min-h-[100px] shadow-[0_1px_2px_0_rgba(0,0,0,0.04)]`;
+const cardBase = 'bg-[var(--surface-raised)] border border-[var(--border-strong)] text-left cursor-pointer transition-all duration-200 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.15)] hover:-translate-y-px active:scale-[0.97]';
+const cardSecondary = `${cardBase} rounded-xl p-5 min-h-[100px] shadow-[var(--shadow-card)]`;
 
 export function ChainGrid({ chains, chainPrices, onSelect, selectedChainId }: ChainGridProps) {
   if (chains.length === 0) {
@@ -65,7 +65,7 @@ export function ChainGrid({ chains, chainPrices, onSelect, selectedChainId }: Ch
             className={`${cardSecondary} flex flex-col justify-between ${
               isSelected
                 ? 'border-[var(--accent-primary)] ring-2 ring-[var(--accent-primary)] ring-opacity-30'
-                : 'border-[var(--border-default)]'
+                : ''
             }`}
           >
             <div>

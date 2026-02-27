@@ -60,7 +60,7 @@ export function ProductTypeRow({
                   onSelectFlatRate(chain, pt, price, inches);
                 }
               }}
-              className="shrink-0 rounded-xl px-4 py-3 bg-[var(--surface-raised)] border border-[var(--border-default)] hover:border-[var(--border-strong)] hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] transition-all active:scale-[0.97] min-h-[44px] text-left"
+              className="shrink-0 rounded-xl px-4 py-3 bg-[var(--surface-raised)] border border-[var(--border-strong)] shadow-[var(--shadow-card)] hover:bg-[var(--surface-subtle)] hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12)] transition-all active:scale-[0.97] min-h-[44px] text-left"
             >
               <div className="text-[13px] font-semibold text-[var(--text-primary)] whitespace-nowrap">
                 {pt.name}

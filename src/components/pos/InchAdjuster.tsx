@@ -48,7 +48,7 @@ export function InchAdjuster({ chain, productType, onAdd, onCancel }: InchAdjust
             <button
               key={delta}
               onClick={() => adjustBy(delta)}
-              className="w-14 h-10 rounded-lg bg-[var(--surface-raised)] border border-[var(--border-default)] text-[13px] font-semibold text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-all active:scale-[0.95] min-h-[44px]"
+              className="w-14 h-10 rounded-lg bg-[var(--surface-raised)] border border-[var(--border-strong)] text-[13px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] transition-all active:scale-[0.95] min-h-[44px]"
             >
               {delta > 0 ? '+' : ''}{delta}
             </button>
@@ -67,7 +67,7 @@ export function InchAdjuster({ chain, productType, onAdd, onCancel }: InchAdjust
             value={inches}
             onChange={(e) => setInches(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
-            className="w-full h-20 px-4 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] text-center text-[40px] font-semibold focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all tracking-tight"
+            className="w-full h-20 px-4 rounded-2xl border border-[var(--border-strong)] bg-[var(--surface-raised)] text-[var(--text-primary)] text-center text-[40px] font-semibold focus:outline-none focus:border-[var(--accent-primary)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.08)] transition-all tracking-tight"
             autoFocus
           />
         </div>
@@ -88,7 +88,7 @@ export function InchAdjuster({ chain, productType, onAdd, onCancel }: InchAdjust
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 h-14 rounded-xl font-semibold text-base border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-all active:scale-[0.97]"
+            className="flex-1 h-14 rounded-xl font-semibold text-base border border-[var(--border-strong)] bg-[var(--surface-raised)] text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] transition-all active:scale-[0.97]"
           >
             Cancel
           </button>

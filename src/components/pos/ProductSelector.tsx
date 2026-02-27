@@ -173,7 +173,7 @@ export function ProductSelector({
   return (
     <div>
       {/* ── Chains / Add-ons toggle ── */}
-      <div className="flex gap-1 mb-4 bg-[var(--surface-subtle)] rounded-xl p-1">
+      <div className="flex gap-1 mb-4 bg-[var(--surface-subtle)] border border-[var(--border-strong)] rounded-xl p-1">
         <button
           onClick={() => { setView('chains'); resetSelection(); }}
           className={`flex-1 rounded-lg py-2.5 text-[13px] font-semibold transition-all min-h-[44px] ${

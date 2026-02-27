@@ -26,7 +26,7 @@ export function MaterialTabs({ materials, selected, onSelect, showAll = true }: 
   if (materials.length <= 1 && !showAll) return null;
 
   const activeClass = 'bg-[var(--accent-primary)] text-white border-transparent shadow-sm';
-  const inactiveClass = 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]';
+  const inactiveClass = 'bg-[var(--surface-raised)] border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]';
 
   return (
     <div

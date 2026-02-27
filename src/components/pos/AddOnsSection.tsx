@@ -18,8 +18,8 @@ const TYPE_LABELS: Record<string, string> = {
 
 const TYPE_ORDER: InventoryType[] = ['connector', 'charm', 'jump_ring', 'other'];
 
-const cardBase = 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-left cursor-pointer transition-all duration-200 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.08)] hover:-translate-y-px active:scale-[0.97]';
-const cardSecondary = `${cardBase} rounded-xl p-5 min-h-[100px] shadow-[0_1px_2px_0_rgba(0,0,0,0.04)]`;
+const cardBase = 'bg-[var(--surface-raised)] border border-[var(--border-strong)] text-left cursor-pointer transition-all duration-200 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.15)] hover:-translate-y-px active:scale-[0.97]';
+const cardSecondary = `${cardBase} rounded-xl p-5 min-h-[100px] shadow-[var(--shadow-card)]`;
 
 export function AddOnsSection({ inventory, onAddItem, onAddCustom }: AddOnsSectionProps) {
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export function AddOnsSection({ inventory, onAddItem, onAddCustom }: AddOnsSecti
   };
 
   const activeTab = 'bg-[var(--accent-primary)] text-white border-transparent shadow-sm';
-  const inactiveTab = 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]';
+  const inactiveTab = 'bg-[var(--surface-raised)] border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]';
 
   return (
     <div>
