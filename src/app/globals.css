@@ -266,21 +266,3 @@
   .safe-area-top { padding-top: env(safe-area-inset-top, 0px); }
 }
 
-/* ═══════════════════════════════════════════════════════
-   POS Light Surface Override
-   Forces dark text / light surface tokens on white-bg POS.
-   Keeps accent colors from the active theme untouched.
-   ═══════════════════════════════════════════════════════ */
-
-.pos-light-surface {
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --text-tertiary: #9ca3af;
-  --surface-base: #ffffff;
-  --surface-raised: #f9fafb;
-  --surface-subtle: #f3f4f6;
-  --surface-overlay: #ffffff;
-  --border-default: #e5e7eb;
-  --border-strong: #d1d5db;
-  --border-subtle: #f3f4f6;
-}

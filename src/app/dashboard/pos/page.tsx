@@ -434,7 +434,7 @@ export default function StoreModePage() {
 
   if (!tenant) {
     return (
-      <div className="flex items-center justify-center h-screen bg-white pos-light-surface">
+      <div className="flex items-center justify-center h-screen bg-[var(--surface-base)]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-[var(--text-primary)] border-t-transparent mb-4" />
           <p className="text-[var(--text-tertiary)] text-sm">Loading...</p>
@@ -449,7 +449,7 @@ export default function StoreModePage() {
 
   // ── Shared card classes ────────────────────────────────────────────────
 
-  const cardBase = 'bg-white border border-[var(--border-default)] text-left cursor-pointer transition-all duration-200 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.08)] hover:-translate-y-px active:scale-[0.97]';
+  const cardBase = 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-left cursor-pointer transition-all duration-200 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.08)] hover:-translate-y-px active:scale-[0.97]';
   const cardPrimary = `${cardBase} rounded-2xl p-7 min-h-[140px] shadow-[0_1px_3px_0_rgba(0,0,0,0.06)]`;
   const cardSecondary = `${cardBase} rounded-xl p-5 min-h-[100px] shadow-[0_1px_2px_0_rgba(0,0,0,0.04)]`;
   const cardCompact = `${cardBase} rounded-xl p-4 min-h-[72px] border-[var(--border-subtle)] shadow-none hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)]`;
@@ -459,13 +459,13 @@ export default function StoreModePage() {
   const pageTitle = 'text-[24px] font-bold text-[var(--text-primary)] tracking-tight leading-tight';
 
   return (
-    <div className="fixed inset-0 bg-white flex flex-col pos-light-surface">
+    <div className="fixed inset-0 bg-[var(--surface-base)] flex flex-col">
 
       {/* ── Header ── */}
-      <header className="bg-white border-b border-[var(--border-default)] px-5 py-3.5 flex items-center justify-between shrink-0 z-10">
+      <header className="bg-[var(--surface-base)] border-b border-[var(--border-default)] px-5 py-3.5 flex items-center justify-between shrink-0 z-10">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={() => router.push('/dashboard')}
-            className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-white flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">
+            className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">
             <BackArrow />
           </button>
           <div className="min-w-0">
@@ -544,7 +544,7 @@ export default function StoreModePage() {
 
         <div className="flex-1 overflow-y-auto bg-[var(--surface-raised)]">
           {/* Mobile stats */}
-          <div className="sm:hidden flex items-center justify-between px-4 py-2 bg-white border-b border-[var(--border-subtle)] text-xs">
+          <div className="sm:hidden flex items-center justify-between px-4 py-2 bg-[var(--surface-base)] border-b border-[var(--border-subtle)] text-xs">
             <span className="text-[var(--text-tertiary)]"><span className="font-semibold text-[var(--text-primary)]">{todaySales.count}</span> sales today</span>
             <span className="text-[var(--text-tertiary)]">Revenue: <span className="font-bold text-[var(--text-primary)] ">${todaySales.total.toFixed(2)}</span></span>
           </div>
@@ -620,7 +620,7 @@ export default function StoreModePage() {
                             );
                           })}
                           <button onClick={() => { setShowCustomForm(true); setSelectedProductType(null); setSelectedMaterial(null); setSelectedNonChainType(null); }}
-                            className="bg-white border border-dashed border-[var(--border-strong)] rounded-xl p-4 min-h-[72px] text-left cursor-pointer transition-all hover:border-[var(--text-tertiary)] flex flex-col justify-between">
+                            className="bg-[var(--surface-raised)] border border-dashed border-[var(--border-strong)] rounded-xl p-4 min-h-[72px] text-left cursor-pointer transition-all hover:border-[var(--text-tertiary)] flex flex-col justify-between">
                             <div className="text-[14px] font-semibold text-[var(--text-tertiary)]">Custom</div>
                             <div className="text-[11px] text-[var(--text-tertiary)] mt-1">Name your price</div>
                           </button>
@@ -636,12 +636,12 @@ export default function StoreModePage() {
                     <button onClick={goHome} className={backButton}><BackArrow /> Back</button>
                     <div className="max-w-sm mx-auto space-y-5 pt-8">
                       <h2 className={pageTitle + ' text-center'}>Custom Item</h2>
-                      <input className="w-full h-14 px-4 rounded-xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-lg transition-all"
+                      <input className="w-full h-14 px-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-lg transition-all"
                         placeholder="Item name" value={customItem.name}
                         onChange={(e) => setCustomItem({ ...customItem, name: e.target.value })} autoFocus />
                       <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-[var(--text-tertiary)] ">$</span>
-                        <input className="w-full h-14 pl-9 pr-4 rounded-xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-lg  focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all"
+                        <input className="w-full h-14 pl-9 pr-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-lg  focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all"
                           type="number" step="0.01" min="0" placeholder="0.00" value={customItem.price}
                           onChange={(e) => setCustomItem({ ...customItem, price: e.target.value })}
                           onKeyDown={(e) => { if (e.key === 'Enter') addCustomItem(); }} />
@@ -744,7 +744,7 @@ export default function StoreModePage() {
                       <div>
                         <label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] mb-2.5 text-center">Measured Inches</label>
                         <input type="number" step="0.25" min="0.25" value={measureInches} onChange={(e) => setMeasureInches(e.target.value)}
-                          className="w-full h-20 px-4 rounded-2xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] text-center text-[40px]  font-semibold focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all tracking-tight"
+                          className="w-full h-20 px-4 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] text-center text-[40px]  font-semibold focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all tracking-tight"
                           autoFocus onKeyDown={(e) => { if (e.key === 'Enter') addMeasuredChain(); }} />
                       </div>
                       {measureInches && Number(measureInches) > 0 && (
@@ -776,13 +776,13 @@ export default function StoreModePage() {
                     <button key={amount} onClick={() => cart.setTip(amount)}
                       className={`py-5 rounded-2xl text-xl font-bold transition-all min-h-[56px] ${
                         cart.tip_amount === amount
-                          ? 'bg-[var(--text-primary)] text-white shadow-md' : 'bg-white border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'
+                          ? 'bg-[var(--text-primary)] text-white shadow-md' : 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'
                       }`}>{amount === 0 ? 'None' : `$${amount}`}</button>
                   ))}
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] mb-2">Custom tip</label>
-                  <input type="number" step="0.01" min="0" className="w-full h-14 px-4 rounded-xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] text-center text-xl  focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all"
+                  <input type="number" step="0.01" min="0" className="w-full h-14 px-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] text-center text-xl  focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all"
                     placeholder="$0.00" value={cart.tip_amount || ''} onChange={(e) => cart.setTip(Number(e.target.value) || 0)} />
                 </div>
                 <button onClick={() => setStep('payment')} className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm"
@@ -798,7 +798,7 @@ export default function StoreModePage() {
                     <button key={pm.value} onClick={() => cart.setPaymentMethod(pm.value)}
                       className={`py-7 rounded-2xl text-center transition-all min-h-[80px] ${
                         cart.payment_method === pm.value
-                          ? 'bg-[var(--text-primary)] text-white shadow-md' : 'bg-white border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'
+                          ? 'bg-[var(--text-primary)] text-white shadow-md' : 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'
                       }`}>
                       <div className="text-lg font-bold">{pm.label}</div>
                     </button>
@@ -835,13 +835,13 @@ export default function StoreModePage() {
 
                     {/* Email receipt */}
                     {receiptConfig.email && (
-                      <div className="bg-white border border-[var(--border-default)] rounded-xl p-3 space-y-2">
+                      <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-3 space-y-2">
                         <div className="flex items-center gap-2">
                           <svg className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
                           </svg>
                           <input
-                            className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-white text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
+                            className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
                             type="email" value={receiptEmail} onChange={(e) => setReceiptEmail(e.target.value)}
                             placeholder="customer@email.com"
                           />
@@ -862,13 +862,13 @@ export default function StoreModePage() {
 
                     {/* SMS receipt */}
                     {receiptConfig.sms && (
-                      <div className="bg-white border border-[var(--border-default)] rounded-xl p-3 space-y-2">
+                      <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-3 space-y-2">
                         <div className="flex items-center gap-2">
                           <svg className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
                           </svg>
                           <input
-                            className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-white text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
+                            className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
                             type="tel" value={receiptPhone} onChange={(e) => setReceiptPhone(e.target.value)}
                             placeholder="+1 (555) 000-0000"
                           />
@@ -912,7 +912,7 @@ export default function StoreModePage() {
         </div>
 
         {/* Desktop Cart Sidebar */}
-        <div className="hidden md:flex w-80 lg:w-[380px] bg-white border-l border-[var(--border-default)] flex-col shrink-0">
+        <div className="hidden md:flex w-80 lg:w-[380px] bg-[var(--surface-raised)] border-l border-[var(--border-default)] flex-col shrink-0">
           <CartPanel cart={cart} step={step} setStep={setStep} tenant={tenant} />
         </div>
 
@@ -920,7 +920,7 @@ export default function StoreModePage() {
         {showCart && (
           <div className="md:hidden fixed inset-0 z-40 flex flex-col">
             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowCart(false)} />
-            <div className="relative mt-auto bg-white rounded-t-2xl max-h-[85vh] flex flex-col shadow-xl">
+            <div className="relative mt-auto bg-[var(--surface-raised)] rounded-t-2xl max-h-[85vh] flex flex-col shadow-xl">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border-subtle)]">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-tertiary)]">
                   Cart — {cart.items.length} item{cart.items.length !== 1 ? 's' : ''}

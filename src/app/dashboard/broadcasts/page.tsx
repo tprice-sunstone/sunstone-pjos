@@ -26,7 +26,7 @@ import UpgradePrompt from '@/components/ui/UpgradePrompt';
 // ── Status badge colors ────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  draft: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Draft' },
+  draft: { bg: 'bg-[var(--surface-subtle)]', text: 'text-[var(--text-secondary)]', label: 'Draft' },
   sending: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Sending…' },
   completed: { bg: 'bg-green-100', text: 'text-green-700', label: 'Sent' },
   failed: { bg: 'bg-red-100', text: 'text-red-700', label: 'Failed' },

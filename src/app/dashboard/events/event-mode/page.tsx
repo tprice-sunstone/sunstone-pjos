@@ -604,7 +604,7 @@ function EventModePageInner() {
 
   if (!event) {
     return (
-      <div className="flex items-center justify-center h-screen bg-white pos-light-surface">
+      <div className="flex items-center justify-center h-screen bg-[var(--surface-base)]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-[var(--text-primary)] border-t-transparent mb-4" />
           <p className="text-[var(--text-tertiary)] text-sm mb-4">Loading event...</p>
@@ -616,7 +616,7 @@ function EventModePageInner() {
 
   // ── Shared styles ──
 
-  const cardBase = 'bg-white border border-[var(--border-default)] text-left cursor-pointer transition-all duration-200 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.08)] hover:-translate-y-px active:scale-[0.97]';
+  const cardBase = 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-left cursor-pointer transition-all duration-200 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.08)] hover:-translate-y-px active:scale-[0.97]';
   const cardPrimary = `${cardBase} rounded-2xl p-7 min-h-[140px] shadow-[0_1px_3px_0_rgba(0,0,0,0.06)]`;
   const cardSecondary = `${cardBase} rounded-xl p-5 min-h-[100px] shadow-[0_1px_2px_0_rgba(0,0,0,0.04)]`;
   const cardCompact = `${cardBase} rounded-xl p-4 min-h-[72px] border-[var(--border-subtle)] shadow-none hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)]`;
@@ -626,13 +626,13 @@ function EventModePageInner() {
   const pageTitle = 'text-[24px] font-bold text-[var(--text-primary)] tracking-tight leading-tight';
 
   return (
-    <div className="fixed inset-0 bg-white flex flex-col pos-light-surface">
+    <div className="fixed inset-0 bg-[var(--surface-base)] flex flex-col">
 
       {/* ── Header ── */}
-      <header className="bg-white border-b border-[var(--border-default)] px-5 py-3.5 flex items-center justify-between shrink-0 z-10">
+      <header className="bg-[var(--surface-base)] border-b border-[var(--border-default)] px-5 py-3.5 flex items-center justify-between shrink-0 z-10">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={() => router.push('/dashboard/events')}
-            className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-white flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">
+            className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">
             <BackArrow />
           </button>
           <div className="min-w-0">
@@ -642,7 +642,7 @@ function EventModePageInner() {
         </div>
         <div className="flex items-center gap-3 sm:gap-5 shrink-0">
           <button onClick={() => setShowQR(true)}
-            className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-white flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
+            className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
             aria-label="Show QR code">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm14 3h.01M17 17h.01M14 14h3v3h-3v-3zm0 4h.01M17 20h.01M20 14h.01M20 17h.01M20 20h.01" />
@@ -709,7 +709,7 @@ function EventModePageInner() {
       <div className="flex-1 flex overflow-hidden relative">
 
         <div className="flex-1 overflow-y-auto bg-[var(--surface-raised)]">
-          <div className="sm:hidden flex items-center justify-between px-4 py-2 bg-white border-b border-[var(--border-subtle)] text-xs">
+          <div className="sm:hidden flex items-center justify-between px-4 py-2 bg-[var(--surface-base)] border-b border-[var(--border-subtle)] text-xs">
             <span className="text-[var(--text-tertiary)]"><span className="font-semibold text-[var(--text-primary)]">{todaySales.count}</span> sales</span>
             <span className="text-[var(--text-tertiary)]">Revenue: <span className="font-bold text-[var(--text-primary)] ">${todaySales.total.toFixed(2)}</span></span>
           </div>
@@ -755,7 +755,7 @@ function EventModePageInner() {
                             <div className="text-[11px] text-[var(--text-tertiary)] mt-1">{items.length} items</div>
                           </button>); })}
                         <button onClick={() => { setShowCustomForm(true); setSelectedProductType(null); setSelectedMaterial(null); setSelectedNonChainType(null); }}
-                          className="bg-white border border-dashed border-[var(--border-strong)] rounded-xl p-4 min-h-[72px] text-left cursor-pointer transition-all hover:border-[var(--text-tertiary)] flex flex-col justify-between">
+                          className="bg-[var(--surface-raised)] border border-dashed border-[var(--border-strong)] rounded-xl p-4 min-h-[72px] text-left cursor-pointer transition-all hover:border-[var(--text-tertiary)] flex flex-col justify-between">
                           <div className="text-[14px] font-semibold text-[var(--text-tertiary)]">Custom</div>
                           <div className="text-[11px] text-[var(--text-tertiary)] mt-1">Name your price</div>
                         </button>
@@ -768,10 +768,10 @@ function EventModePageInner() {
                   <div><button onClick={goHome} className={backBtn}><BackArrow /> Back</button>
                   <div className="max-w-sm mx-auto space-y-5 pt-8">
                     <h2 className={pageTitle + ' text-center'}>Custom Item</h2>
-                    <input className="w-full h-14 px-4 rounded-xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-lg transition-all"
+                    <input className="w-full h-14 px-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-lg transition-all"
                       placeholder="Item name" value={customItem.name} onChange={(e) => setCustomItem({ ...customItem, name: e.target.value })} autoFocus />
                     <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-[var(--text-tertiary)] ">$</span>
-                    <input className="w-full h-14 pl-9 pr-4 rounded-xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-lg  focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all"
+                    <input className="w-full h-14 pl-9 pr-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-lg  focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all"
                       type="number" step="0.01" min="0" placeholder="0.00" value={customItem.price} onChange={(e) => setCustomItem({ ...customItem, price: e.target.value })}
                       onKeyDown={(e) => { if (e.key === 'Enter') addCustomItem(); }} /></div>
                     <button onClick={addCustomItem} disabled={!customItem.name || !customItem.price} className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm disabled:opacity-40 disabled:cursor-not-allowed" style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}>Add to Cart</button>
@@ -825,7 +825,7 @@ function EventModePageInner() {
                     <div className="text-sm text-[var(--text-tertiary)]">${Number(selectedChain.sell_price).toFixed(2)}/in</div></div>
                     <div><label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] mb-2.5 text-center">Measured Inches</label>
                     <input type="number" step="0.25" min="0.25" value={measureInches} onChange={(e) => setMeasureInches(e.target.value)}
-                      className="w-full h-20 px-4 rounded-2xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] text-center text-[40px]  font-semibold focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all tracking-tight"
+                      className="w-full h-20 px-4 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] text-center text-[40px]  font-semibold focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all tracking-tight"
                       autoFocus onKeyDown={(e) => { if (e.key === 'Enter') addMeasuredChain(); }} /></div>
                     {measureInches && Number(measureInches) > 0 && (<div className="text-center">
                       <div className="text-[11px] uppercase tracking-[0.06em] text-[var(--text-tertiary)] font-semibold mb-2">Calculated Price</div>
@@ -845,10 +845,10 @@ function EventModePageInner() {
                 <h2 className={pageTitle + ' text-center'}>Add a Tip</h2>
                 <p className="text-[var(--text-tertiary)] text-center text-sm">Subtotal: <span className=" font-medium">${(cart.subtotal + cart.tax_amount).toFixed(2)}</span></p>
                 <div className="grid grid-cols-3 gap-3">
-                  {TIP_PRESETS.map((a) => (<button key={a} onClick={() => cart.setTip(a)} className={`py-5 rounded-2xl text-xl font-bold transition-all min-h-[56px] ${cart.tip_amount === a ? 'bg-[var(--text-primary)] text-white shadow-md' : 'bg-white border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'}`}>{a === 0 ? 'None' : `$${a}`}</button>))}
+                  {TIP_PRESETS.map((a) => (<button key={a} onClick={() => cart.setTip(a)} className={`py-5 rounded-2xl text-xl font-bold transition-all min-h-[56px] ${cart.tip_amount === a ? 'bg-[var(--text-primary)] text-white shadow-md' : 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'}`}>{a === 0 ? 'None' : `$${a}`}</button>))}
                 </div>
                 <div><label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] mb-2">Custom tip</label>
-                <input type="number" step="0.01" min="0" className="w-full h-14 px-4 rounded-xl border border-[var(--border-default)] bg-white text-[var(--text-primary)] text-center text-xl  focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all" placeholder="$0.00" value={cart.tip_amount || ''} onChange={(e) => cart.setTip(Number(e.target.value) || 0)} /></div>
+                <input type="number" step="0.01" min="0" className="w-full h-14 px-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] text-center text-xl  focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all" placeholder="$0.00" value={cart.tip_amount || ''} onChange={(e) => cart.setTip(Number(e.target.value) || 0)} /></div>
                 <button onClick={() => setStep('payment')} className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm" style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}>Continue to Payment</button>
               </div>
             )}
@@ -857,7 +857,7 @@ function EventModePageInner() {
               <div className="max-w-sm mx-auto py-8 space-y-6">
                 <h2 className={pageTitle + ' text-center'}>Select Payment</h2>
                 <div className="grid grid-cols-2 gap-3">
-                  {PAYMENT_METHODS.map((pm) => (<button key={pm.value} onClick={() => cart.setPaymentMethod(pm.value)} className={`py-7 rounded-2xl text-center transition-all min-h-[80px] ${cart.payment_method === pm.value ? 'bg-[var(--text-primary)] text-white shadow-md' : 'bg-white border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'}`}><div className="text-lg font-bold">{pm.label}</div></button>))}
+                  {PAYMENT_METHODS.map((pm) => (<button key={pm.value} onClick={() => cart.setPaymentMethod(pm.value)} className={`py-7 rounded-2xl text-center transition-all min-h-[80px] ${cart.payment_method === pm.value ? 'bg-[var(--text-primary)] text-white shadow-md' : 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'}`}><div className="text-lg font-bold">{pm.label}</div></button>))}
                 </div>
                 {/* Task A: Payment now goes directly to completeSale (no more receipt step) */}
                 {cart.payment_method && (
@@ -882,7 +882,7 @@ function EventModePageInner() {
                 </div>
 
                 {/* Receipt summary */}
-                <div className="bg-white border border-[var(--border-default)] rounded-2xl p-5 space-y-3 shadow-[0_1px_3px_0_rgba(0,0,0,0.06)]">
+                <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-2xl p-5 space-y-3 shadow-[0_1px_3px_0_rgba(0,0,0,0.06)]">
                   <div className="space-y-2">
                     {completedSale.items.map((item, i) => (
                       <div key={i} className="flex justify-between text-sm"><span className="text-[var(--text-primary)] font-medium">{item.name}{item.quantity > 1 ? ` x${item.quantity}` : ''}</span><span className="text-[var(--text-secondary)] ">${item.lineTotal.toFixed(2)}</span></div>
@@ -905,8 +905,8 @@ function EventModePageInner() {
                     <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)]">Send Receipt</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {receiptConfig.email && (
-                        <div className="bg-white border border-[var(--border-default)] rounded-xl p-3 space-y-2">
-                          <input className="w-full h-10 px-3 rounded-lg border border-[var(--border-default)] bg-white text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
+                        <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-3 space-y-2">
+                          <input className="w-full h-10 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
                             type="email" value={receiptEmail} onChange={(e) => setReceiptEmail(e.target.value)} placeholder="customer@email.com" />
                           {emailSent ? (<div className="flex items-center gap-1.5 text-green-600 text-sm"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Sent</div>) : (
                             <Button variant="secondary" size="sm" onClick={sendEmailReceipt} loading={sendingEmail} disabled={!receiptEmail} className="w-full min-h-[44px]">{sendingEmail ? 'Sending...' : 'Email Receipt'}</Button>
@@ -914,8 +914,8 @@ function EventModePageInner() {
                         </div>
                       )}
                       {receiptConfig.sms && (
-                        <div className="bg-white border border-[var(--border-default)] rounded-xl p-3 space-y-2">
-                          <input className="w-full h-10 px-3 rounded-lg border border-[var(--border-default)] bg-white text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
+                        <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-3 space-y-2">
+                          <input className="w-full h-10 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
                             type="tel" value={receiptPhone} onChange={(e) => setReceiptPhone(e.target.value)} placeholder="+1 (555) 000-0000" />
                           {smsSent ? (<div className="flex items-center gap-1.5 text-green-600 text-sm"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Sent</div>) : (
                             <Button variant="secondary" size="sm" onClick={sendSMSReceipt} loading={sendingSMS} disabled={!receiptPhone} className="w-full min-h-[44px]">{sendingSMS ? 'Sending...' : 'Text Receipt'}</Button>
@@ -934,7 +934,7 @@ function EventModePageInner() {
 
         {/* Desktop Cart Sidebar */}
         {step !== 'confirmation' && (
-          <div className="hidden md:flex w-80 lg:w-[380px] bg-white border-l border-[var(--border-default)] flex-col shrink-0">
+          <div className="hidden md:flex w-80 lg:w-[380px] bg-[var(--surface-raised)] border-l border-[var(--border-default)] flex-col shrink-0">
             <CartPanel cart={cart} step={step} setStep={setStep} tenant={tenant} />
           </div>
         )}
@@ -943,7 +943,7 @@ function EventModePageInner() {
         {showCart && step !== 'confirmation' && (
           <div className="md:hidden fixed inset-0 z-40 flex flex-col">
             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowCart(false)} />
-            <div className="relative mt-auto bg-white rounded-t-2xl max-h-[85vh] flex flex-col shadow-xl">
+            <div className="relative mt-auto bg-[var(--surface-raised)] rounded-t-2xl max-h-[85vh] flex flex-col shadow-xl">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border-subtle)]">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Cart — {cart.items.length} item{cart.items.length !== 1 ? 's' : ''}</span>
                 <button onClick={() => setShowCart(false)} className="p-2 rounded-lg hover:bg-[var(--surface-raised)] text-[var(--text-tertiary)] min-h-[44px] min-w-[44px] flex items-center justify-center">
@@ -996,7 +996,7 @@ function EventModePageInner() {
 export default function EventModePage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-screen bg-white pos-light-surface">
+      <div className="flex items-center justify-center h-screen bg-[var(--surface-base)]">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-[var(--text-primary)] border-t-transparent" />
       </div>
     }>

@@ -349,7 +349,7 @@ function EventPLReportPage() {
           <select
             value={selectedEventId || ''}
             onChange={(e) => setSelectedEventId(e.target.value)}
-            className="w-full h-10 px-3 rounded-lg border border-[var(--border-default)] bg-white text-text-primary text-sm focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)]"
+            className="w-full h-10 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] text-text-primary text-sm focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)]"
           >
             {allEvents.map((ev) => (
               <option key={ev.id} value={ev.id}>
