@@ -363,6 +363,48 @@ export interface MessageTemplate {
 }
 
 // ============================================================================
+// Broadcasts
+// ============================================================================
+
+export type BroadcastStatus = 'draft' | 'sending' | 'completed' | 'failed';
+export type BroadcastTargetType = 'tag' | 'segment' | 'all';
+export type BroadcastMessageStatus = 'pending' | 'sent' | 'failed' | 'skipped';
+
+export interface Broadcast {
+  id: string;
+  tenant_id: string;
+  name: string;
+  channel: MessageChannel;
+  template_id: string | null;
+  custom_subject: string | null;
+  custom_body: string | null;
+  target_type: BroadcastTargetType;
+  target_id: string | null;
+  target_name: string | null;
+  total_recipients: number;
+  sent_count: number;
+  failed_count: number;
+  skipped_count: number;
+  status: BroadcastStatus;
+  sent_at: string | null;
+  created_at: string;
+}
+
+export interface BroadcastMessage {
+  id: string;
+  broadcast_id: string;
+  client_id: string;
+  channel: MessageChannel;
+  recipient: string;
+  rendered_subject: string | null;
+  rendered_body: string;
+  status: BroadcastMessageStatus;
+  error_message: string | null;
+  sent_at: string | null;
+  created_at: string;
+}
+
+// ============================================================================
 // Platform Fee Rates
 // ============================================================================
 
