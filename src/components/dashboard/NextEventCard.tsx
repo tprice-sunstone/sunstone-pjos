@@ -5,6 +5,7 @@ import type { NextEventData } from '@/types';
 
 export function NextEventCard({ data }: { data: NextEventData }) {
   const router = useRouter();
+  if (!data) return null;
   const dayLabel =
     data.daysUntil === 0 ? 'Today' : data.daysUntil === 1 ? 'Tomorrow' : `In ${data.daysUntil} days`;
 

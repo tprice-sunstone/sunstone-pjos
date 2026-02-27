@@ -11,6 +11,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function InventoryCard({ data }: { data: InventoryAlertData }) {
   const router = useRouter();
+  if (!data || !Array.isArray(data.items)) return null;
 
   return (
     <div

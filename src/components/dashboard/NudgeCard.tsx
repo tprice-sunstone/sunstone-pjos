@@ -5,6 +5,7 @@ import type { NudgeData } from '@/types';
 
 export function NudgeCard({ data }: { data: NudgeData }) {
   const router = useRouter();
+  if (!data) return null;
 
   return (
     <div

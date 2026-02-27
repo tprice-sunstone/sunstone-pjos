@@ -58,35 +58,44 @@ export async function GET(request: NextRequest) {
 
     const tenantId = membership.tenant_id;
 
-    // Check cache
-    const { data: cached } = await db
-      .from('dashboard_card_cache')
-      .select('cards, expires_at')
-      .eq('tenant_id', tenantId)
-      .single();
-
+    // Check cache (table may not exist yet — gracefully skip)
     const forceRefresh = request.nextUrl.searchParams.get('refresh') === '1';
+    if (!forceRefresh) {
+      try {
+        const { data: cached } = await db
+          .from('dashboard_card_cache')
+          .select('cards, expires_at')
+          .eq('tenant_id', tenantId)
+          .single();
 
-    if (cached && !forceRefresh && new Date(cached.expires_at) > new Date()) {
-      return NextResponse.json({ cards: cached.cards, cached: true });
+        if (cached && new Date(cached.expires_at) > new Date()) {
+          return NextResponse.json({ cards: cached.cards, cached: true });
+        }
+      } catch {
+        // Cache table may not exist — continue to generate
+      }
     }
 
     // Generate cards
     const cards = await generateCards(db, tenantId);
 
-    // Cache (upsert)
-    const now = new Date();
-    await db
-      .from('dashboard_card_cache')
-      .upsert(
-        {
-          tenant_id: tenantId,
-          cards,
-          generated_at: now.toISOString(),
-          expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-        },
-        { onConflict: 'tenant_id' }
-      );
+    // Try to cache (upsert) — non-critical if table doesn't exist
+    try {
+      const now = new Date();
+      await db
+        .from('dashboard_card_cache')
+        .upsert(
+          {
+            tenant_id: tenantId,
+            cards,
+            generated_at: now.toISOString(),
+            expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+          },
+          { onConflict: 'tenant_id' }
+        );
+    } catch {
+      // Cache write failed — non-critical
+    }
 
     return NextResponse.json({ cards, cached: false });
   } catch (err) {

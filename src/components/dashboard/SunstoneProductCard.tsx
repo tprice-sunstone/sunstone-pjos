@@ -5,6 +5,7 @@ import type { SunstoneProductData } from '@/types';
 
 export function SunstoneProductCard({ data }: { data: SunstoneProductData }) {
   const router = useRouter();
+  if (!data) return null;
 
   return (
     <div

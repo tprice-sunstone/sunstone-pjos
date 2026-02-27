@@ -13,6 +13,8 @@ const money = (n: number) =>
 
 export function RevenueCard({ data }: { data: RevenueData }) {
   const router = useRouter();
+  if (!data) return null;
+  const bars = Array.isArray(data.dailyBars) ? data.dailyBars : [];
 
   return (
     <div
@@ -70,7 +72,7 @@ export function RevenueCard({ data }: { data: RevenueData }) {
         className="flex items-end gap-px"
         style={{ height: 28, marginTop: 14 }}
       >
-        {data.dailyBars.map((bar, i) => {
+        {bars.map((bar, i) => {
           const isRecent = i >= 6; // last 6 bars = current period
           const isMax = bar === 1;
           return (

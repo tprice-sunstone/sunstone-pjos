@@ -8,6 +8,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/hooks/use-tenant';
 import { useRouter } from 'next/navigation';
 import { DashboardCardGrid } from '@/components/dashboard';
@@ -52,7 +53,6 @@ export default function DashboardPage() {
     // Quick client-side query for the subtitle context
     const fetchContext = async () => {
       try {
-        const { createClient } = await import('@/lib/supabase/client');
         const supabase = createClient();
         const now = new Date();
         const dayOfWeek = now.getDay();

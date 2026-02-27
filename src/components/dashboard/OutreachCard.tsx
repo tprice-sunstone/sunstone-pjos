@@ -5,6 +5,7 @@ import type { OutreachData } from '@/types';
 
 export function OutreachCard({ data }: { data: OutreachData }) {
   const router = useRouter();
+  if (!data || !Array.isArray(data.clients)) return null;
 
   return (
     <div

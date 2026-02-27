@@ -5,6 +5,7 @@ import type { MessagesData } from '@/types';
 
 export function MessagesCard({ data }: { data: MessagesData }) {
   const router = useRouter();
+  if (!data || !Array.isArray(data.messages)) return null;
 
   return (
     <div

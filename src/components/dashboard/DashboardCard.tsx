@@ -19,6 +19,8 @@ import { MessagesCard } from './MessagesCard';
 import { SunstoneProductCard } from './SunstoneProductCard';
 
 export function DashboardCardRenderer({ card }: { card: DashboardCard }) {
+  if (!card || !card.data) return null;
+
   switch (card.type) {
     case 'next_event':
       return <NextEventCard data={card.data as unknown as NextEventData} />;
