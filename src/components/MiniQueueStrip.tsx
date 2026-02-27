@@ -25,6 +25,7 @@ export interface QueueEntry {
   notified_at: string | null;
   served_at: string | null;
   waiver_id: string | null;
+  sms_consent: boolean;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -133,14 +134,27 @@ export default function MiniQueueStrip({
       toast.error('No phone number on file');
       return;
     }
+    if (!entry.sms_consent) {
+      toast.info(`${entry.name} didn't opt in to SMS — notify in person`);
+      return;
+    }
     try {
       const res = await fetch('/api/queue/notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ queueEntryId: entry.id }),
+        body: JSON.stringify({
+          phone: entry.phone,
+          name: entry.name,
+          smsConsent: entry.sms_consent,
+        }),
       });
       if (!res.ok) throw new Error('Failed to notify');
-      toast.success(`Notified ${entry.name}`);
+      const data = await res.json();
+      if (data.sent) {
+        toast.success(`Notified ${entry.name} via SMS`);
+      } else {
+        toast.info(`${entry.name} — notify in person`);
+      }
     } catch {
       toast.error('Failed to send notification');
     }
@@ -413,6 +427,9 @@ function QueueCard({
             {waitTime}
             {entry.waiver_id && (
               <span className="ml-1 text-green-600">✓</span>
+            )}
+            {entry.phone && !entry.sms_consent && (
+              <span className="ml-1 text-amber-500" title="No SMS consent">⊘ No SMS</span>
             )}
           </div>
         </div>

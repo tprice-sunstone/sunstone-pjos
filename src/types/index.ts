@@ -305,6 +305,7 @@ export interface QueueEntry {
   notified_at: string | null;
   served_at: string | null;
   waiver_id: string | null;
+  sms_consent: boolean;
   notes: string | null;
   created_at: string;
   updated_at: string;

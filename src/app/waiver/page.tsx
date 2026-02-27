@@ -31,6 +31,7 @@ function WaiverPageInner() {
     phone: '',
     event_id: eventId || '',
   });
+  const [smsConsent, setSmsConsent] = useState(false);
   const [signing, setSigning] = useState(false);
   const [error, setError] = useState('');
   const [logoError, setLogoError] = useState(false);
@@ -222,6 +223,7 @@ function WaiverPageInner() {
           signer_email: form.email || null,
           waiver_text: tenant!.waiver_text,
           signature_data: signatureData,
+          sms_consent: smsConsent,
         })
         .select()
         .single();
@@ -259,6 +261,7 @@ function WaiverPageInner() {
         email: form.email || null,
         position: nextPos,
         waiver_id: waiver?.id,
+        sms_consent: smsConsent,
       });
 
       setStep('done');
@@ -346,6 +349,24 @@ function WaiverPageInner() {
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 placeholder="(555) 123-4567"
               />
+
+              {/* SMS Consent */}
+              <label className="flex items-start gap-3 cursor-pointer">
+                <span className="flex-shrink-0 pt-0.5">
+                  <input
+                    type="checkbox"
+                    checked={smsConsent}
+                    onChange={(e) => setSmsConsent(e.target.checked)}
+                    className="w-6 h-6 rounded border-2 border-[var(--border-default)] accent-[var(--accent-primary)] cursor-pointer"
+                  />
+                </span>
+                <span className="text-xs leading-relaxed text-[var(--text-tertiary)]">
+                  I agree to receive text messages from this business, including queue
+                  notifications, service receipts, and aftercare instructions. Message
+                  frequency varies. Message &amp; data rates may apply. Reply STOP to
+                  opt out at any time. Reply HELP for assistance.
+                </span>
+              </label>
 
               {/* Event selector — only show when no event param and events exist */}
               {!eventId && events.length > 0 && (
@@ -461,7 +482,8 @@ function WaiverPageInner() {
               <h2 className="text-2xl font-bold text-[var(--text-primary)]">All Set!</h2>
               <p className="text-[var(--text-secondary)]">
                 Your waiver has been signed.
-                {hasEvent && form.phone && " We'll text you when it's your turn."}
+                {hasEvent && form.phone && smsConsent && " We'll text you when it's your turn."}
+                {hasEvent && form.phone && !smsConsent && " You've been added to the queue. Listen for your name to be called."}
                 {hasEvent && !form.phone && " You've been added to the queue."}
                 {!hasEvent && " You're all checked in! Your artist will be with you shortly."}
               </p>

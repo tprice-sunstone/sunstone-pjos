@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { phone, name, tenantName } = await request.json();
+    const body = await request.json();
+    const { phone, name, tenantName, smsConsent } = body;
 
     if (!phone) {
       return NextResponse.json({ error: 'Phone number required' }, { status: 400 });
+    }
+
+    // Check SMS consent — if explicitly false, skip sending
+    if (smsConsent === false) {
+      console.log(`[SMS Skipped] ${name} did not consent to SMS`);
+      return NextResponse.json({ sent: false, reason: 'no_sms_consent' });
     }
 
     // Only send if Twilio is configured
