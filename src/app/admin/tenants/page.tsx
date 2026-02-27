@@ -238,7 +238,7 @@ export default function AdminTenantsPage() {
                     <td className="px-4 py-3 text-[var(--text-secondary)]">{t.payment_processor}</td>
                     <td className="px-4 py-3">
                       {t.onboarding_completed ? (
-                        <span className="text-emerald-600">✓</span>
+                        <span className="text-success-600">✓</span>
                       ) : (
                         <span className="text-[var(--text-tertiary)]">—</span>
                       )}
@@ -338,7 +338,7 @@ function TenantDetailPanel({
                 <span className="text-[var(--text-secondary)]">{new Date(s.created_at).toLocaleDateString()}</span>
                 <div className="flex items-center gap-4">
                   <span className=" text-[var(--text-primary)]">{formatCurrency(Number(s.total))}</span>
-                  <span className=" text-amber-600 text-xs">
+                  <span className=" text-accent-600 text-xs">
                     +{formatCurrency(Number(s.platform_fee_amount))} fee
                   </span>
                 </div>

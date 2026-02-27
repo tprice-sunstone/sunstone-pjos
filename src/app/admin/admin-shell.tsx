@@ -117,11 +117,11 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
       {/* Brand */}
       <div className="px-5 py-5 border-b border-[var(--border-default)]">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shrink-0 shadow-sm">
-            <span className="text-white font-bold text-sm">S</span>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center shrink-0 shadow-sm">
+            <span className="text-[var(--text-on-accent)] font-bold text-sm">S</span>
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-bold text-white truncate">Sunstone Admin</div>
+            <div className="text-sm font-bold text-[var(--text-primary)] truncate">Sunstone Admin</div>
             <div className="text-xs text-[var(--text-tertiary)] truncate">{userEmail}</div>
           </div>
         </div>
@@ -140,14 +140,14 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
               className={cn(
                 'flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-amber-500/15 text-amber-400'
-                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-base)]'
+                  ? 'bg-accent-500/15 text-accent-500'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)]'
               )}
             >
               <item.icon className="w-5 h-5 shrink-0" />
               <span className="flex-1">{item.label}</span>
               {item.badge && pendingGapCount > 0 && (
-                <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-full min-w-[20px] text-center">
+                <span className="px-2 py-0.5 bg-accent-500 text-[var(--text-on-accent)] text-[10px] font-bold rounded-full min-w-[20px] text-center">
                   {pendingGapCount}
                 </span>
               )}
@@ -161,7 +161,7 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
         {/* Back to Dashboard */}
         <Link
           href="/dashboard"
-          className="flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-base)] transition-colors"
+          className="flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] transition-colors"
         >
           <BackIcon className="w-5 h-5 shrink-0" />
           Back to Dashboard
@@ -170,7 +170,7 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
         {/* Logout */}
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-base)] transition-colors"
+          className="w-full flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] transition-colors"
         >
           <LogoutIcon className="w-5 h-5 shrink-0" />
           Sign Out
@@ -189,13 +189,13 @@ function MobileHeader({ onToggle }: { onToggle: () => void }) {
     <div className="lg:hidden flex items-center gap-3 px-4 h-14 bg-[var(--surface-base)] border-b border-[var(--border-default)] shrink-0">
       <button
         onClick={onToggle}
-        className="w-10 h-10 flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-base)] transition-colors"
+        className="w-10 h-10 flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-subtle)] transition-colors"
       >
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
         </svg>
       </button>
-      <div className="text-sm font-bold text-white">Sunstone Admin</div>
+      <div className="text-sm font-bold text-[var(--text-primary)]">Sunstone Admin</div>
     </div>
   );
 }
@@ -227,14 +227,14 @@ function MobileSidebarContent({
       {/* Close + Brand */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">S</span>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center">
+            <span className="text-[var(--text-on-accent)] font-bold text-sm">S</span>
           </div>
-          <div className="text-sm font-bold text-white">Sunstone Admin</div>
+          <div className="text-sm font-bold text-[var(--text-primary)]">Sunstone Admin</div>
         </div>
         <button
           onClick={onClose}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-base)]"
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-subtle)]"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -256,14 +256,14 @@ function MobileSidebarContent({
               className={cn(
                 'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-amber-500/15 text-amber-400'
-                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-base)]'
+                  ? 'bg-accent-500/15 text-accent-500'
+                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)]'
               )}
             >
               <item.icon className="w-5 h-5 shrink-0" />
               <span className="flex-1">{item.label}</span>
               {item.badge && pendingGapCount > 0 && (
-                <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-full min-w-[20px] text-center">
+                <span className="px-2 py-0.5 bg-accent-500 text-[var(--text-on-accent)] text-[10px] font-bold rounded-full min-w-[20px] text-center">
                   {pendingGapCount}
                 </span>
               )}
@@ -278,14 +278,14 @@ function MobileSidebarContent({
         <Link
           href="/dashboard"
           onClick={onClose}
-          className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-base)] transition-colors"
+          className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] transition-colors"
         >
           <BackIcon className="w-5 h-5 shrink-0" />
           Back to Dashboard
         </Link>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-base)] transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] transition-colors"
         >
           <LogoutIcon className="w-5 h-5 shrink-0" />
           Sign Out

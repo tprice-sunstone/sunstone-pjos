@@ -38,15 +38,15 @@ const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigi
 function insightConfig(type: string): { color: string; border: string; bg: string; iconBg: string; label: string } {
   switch (type) {
     case 'growth':
-      return { color: 'text-success-600', border: 'border-l-emerald-500', bg: 'bg-success-50', iconBg: 'bg-success-100', label: 'Growth' };
+      return { color: 'text-success-600', border: 'border-l-success-500', bg: 'bg-success-50', iconBg: 'bg-success-100', label: 'Growth' };
     case 'attention':
-      return { color: 'text-warning-600', border: 'border-l-amber-500', bg: 'bg-warning-50', iconBg: 'bg-warning-100', label: 'Attention' };
+      return { color: 'text-warning-600', border: 'border-l-warning-500', bg: 'bg-warning-50', iconBg: 'bg-warning-100', label: 'Attention' };
     case 'churn_risk':
-      return { color: 'text-error-600', border: 'border-l-red-500', bg: 'bg-error-50', iconBg: 'bg-error-100', label: 'Churn Risk' };
+      return { color: 'text-error-600', border: 'border-l-error-500', bg: 'bg-error-50', iconBg: 'bg-error-100', label: 'Churn Risk' };
     case 'opportunity':
-      return { color: 'text-info-600', border: 'border-l-blue-500', bg: 'bg-info-50', iconBg: 'bg-info-100', label: 'Opportunity' };
+      return { color: 'text-info-600', border: 'border-l-info-500', bg: 'bg-info-50', iconBg: 'bg-info-100', label: 'Opportunity' };
     case 'milestone':
-      return { color: 'text-purple-700', border: 'border-l-purple-500', bg: 'bg-purple-50', iconBg: 'bg-purple-100', label: 'Milestone' };
+      return { color: 'text-accent-600', border: 'border-l-accent-500', bg: 'bg-accent-50', iconBg: 'bg-accent-100', label: 'Milestone' };
     default:
       return { color: 'text-[var(--text-secondary)]', border: 'border-l-[var(--text-tertiary)]', bg: 'bg-[var(--surface-subtle)]', iconBg: 'bg-[var(--surface-subtle)]', label: 'Info' };
   }
@@ -162,7 +162,7 @@ export default function AdminOverviewPage() {
       {statsLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-5 animate-pulse">
+            <div key={i} className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-5 animate-pulse">
               <div className="h-3 w-20 bg-[var(--surface-subtle)] rounded mb-3" />
               <div className="h-8 w-16 bg-[var(--surface-subtle)] rounded" />
             </div>
@@ -181,19 +181,19 @@ export default function AdminOverviewPage() {
           {/* Plan Breakdown + Recent Signups */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Plan Breakdown */}
-            <div className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-5">
+            <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-5">
               <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-4">
                 Plan Breakdown
               </h3>
               <div className="space-y-3">
                 <PlanRow tier="Free" count={stats.planBreakdown.free} total={stats.totalTenants} color="bg-[var(--text-tertiary)]" />
-                <PlanRow tier="Pro" count={stats.planBreakdown.pro} total={stats.totalTenants} color="bg-blue-500" />
-                <PlanRow tier="Business" count={stats.planBreakdown.business} total={stats.totalTenants} color="bg-amber-500" />
+                <PlanRow tier="Pro" count={stats.planBreakdown.pro} total={stats.totalTenants} color="bg-info-500" />
+                <PlanRow tier="Business" count={stats.planBreakdown.business} total={stats.totalTenants} color="bg-warning-500" />
               </div>
             </div>
 
             {/* Recent Signups */}
-            <div className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-5">
+            <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-5">
               <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-4">
                 Recent Signups
               </h3>
@@ -216,7 +216,7 @@ export default function AdminOverviewPage() {
           </div>
         </>
       ) : (
-        <div className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-8 text-center">
+        <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-8 text-center">
           <p className="text-[var(--text-secondary)]">Failed to load stats. Try refreshing.</p>
         </div>
       )}
@@ -228,8 +228,8 @@ export default function AdminOverviewPage() {
         {/* Section Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-sm">
-              <SparkleIcon className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center shadow-sm">
+              <SparkleIcon className="w-4 h-4 text-[var(--text-on-accent)]" />
             </div>
             <div>
               <h2
@@ -261,7 +261,7 @@ export default function AdminOverviewPage() {
           // Skeleton loading state
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-5 animate-pulse">
+              <div key={i} className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-5 animate-pulse">
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg bg-[var(--surface-subtle)] shrink-0" />
                   <div className="flex-1 space-y-2">
@@ -275,7 +275,7 @@ export default function AdminOverviewPage() {
           </div>
         ) : insightsError ? (
           // Error state
-          <div className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-8 text-center">
+          <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-8 text-center">
             <div className="w-12 h-12 rounded-full bg-[var(--surface-subtle)] flex items-center justify-center mx-auto mb-3">
               <AlertCircleIcon className="w-6 h-6 text-[var(--text-tertiary)]" />
             </div>
@@ -289,9 +289,9 @@ export default function AdminOverviewPage() {
           </div>
         ) : insights.length === 0 ? (
           // Empty state
-          <div className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-8 text-center">
-            <div className="w-12 h-12 rounded-full bg-warning-50 flex items-center justify-center mx-auto mb-3">
-              <SparkleIcon className="w-6 h-6 text-amber-500" />
+          <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-8 text-center">
+            <div className="w-12 h-12 rounded-full bg-accent-50 flex items-center justify-center mx-auto mb-3">
+              <SparkleIcon className="w-6 h-6 text-accent-500" />
             </div>
             <p className="text-sm text-[var(--text-secondary)]">No insights yet — insights will appear as platform data grows.</p>
           </div>
@@ -314,7 +314,7 @@ export default function AdminOverviewPage() {
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-5">
+    <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-5">
       <div className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-1">{label}</div>
       <div className="text-2xl font-bold text-[var(--text-primary)] tracking-tight ">{value}</div>
     </div>
@@ -356,7 +356,7 @@ function InsightCard({ insight }: { insight: Insight }) {
 
   return (
     <div className={cn(
-      'bg-[var(--surface-raised)]rounded-xl border border-[var(--border-default)] p-5 border-l-4 transition-colors',
+      'bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-5 border-l-4 transition-colors',
       config.border
     )}>
       <div className="flex items-start gap-3">

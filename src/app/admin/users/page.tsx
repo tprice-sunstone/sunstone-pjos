@@ -270,8 +270,8 @@ function ConfirmModal({
             className={cn(
               'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
               action === 'ban'
-                ? 'bg-red-600 text-white hover:bg-red-700'
-                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                ? 'bg-error-500 text-[var(--text-inverse)] hover:bg-error-600'
+                : 'bg-success-500 text-[var(--text-inverse)] hover:bg-success-600'
             )}
           >
             {action === 'ban' ? 'Ban User' : 'Unban User'}

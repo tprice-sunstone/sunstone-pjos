@@ -301,7 +301,7 @@ function GapsTab({
                     <button
                       onClick={() => approveAndAdd(approveForm.gapId, approveForm.question, approveForm.answer, approveForm.category)}
                       disabled={!approveForm.answer.trim() || actionLoading === gap.id}
-                      className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                      className="px-4 py-2 bg-success-500 text-[var(--text-inverse)] text-sm font-medium rounded-lg hover:bg-success-600 disabled:opacity-50 transition-colors"
                     >
                         {actionLoading === gap.id ? 'Saving…' : "Save to Sunny's Brain"}
                     </button>
@@ -322,7 +322,7 @@ function GapsTab({
                       answer: '',
                       category: gap.topic || 'other',
                     })}
-                    className="px-3 py-2 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+                    className="px-3 py-2 bg-success-500 text-[var(--text-inverse)] text-xs font-medium rounded-lg hover:bg-success-600 transition-colors"
                   >
                     Approve & Add Knowledge
                   </button>
@@ -404,7 +404,7 @@ function KnowledgeTab({
       <div className="flex justify-end">
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 transition-colors"
+          className="px-4 py-2 bg-accent-500 text-[var(--text-on-accent)] text-sm font-medium rounded-lg hover:bg-accent-600 transition-colors"
         >
           + Add Knowledge
         </button>
@@ -449,7 +449,7 @@ function KnowledgeTab({
             <button
               onClick={createAddition}
               disabled={actionLoading || !newKnowledge.question.trim() || !newKnowledge.answer.trim()}
-              className="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 bg-accent-500 text-[var(--text-on-accent)] text-sm font-medium rounded-lg hover:bg-accent-600 disabled:opacity-50 transition-colors"
             >
               {actionLoading ? 'Saving…' : "Add to Sunny's Brain"}
             </button>
@@ -489,7 +489,7 @@ function KnowledgeTab({
                         <button
                           onClick={() => updateAddition(addition.id, { answer: editAnswer })}
                           disabled={actionLoading}
-                          className="px-3 py-1.5 bg-[var(--surface-base)] text-white text-xs rounded-md hover:bg-[var(--surface-base)] disabled:opacity-50"
+                          className="px-3 py-1.5 bg-accent-500 text-[var(--text-on-accent)] text-xs rounded-md hover:bg-accent-600 disabled:opacity-50"
                         >
                           Save
                         </button>
@@ -514,7 +514,7 @@ function KnowledgeTab({
                       <>
                         <button
                           onClick={() => { setEditingId(addition.id); setEditAnswer(addition.answer); }}
-                          className="text-[10px] text-amber-600 hover:text-amber-700 font-medium"
+                          className="text-[10px] text-accent-600 hover:text-accent-700 font-medium"
                         >
                           Edit
                         </button>
@@ -524,7 +524,7 @@ function KnowledgeTab({
                               updateAddition(addition.id, { is_active: false });
                             }
                           }}
-                          className="text-[10px] text-red-500 hover:text-red-600 font-medium"
+                          className="text-[10px] text-error-500 hover:text-error-600 font-medium"
                         >
                           Deactivate
                         </button>

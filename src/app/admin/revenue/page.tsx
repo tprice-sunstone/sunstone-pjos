@@ -96,7 +96,7 @@ export default function AdminRevenuePage() {
               className={cn(
                 'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
                 timeRange === range
-                  ? 'bg-[var(--surface-base)] text-white'
+                  ? 'bg-accent-500 text-[var(--text-on-accent)]'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               )}
             >
@@ -110,7 +110,7 @@ export default function AdminRevenuePage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] p-6">
           <div className="text-xs font-medium text-[var(--text-secondary)] mb-1">Platform Fees</div>
-          <div className="text-2xl font-bold text-amber-600 ">
+          <div className="text-2xl font-bold text-accent-600 ">
             {formatCurrency(timeRange === 'all' ? data.totals.platform_fees : filteredTotals.fees)}
           </div>
           <div className="text-xs text-[var(--text-tertiary)] mt-1">
@@ -150,12 +150,12 @@ export default function AdminRevenuePage() {
               return (
                 <div key={d.date} className="flex flex-col items-center group relative" style={{ minWidth: filteredDaily.length > 60 ? 4 : 12 }}>
                   <div
-                    className="w-full bg-amber-400 rounded-t-sm hover:bg-amber-500 transition-colors cursor-default"
+                    className="w-full bg-accent-400 rounded-t-sm hover:bg-accent-500 transition-colors cursor-default"
                     style={{ height: `${Math.max(height, 2)}%` }}
                     title={`${d.date}: ${formatCurrency(d.fees)}`}
                   />
                   {/* Tooltip on hover */}
-                  <div className="hidden group-hover:block absolute bottom-full mb-2 bg-[var(--surface-base)] text-white text-[10px] rounded-md px-2 py-1 whitespace-nowrap z-10 pointer-events-none">
+                  <div className="hidden group-hover:block absolute bottom-full mb-2 bg-[var(--surface-overlay)] text-[var(--text-primary)] text-[10px] rounded-md px-2 py-1 whitespace-nowrap z-10 pointer-events-none border border-[var(--border-default)] shadow-md">
                     {d.date}: {formatCurrency(d.fees)}
                   </div>
                 </div>
@@ -176,9 +176,9 @@ export default function AdminRevenuePage() {
           {(['free', 'pro', 'business'] as const).map(tier => {
             const tierData = data.by_tier[tier] || { gmv: 0, fees: 0, count: 0 };
             const tierColors: Record<string, string> = {
-              free: 'border-l-slate-400',
-              pro: 'border-l-blue-500',
-              business: 'border-l-amber-500',
+              free: 'border-l-[var(--text-tertiary)]',
+              pro: 'border-l-info-500',
+              business: 'border-l-warning-500',
             };
             return (
               <div
@@ -238,7 +238,7 @@ export default function AdminRevenuePage() {
                   <td className="px-4 py-3">
                     <TierBadge tier={t.tier} />
                   </td>
-                  <td className="px-4 py-3 text-right  text-amber-600 font-medium">
+                  <td className="px-4 py-3 text-right  text-accent-600 font-medium">
                     {formatCurrency(t.fees)}
                   </td>
                   <td className="px-4 py-3 text-right  text-[var(--text-secondary)]">
