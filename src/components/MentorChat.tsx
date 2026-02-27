@@ -81,8 +81,12 @@ function renderMarkdown(text: string): string {
 // Main component
 // ============================================================================
 
-export default function MentorChat() {
-  const [isOpen, setIsOpen] = useState(false);
+interface MentorChatProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -129,6 +133,7 @@ export default function MentorChat() {
       setHasBeenOpened(true);
       setTimeout(() => inputRef.current?.focus(), 300);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // ============================================================================
@@ -308,28 +313,11 @@ export default function MentorChat() {
 
   return (
     <>
-      {/* ── Floating trigger button ── */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className={cn(
-          'fixed z-40 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg transition-all duration-200',
-          'bg-accent-500 hover:bg-accent-600 text-white',
-          'bottom-20 right-4 lg:bottom-6 lg:right-6',
-          !hasBeenOpened && 'animate-gentle-pulse',
-          isOpen && 'opacity-0 pointer-events-none scale-90'
-        )}
-        style={{ minHeight: 48, minWidth: 48 }}
-        aria-label="Ask Sunny - PJ Mentor"
-      >
-        <SparkleIcon className="w-5 h-5" />
-        <span className="text-sm font-semibold hidden sm:inline">Ask Sunny</span>
-      </button>
-
       {/* ── Backdrop (mobile) ── */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/20 z-40 lg:hidden"
-          onClick={() => setIsOpen(false)}
+          onClick={onClose}
         />
       )}
 
@@ -369,7 +357,7 @@ export default function MentorChat() {
               </span>
             )}
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={onClose}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-raised transition-colors text-text-secondary hover:text-text-primary"
               aria-label="Close chat"
             >
@@ -435,17 +423,6 @@ export default function MentorChat() {
           </div>
         )}
       </div>
-
-      {/* Pulse animation style */}
-      <style jsx global>{`
-        @keyframes gentle-pulse {
-          0%, 100% { box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
-          50% { box-shadow: 0 4px 24px rgba(0,0,0,0.25); }
-        }
-        .animate-gentle-pulse {
-          animation: gentle-pulse 2.5s ease-in-out infinite;
-        }
-      `}</style>
     </>
   );
 }
