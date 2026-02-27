@@ -226,30 +226,22 @@ export function loadThemeFonts(fontImportUrl: string): void {
 /**
  * Apply a complete theme definition to the document root.
  * Sets all CSS custom properties and loads the theme's fonts.
- *
- * If accentOverride is provided (a valid hex), it replaces the theme's
- * accent color and generates a full accent scale from that override.
+ * Themes are complete as-is — no accent overrides.
  */
-export function applyTheme(theme: ThemeDefinition, accentOverride?: string | null): void {
+export function applyTheme(theme: ThemeDefinition): void {
   if (typeof document === 'undefined') return;
 
   const root = document.documentElement;
 
-  // Determine the accent color to use
-  const useCustomAccent = accentOverride && isValidHexColor(accentOverride);
-  const accent = useCustomAccent ? accentOverride! : theme.accent;
-  const accentHover = useCustomAccent ? generateAccentScale(accentOverride!)[600] : theme.accentHover;
-  const accentMuted = useCustomAccent ? generateAccentScale(accentOverride!)[50] : theme.accentMuted;
-
-  // Generate full accent scale from the active accent color
-  const scale = generateAccentScale(accent);
+  // Generate full accent scale from the theme's accent color
+  const scale = generateAccentScale(theme.accent);
   for (const [key, value] of Object.entries(scale)) {
     root.style.setProperty(`--accent-${key}`, value);
   }
 
   // Accent semantic aliases
-  root.style.setProperty('--accent-primary', accent);
-  root.style.setProperty('--accent-hover', accentHover);
+  root.style.setProperty('--accent-primary', theme.accent);
+  root.style.setProperty('--accent-hover', theme.accentHover);
   root.style.setProperty('--accent-subtle', scale[50]);
   root.style.setProperty('--accent-muted', scale[100]);
 
@@ -274,13 +266,13 @@ export function applyTheme(theme: ThemeDefinition, accentOverride?: string | nul
 
   // Nav state tokens (derived from accent)
   if (theme.mode === 'light') {
-    root.style.setProperty('--nav-active-bg', accentMuted);
+    root.style.setProperty('--nav-active-bg', theme.accentMuted);
     root.style.setProperty('--nav-active-text', scale[700]);
     root.style.setProperty('--nav-active-border', scale[600]);
   } else {
-    root.style.setProperty('--nav-active-bg', accentMuted);
-    root.style.setProperty('--nav-active-text', accent);
-    root.style.setProperty('--nav-active-border', accent);
+    root.style.setProperty('--nav-active-bg', theme.accentMuted);
+    root.style.setProperty('--nav-active-text', theme.accent);
+    root.style.setProperty('--nav-active-border', theme.accent);
   }
 
   // Typography
@@ -291,13 +283,21 @@ export function applyTheme(theme: ThemeDefinition, accentOverride?: string | nul
   root.style.setProperty('--font-sans', bodyStack);
   root.style.setProperty('--font-display', headingStack);
 
+  // Theme-defined card radius and shadow
+  root.style.setProperty('--card-radius', theme.cardRadius);
+  root.style.setProperty('--shadow-card', theme.shadow);
+
+  // Functional colors (theme-aware)
+  root.style.setProperty('--color-success', theme.success);
+  root.style.setProperty('--color-warning', theme.warning);
+  root.style.setProperty('--color-danger', theme.danger);
+
   // Shadow adjustments for dark themes
   if (theme.mode === 'dark') {
     root.style.setProperty('--shadow-sm', '0 1px 3px 0 rgba(0, 0, 0, 0.25), 0 1px 2px -1px rgba(0, 0, 0, 0.25)');
     root.style.setProperty('--shadow-base', '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2)');
     root.style.setProperty('--shadow-md', '0 10px 15px -3px rgba(0, 0, 0, 0.35), 0 4px 6px -4px rgba(0, 0, 0, 0.2)');
   } else {
-    // Reset to warm-tinted light shadows
     root.style.setProperty('--shadow-sm', '0 1px 3px 0 rgba(49, 36, 27, 0.06), 0 1px 2px -1px rgba(49, 36, 27, 0.06)');
     root.style.setProperty('--shadow-base', '0 4px 6px -1px rgba(49, 36, 27, 0.06), 0 2px 4px -2px rgba(49, 36, 27, 0.04)');
     root.style.setProperty('--shadow-md', '0 10px 15px -3px rgba(49, 36, 27, 0.08), 0 4px 6px -4px rgba(49, 36, 27, 0.04)');

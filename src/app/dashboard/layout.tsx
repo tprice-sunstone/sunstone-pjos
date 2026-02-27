@@ -78,15 +78,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 /**
  * Bridge between TenantProvider context and ThemeProvider.
- * Reads the tenant's theme_id and brand_color, passes them to ThemeProvider.
+ * Reads the tenant's theme_id, passes it to ThemeProvider.
  */
 function TenantThemeBridge({ children }: { children: React.ReactNode }) {
   const { tenant } = useTenant();
   return (
-    <ThemeProvider
-      themeId={tenant?.theme_id || null}
-      accentColor={tenant?.brand_color || null}
-    >
+    <ThemeProvider themeId={tenant?.theme_id || null}>
       {children}
     </ThemeProvider>
   );

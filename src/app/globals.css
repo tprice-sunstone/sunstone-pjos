@@ -68,7 +68,16 @@
   --nav-active-text: var(--accent-700);
   --nav-active-border: var(--accent-600);
 
-  /* ─── Functional Colors ─── */
+  /* ─── Theme Card Shape & Shadow ─── */
+  --card-radius: 16px;
+  --shadow-card: 0 1px 3px 0 rgba(183, 110, 121, 0.06), 0 1px 2px -1px rgba(183, 110, 121, 0.06);
+
+  /* ─── Functional Colors (theme-aware) ─── */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+
+  /* ─── Functional Color Variants (static) ─── */
   --success-50: #f0fdf4;
   --success-500: #10b981;
   --success-600: #059669;

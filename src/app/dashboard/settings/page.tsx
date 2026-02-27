@@ -3,7 +3,7 @@
 // ============================================================================
 // Layout (General tab):
 //   1. Business Information
-//   2. Branding (Logo Upload + Accent Color — combined)
+//   2. Branding (Logo Upload + Theme Picker)
 //   3. Subscription & Fees (Plan tier + Platform Fee Handling — combined)
 //   4. Payment Processing (Pick one: Square OR Stripe — single card)
 //   5. Tax Profiles
@@ -40,7 +40,7 @@ import {
   ModalBody,
   ModalFooter,
 } from '@/components/ui';
-import { applyAccentColor, applyTheme, isValidHexColor, generateAccentScale } from '@/lib/theme';
+import { applyTheme } from '@/lib/theme';
 import { THEMES, LIGHT_THEMES, DARK_THEMES, getThemeById, DEFAULT_THEME_ID, type ThemeDefinition } from '@/lib/themes';
 import MaterialsSection from '@/components/settings/MaterialsSection';
 import type { TaxProfile, FeeHandling, BusinessType, ProductType, Supplier, SubscriptionTier } from '@/types';
@@ -60,18 +60,6 @@ const BUSINESS_TYPE_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-const COLOR_PRESETS = [
-  { hex: '#852454', label: 'Deep Wine' },
-  { hex: '#B1275E', label: 'Raspberry' },
-  { hex: '#E1598F', label: 'PJ Rose' },
-  { hex: '#d4698a', label: 'Dusty Rose' },
-  { hex: '#7c6874', label: 'Plum Taupe' },
-  { hex: '#6b4c7a', label: 'Amethyst' },
-  { hex: '#5c4a3e', label: 'Espresso Ash' },
-  { hex: '#4a5e45', label: 'Olive Grove' },
-];
-
-const DEFAULT_ACCENT = '#852454';
 
 // Team member limits by subscription tier
 const TEAM_MEMBER_LIMITS: Record<string, number> = {
@@ -182,10 +170,8 @@ function SettingsPage() {
   const [businessWebsite, setBusinessWebsite] = useState('');
   const [savingBusiness, setSavingBusiness] = useState(false);
 
-  // Theme & brand color
+  // Theme
   const [selectedThemeId, setSelectedThemeId] = useState(DEFAULT_THEME_ID);
-  const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
-  const [colorInput, setColorInput] = useState(DEFAULT_ACCENT);
   const [savingBrand, setSavingBrand] = useState(false);
 
   // Logo upload
@@ -336,10 +322,6 @@ function SettingsPage() {
     setLogoUrl((tenant as any).logo_url || null);
     if (tenant.theme_id) {
       setSelectedThemeId(tenant.theme_id);
-    }
-    if (tenant.brand_color && isValidHexColor(tenant.brand_color)) {
-      setAccentColor(tenant.brand_color);
-      setColorInput(tenant.brand_color);
     }
 
     // Auto-select connected processor tab
@@ -581,13 +563,9 @@ function SettingsPage() {
   const saveBranding = async () => {
     if (!tenant) return;
     setSavingBrand(true);
-    const updatePayload: Record<string, any> = {
-      theme_id: selectedThemeId,
-      brand_color: isValidHexColor(accentColor) ? accentColor : null,
-    };
     const { error } = await supabase
       .from('tenants')
-      .update(updatePayload)
+      .update({ theme_id: selectedThemeId })
       .eq('id', tenant.id);
     setSavingBrand(false);
     if (error) { toast.error(error.message); return; }
@@ -598,36 +576,6 @@ function SettingsPage() {
   const selectTheme = (themeId: string) => {
     setSelectedThemeId(themeId);
     const theme = getThemeById(themeId);
-    // Reset custom accent when switching themes
-    setAccentColor(DEFAULT_ACCENT);
-    setColorInput(DEFAULT_ACCENT);
-    // Apply theme immediately as live preview
-    applyTheme(theme);
-  };
-
-  const handleColorInputChange = (value: string) => {
-    setColorInput(value);
-    const cleaned = value.startsWith('#') ? value : `#${value}`;
-    if (isValidHexColor(cleaned)) {
-      setAccentColor(cleaned);
-      setColorInput(cleaned);
-      // Apply with current theme + custom accent
-      const theme = getThemeById(selectedThemeId);
-      applyTheme(theme, cleaned);
-    }
-  };
-
-  const selectPresetColor = (hex: string) => {
-    setAccentColor(hex);
-    setColorInput(hex);
-    const theme = getThemeById(selectedThemeId);
-    applyTheme(theme, hex);
-  };
-
-  const clearCustomAccent = () => {
-    setAccentColor(DEFAULT_ACCENT);
-    setColorInput(DEFAULT_ACCENT);
-    const theme = getThemeById(selectedThemeId);
     applyTheme(theme);
   };
 
@@ -1305,55 +1253,6 @@ function SettingsPage() {
                 </div>
               </div>
 
-              {/* Custom Accent Color Override */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="block text-sm font-medium text-text-primary">Custom Accent Color</label>
-                  {isValidHexColor(accentColor) && accentColor !== DEFAULT_ACCENT && (
-                    <button
-                      onClick={clearCustomAccent}
-                      className="text-xs text-text-tertiary hover:text-text-secondary"
-                    >
-                      Reset to theme default
-                    </button>
-                  )}
-                </div>
-                <p className="text-sm text-text-secondary">
-                  Override the theme&apos;s accent color for buttons, links, and highlights.
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  {COLOR_PRESETS.map((preset) => (
-                    <button
-                      key={preset.hex}
-                      type="button"
-                      onClick={() => selectPresetColor(preset.hex)}
-                      className={`w-10 h-10 rounded-lg border-2 transition-all duration-200 hover:scale-110 ${
-                        accentColor.toLowerCase() === preset.hex.toLowerCase()
-                          ? 'border-[var(--text-primary)] scale-110 shadow-md'
-                          : 'border-transparent'
-                      }`}
-                      style={{ backgroundColor: preset.hex }}
-                      title={preset.label}
-                      aria-label={`Select ${preset.label} color`}
-                    />
-                  ))}
-                </div>
-                <div className="flex items-end gap-3">
-                  <div className="flex-1">
-                    <Input
-                      label="Custom Hex Color"
-                      value={colorInput}
-                      onChange={(e) => handleColorInputChange(e.target.value)}
-                      placeholder="#B76E79"
-                      maxLength={7}
-                    />
-                  </div>
-                  <div
-                    className="w-[48px] h-[48px] rounded-lg border border-border-default shrink-0"
-                    style={{ backgroundColor: isValidHexColor(accentColor) ? accentColor : '#ccc' }}
-                  />
-                </div>
-              </div>
             </CardContent>
             <CardFooter>
               <Button variant="primary" onClick={saveBranding} loading={savingBrand}>
@@ -2542,7 +2441,7 @@ function ThemePreviewCard({
   return (
     <button
       onClick={onSelect}
-      className={`relative rounded-xl border-2 overflow-hidden transition-all duration-200 hover:scale-[1.03] ${
+      className={`relative rounded-xl border-2 overflow-hidden transition-all duration-200 hover:scale-[1.03] text-left ${
         isSelected
           ? 'border-[var(--accent-primary)] shadow-md ring-2 ring-[var(--accent-subtle)]'
           : 'border-transparent hover:border-[var(--border-strong)]'
@@ -2553,7 +2452,7 @@ function ThemePreviewCard({
         className="p-3 space-y-2"
         style={{ backgroundColor: theme.background }}
       >
-        {/* Fake heading text */}
+        {/* Theme name */}
         <div
           className="text-xs font-semibold truncate"
           style={{ color: theme.textPrimary, fontFamily: `'${theme.headingFont}', serif` }}
@@ -2561,15 +2460,23 @@ function ThemePreviewCard({
           {theme.name}
         </div>
 
+        {/* Description */}
+        <div
+          className="text-[9px] truncate"
+          style={{ color: theme.textSecondary }}
+        >
+          {theme.description}
+        </div>
+
         {/* Fake card */}
         <div
-          className="rounded-md p-2 space-y-1.5"
+          className="p-2 space-y-1.5"
           style={{
             backgroundColor: theme.surfaceRaised,
             border: `1px solid ${theme.borderDefault}`,
+            borderRadius: theme.cardRadius,
           }}
         >
-          {/* Fake text lines */}
           <div
             className="h-1.5 rounded-full w-3/4"
             style={{ backgroundColor: theme.textSecondary, opacity: 0.4 }}
@@ -2582,8 +2489,8 @@ function ThemePreviewCard({
 
         {/* Fake accent button */}
         <div
-          className="rounded-md h-5 flex items-center justify-center"
-          style={{ backgroundColor: theme.accent }}
+          className="h-5 flex items-center justify-center"
+          style={{ backgroundColor: theme.accent, borderRadius: theme.cardRadius }}
         >
           <span
             className="text-[8px] font-semibold"
