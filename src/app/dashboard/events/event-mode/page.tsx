@@ -604,7 +604,7 @@ function EventModePageInner() {
 
   if (!event) {
     return (
-      <div className="flex items-center justify-center h-screen bg-white">
+      <div className="flex items-center justify-center h-screen bg-white pos-light-surface">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-[var(--text-primary)] border-t-transparent mb-4" />
           <p className="text-[var(--text-tertiary)] text-sm mb-4">Loading event...</p>
@@ -626,7 +626,7 @@ function EventModePageInner() {
   const pageTitle = 'text-[24px] font-bold text-[var(--text-primary)] tracking-tight leading-tight';
 
   return (
-    <div className="fixed inset-0 bg-white flex flex-col">
+    <div className="fixed inset-0 bg-white flex flex-col pos-light-surface">
 
       {/* ── Header ── */}
       <header className="bg-white border-b border-[var(--border-default)] px-5 py-3.5 flex items-center justify-between shrink-0 z-10">
@@ -996,7 +996,7 @@ function EventModePageInner() {
 export default function EventModePage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-screen bg-white">
+      <div className="flex items-center justify-center h-screen bg-white pos-light-surface">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-[var(--text-primary)] border-t-transparent" />
       </div>
     }>
