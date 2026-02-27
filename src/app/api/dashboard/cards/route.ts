@@ -25,6 +25,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
 import type { DashboardCard } from '@/types';
 
+// Bump this version whenever card generation logic changes. Cached cards with
+// a different version are treated as stale and regenerated on next load.
+const CARD_CACHE_VERSION = 2;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -126,17 +130,19 @@ export async function GET(request: NextRequest) {
       try {
         const { data: cached } = await db
           .from('dashboard_card_cache')
-          .select('cards, expires_at')
+          .select('cards, expires_at, cache_version')
           .eq('tenant_id', tenantId)
           .single();
 
         if (cached && cached.cards && Array.isArray(cached.cards) && cached.cards.length > 0) {
-          if (new Date(cached.expires_at) > new Date()) {
+          // Bust cache if version mismatch (code was updated since last cache write)
+          const cachedVersion = (cached as any).cache_version ?? 0;
+          if (cachedVersion === CARD_CACHE_VERSION && new Date(cached.expires_at) > new Date()) {
             return NextResponse.json({ cards: cached.cards, cached: true });
           }
         }
       } catch {
-        // Cache table may not exist — continue to generate
+        // Cache table may not exist or cache_version column missing — continue to generate
       }
     }
 
@@ -151,20 +157,21 @@ export async function GET(request: NextRequest) {
 
     // Try to cache (upsert) — non-critical if table doesn't exist
     try {
-      const now = new Date();
+      const cacheNow = new Date();
       await db
         .from('dashboard_card_cache')
         .upsert(
           {
             tenant_id: tenantId,
             cards,
-            generated_at: now.toISOString(),
-            expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+            cache_version: CARD_CACHE_VERSION,
+            generated_at: cacheNow.toISOString(),
+            expires_at: new Date(cacheNow.getTime() + 24 * 60 * 60 * 1000).toISOString(),
           },
           { onConflict: 'tenant_id' }
         );
     } catch {
-      // Cache write failed — non-critical
+      // Cache write failed — non-critical (cache_version column may not exist yet)
     }
 
     return NextResponse.json({ cards, cached: false });

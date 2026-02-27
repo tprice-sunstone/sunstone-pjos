@@ -39,32 +39,18 @@ export function SunstoneProductCard({ data }: { data: SunstoneProductData }) {
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           ) : (
-            <div style={{ textAlign: 'center', opacity: 0.7 }}>
-              <svg
-                width="36"
-                height="36"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--text-on-accent)"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6L12 2z" />
-              </svg>
-              <p
-                style={{
-                  color: 'var(--text-on-accent)',
-                  fontSize: 9,
-                  fontWeight: 700,
-                  letterSpacing: '0.12em',
-                  marginTop: 6,
-                  textTransform: 'uppercase',
-                }}
-              >
-                Sunstone
-              </p>
-            </div>
+            <span
+              style={{
+                color: 'var(--text-on-accent)',
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                opacity: 0.55,
+              }}
+            >
+              Sunstone
+            </span>
           )}
         </div>
 
