@@ -2,19 +2,20 @@
 // Dashboard Cards API — src/app/api/dashboard/cards/route.ts
 // ============================================================================
 // GET: Generates context-aware dashboard cards from real tenant data.
-// Pure data queries — no AI/LLM calls. Cached for 24 hours per tenant.
-// Returns structured data payloads that card components render directly.
+// Cached for 24 hours per tenant. One Claude API call per refresh for
+// Sunny's Take (personalized AI insight), everything else is pure queries.
 //
-// Content Strategy:
-//   1. Getting Started checklist (tenants < 14 days old)
-//   2. Next Event (if within 7 days)
-//   3. Inventory Alert (if low stock items)
-//   4. Revenue Snapshot (ALWAYS — $0 if no sales)
-//   5. Suggested Outreach (if stale clients)
-//   6. Recent Messages (if recent broadcasts)
-//   7. Networking Nudge (if no upcoming events)
-//   8. PJ University (tenants < 30 days old)
-//   9. Sunstone Product Spotlight (ALWAYS — weekly rotation from catalog)
+// Content Strategy (by priority):
+//   0. Getting Started checklist (tenants < 14 days old)
+//   1. Next Event (event within 14 days, boosted if <= 3 days)
+//   3. Sunny's Take (AI insight — Claude API, cached 24h)
+//   4. Inventory Alert (low stock items)
+//   5. Revenue Snapshot (ALWAYS — $0 if no sales)
+//  25. Suggested Outreach (stale clients)
+//  35. Recent Messages (broadcasts in last 7 days)
+//  30. Networking Nudge (no events in 14 days)
+//  45. PJ University (tenants < 30 days old)
+//  50. Sunstone Product Spotlight (ALWAYS — weekly catalog rotation)
 //
 // Resilience: Each card generator is wrapped in try/catch so one failing
 // query never kills the entire dashboard. Revenue + Sunstone are guaranteed.
@@ -240,14 +241,17 @@ async function generateCards(
       allEventsCountResult,
       inventoryCountResult,
     ] = await Promise.all([
-      // Next event
-      db
-        .from('events')
-        .select('id, name, location, start_time, booth_fee')
-        .eq('tenant_id', tenantId)
-        .gte('start_time', now.toISOString())
-        .order('start_time', { ascending: true })
-        .limit(1),
+      // Next event — use start of today (UTC) so events happening today aren't missed
+      (() => {
+        const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        return db
+          .from('events')
+          .select('id, name, location, start_time, booth_fee')
+          .eq('tenant_id', tenantId)
+          .gte('start_time', todayStart.toISOString())
+          .order('start_time', { ascending: true })
+          .limit(1);
+      })(),
 
       // This month sales
       db
@@ -393,13 +397,13 @@ async function generateCards(
     }
   }
 
-  // ── Next Event Card ─────────────────────────────────────────────────────
+  // ── Next Event Card (shown if next event is within 14 days) ─────────────
   try {
     const upcomingEvents = eventsResult.data || [];
     if (upcomingEvents.length > 0) {
       const next = upcomingEvents[0];
-      const days = daysUntil(next.start_time);
-      if (days <= 7) {
+      const days = Math.max(0, daysUntil(next.start_time)); // 0 = today
+      if (days <= 14) {
         cards.push({
           type: 'next_event',
           priority: days <= 3 ? 1 : 10,
@@ -415,6 +419,33 @@ async function generateCards(
     }
   } catch (err) {
     console.error('Dashboard cards: next_event failed:', err);
+  }
+
+  // ── Sunny's Take (AI insight — one Claude call per 24h cache refresh) ───
+  try {
+    const sunnyInsight = await generateSunnyTake(
+      thisMonthSalesResult.data || [],
+      lastMonthSalesResult.data || [],
+      eventsResult.data || [],
+      upcomingEventsResult.data || [],
+      lowStockResult.data || [],
+      clientCountResult.count || 0,
+      staleClientsResult.data || [],
+      tenantAgeDays,
+    );
+    if (sunnyInsight) {
+      cards.push({
+        type: 'sunny_take',
+        priority: 3,
+        data: {
+          insight: sunnyInsight,
+          generatedAt: new Date().toISOString(),
+        },
+      });
+    }
+  } catch (err) {
+    console.error('Dashboard cards: sunny_take failed:', err);
+    // Non-critical — dashboard works fine without it
   }
 
   // ── Revenue Snapshot (ALWAYS shown — $0 if no sales) ────────────────────
@@ -627,7 +658,7 @@ async function generateCards(
         priority: 45,
         data: {
           title: 'PJ University',
-          subtitle: 'Free courses on pricing, event setup, and growing your permanent jewelry business.',
+          subtitle: 'Courses on pricing, event setup, welding techniques, and growing your permanent jewelry business.',
           ctaLabel: 'Start Learning',
           ctaUrl: 'https://permanentjewelry-sunstonewelders.thinkific.com/users/sign_in',
         },
@@ -679,6 +710,109 @@ async function generateCards(
 
   cards.sort((a, b) => a.priority - b.priority);
   return cards;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sunny's Take — personalized AI insight via Claude API
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SUNNY_SYSTEM_PROMPT = `You are Sunny, a friendly and knowledgeable permanent jewelry business mentor. Given the following business data, write a 2-3 sentence personalized insight. Be specific (use actual numbers), encouraging, and include ONE actionable suggestion. Keep it warm and conversational — like a smart friend checking in on their business. Do not use emojis. Do not start with "Hey" or "Hi". Jump straight into the insight.`;
+
+async function generateSunnyTake(
+  thisMonthSales: any[],
+  lastMonthSales: any[],
+  nextEvents: any[],
+  upcomingEvents: any[],
+  inventoryItems: any[],
+  clientCount: number,
+  staleClients: any[],
+  tenantAgeDays: number,
+): Promise<string | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.warn('Dashboard cards: ANTHROPIC_API_KEY not set, skipping sunny_take');
+    return null;
+  }
+
+  // Build a concise business data summary for Claude
+  const monthRevenue = thisMonthSales.reduce((s, r) => s + (Number(r.subtotal) || 0), 0);
+  const lastMonthRevenue = lastMonthSales.reduce((s, r) => s + (Number(r.subtotal) || 0), 0);
+  const pctChange = lastMonthRevenue > 0
+    ? Math.round(((monthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
+    : null;
+
+  const lowStockItems = inventoryItems.filter(
+    (i: any) => i.quantity_on_hand <= i.reorder_threshold
+  );
+  const criticalItems = lowStockItems.filter((i: any) => i.quantity_on_hand === 0);
+
+  const nextEvent = nextEvents.length > 0 ? nextEvents[0] : null;
+  const daysToNextEvent = nextEvent
+    ? Math.max(0, Math.ceil((new Date(nextEvent.start_time).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+
+  const businessData = {
+    tenantAgeDays,
+    thisMonth: {
+      revenue: monthRevenue,
+      salesCount: thisMonthSales.length,
+    },
+    lastMonth: {
+      revenue: lastMonthRevenue,
+      salesCount: lastMonthSales.length,
+    },
+    revenueChangePercent: pctChange,
+    clients: {
+      total: clientCount,
+      needingOutreach: staleClients.length,
+    },
+    inventory: {
+      totalItems: inventoryItems.length,
+      lowStock: lowStockItems.length,
+      outOfStock: criticalItems.length,
+      lowStockNames: lowStockItems.slice(0, 3).map((i: any) => `${i.name} (${i.quantity_on_hand} left)`),
+    },
+    events: {
+      upcomingCount: upcomingEvents.length,
+      nextEventName: nextEvent?.name || null,
+      daysToNextEvent,
+      nextEventLocation: nextEvent?.location || null,
+    },
+  };
+
+  const userMessage = `Here is the current business data for a permanent jewelry artist:\n\n${JSON.stringify(businessData, null, 2)}`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 256,
+        system: SUNNY_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userMessage }],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Sunny take: Anthropic API error:', response.status);
+      return null;
+    }
+
+    const result = await response.json();
+    const text = result.content?.find((c: any) => c.type === 'text')?.text;
+    if (!text || text.trim().length === 0) return null;
+
+    // Clean up: remove any markdown formatting Claude might add
+    return text.trim().replace(/^["']|["']$/g, '');
+  } catch (err) {
+    console.error('Sunny take: API call failed:', err);
+    return null;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

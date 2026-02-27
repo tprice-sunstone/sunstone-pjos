@@ -84,7 +84,7 @@ export function InventoryCard({ data }: { data: InventoryAlertData }) {
           textAlign: 'center',
         }}
       >
-        Reorder from Sunstone
+        Manage Inventory
       </button>
     </div>
   );

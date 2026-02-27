@@ -11,6 +11,7 @@ import type {
   SunstoneProductData,
   GettingStartedData,
   PJUniversityData,
+  SunnyTakeData,
 } from '@/types';
 import { NextEventCard } from './NextEventCard';
 import { RevenueCard } from './RevenueCard';
@@ -21,6 +22,7 @@ import { MessagesCard } from './MessagesCard';
 import { SunstoneProductCard } from './SunstoneProductCard';
 import { GettingStartedCard } from './GettingStartedCard';
 import { PJUniversityCard } from './PJUniversityCard';
+import { SunnyTakeCard } from './SunnyTakeCard';
 
 export function DashboardCardRenderer({ card }: { card: DashboardCard }) {
   if (!card || !card.data) return null;
@@ -30,6 +32,8 @@ export function DashboardCardRenderer({ card }: { card: DashboardCard }) {
       return <GettingStartedCard data={card.data as unknown as GettingStartedData} />;
     case 'next_event':
       return <NextEventCard data={card.data as unknown as NextEventData} />;
+    case 'sunny_take':
+      return <SunnyTakeCard data={card.data as unknown as SunnyTakeData} />;
     case 'revenue_snapshot':
       return <RevenueCard data={card.data as unknown as RevenueData} />;
     case 'inventory_alert':

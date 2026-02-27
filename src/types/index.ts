@@ -428,6 +428,7 @@ export const SUBSCRIPTION_PRICES: Record<SubscriptionTier, number> = {
 export type DashboardCardType =
   | 'getting_started'
   | 'next_event'
+  | 'sunny_take'
   | 'revenue_snapshot'
   | 'suggested_outreach'
   | 'inventory_alert'
@@ -514,6 +515,11 @@ export interface GettingStartedData {
   }[];
   completedCount: number;
   totalCount: number;
+}
+
+export interface SunnyTakeData {
+  insight: string;
+  generatedAt: string;
 }
 
 export interface PJUniversityData {

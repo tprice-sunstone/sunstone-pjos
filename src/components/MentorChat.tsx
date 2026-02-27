@@ -401,7 +401,7 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask me anything about PJ..."
-                className="flex-1 resize-none rounded-xl border border-border-default px-3 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500 transition-all max-h-28"
+                className="flex-1 resize-none rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500 transition-all max-h-28"
                 rows={1}
                 disabled={isLoading}
                 style={{ minHeight: 42 }}
