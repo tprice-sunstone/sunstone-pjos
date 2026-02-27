@@ -314,6 +314,35 @@ export interface QueueEntry {
 }
 
 // ============================================================================
+// Client Tags & Segments
+// ============================================================================
+
+export interface ClientTag {
+  id: string;
+  tenant_id: string;
+  name: string;
+  color: string;
+  created_at: string;
+}
+
+export interface ClientTagAssignment {
+  id: string;
+  client_id: string;
+  tag_id: string;
+  assigned_at: string;
+}
+
+export interface ClientSegment {
+  id: string;
+  tenant_id: string;
+  name: string;
+  description: string | null;
+  filter_criteria: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
 // Platform Fee Rates
 // ============================================================================
 
