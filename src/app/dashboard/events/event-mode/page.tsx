@@ -1,18 +1,16 @@
 // ============================================================================
 // Event Mode POS — src/app/dashboard/events/event-mode/page.tsx
 // ============================================================================
-// Luxury step-down product selection with visual hierarchy.
+// Material-first product selection with auto-detected Quick-Tap / Progressive
+// Filter modes. Shared components live in src/components/pos/.
 // Includes: Jump ring auto-deduction, QR codes, receipt sending (email+SMS),
 // post-sale confirmation, client find/create, inventory movement logging,
 // chain product fields, per-product and per-inch pricing.
-// Task A: Receipt step removed, Suspense wrapper added.
-// Task B: Mini queue strip + queue-POS client linking.
-// Task C: Queue refresh trigger for immediate strip updates.
 // ============================================================================
 
 'use client';
 
-import { useEffect, useState, useMemo, useCallback, Suspense } from 'react';
+import { useEffect, useState, useMemo, Suspense } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/hooks/use-tenant';
 import { useCartStore } from '@/hooks/use-cart';
@@ -26,6 +24,7 @@ import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
 import JumpRingPickerModal from '@/components/JumpRingPickerModal';
 import MiniQueueStrip from '@/components/MiniQueueStrip';
+import { ProductSelector } from '@/components/pos';
 import type { QueueEntry } from '@/components/MiniQueueStrip';
 import type {
   InventoryItem, Event, TaxProfile, PaymentMethod, ProductType, ChainProductPrice, JumpRingResolution, CartItem,
@@ -41,11 +40,6 @@ const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
 const TIP_PRESETS = [0, 3, 5, 10, 15, 20];
 
 type CheckoutStep = 'items' | 'tip' | 'payment' | 'confirmation';
-type SelectionStep = 'category' | 'material' | 'chain' | 'measure';
-
-const NON_CHAIN_LABELS: Record<string, string> = {
-  jump_ring: 'Jump Rings', charm: 'Charms', connector: 'Connectors', other: 'Other Items',
-};
 
 interface CompletedSaleData {
   saleId: string;
@@ -57,11 +51,6 @@ interface CompletedSaleData {
 const BackArrow = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-  </svg>
-);
-const ChevronRight = () => (
-  <svg className="w-4 h-4 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
   </svg>
 );
 
@@ -162,16 +151,6 @@ function EventModePageInner() {
   const [showFullScreenQR, setShowFullScreenQR] = useState(false);
   const [showCart, setShowCart] = useState(false);
 
-  // Step-down selection
-  const [selectionStep, setSelectionStep] = useState<SelectionStep>('category');
-  const [selectedProductType, setSelectedProductType] = useState<ProductType | null>(null);
-  const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
-  const [selectedChain, setSelectedChain] = useState<InventoryItem | null>(null);
-  const [measureInches, setMeasureInches] = useState('');
-  const [showCustomForm, setShowCustomForm] = useState(false);
-  const [customItem, setCustomItem] = useState({ name: '', price: '' });
-  const [selectedNonChainType, setSelectedNonChainType] = useState<string | null>(null);
-
   // Receipt / confirmation
   const [completedSale, setCompletedSale] = useState<CompletedSaleData | null>(null);
   const [receiptConfig, setReceiptConfig] = useState<{ email: boolean; sms: boolean }>({ email: false, sms: false });
@@ -258,113 +237,8 @@ function EventModePageInner() {
   // ── Derived data ──
 
   const chains = useMemo(() => inventory.filter((i) => i.type === 'chain'), [inventory]);
-  const nonChainTypes = useMemo(() => {
-    const types = new Set<string>();
-    inventory.forEach((i) => { if (i.type !== 'chain') types.add(i.type); });
-    return Array.from(types);
-  }, [inventory]);
-
-  const primaryTypes = useMemo(() => productTypes.slice(0, 2), [productTypes]);
-  const secondaryTypes = useMemo(() => productTypes.slice(2), [productTypes]);
-
-  const chainsForProductType = useMemo(() => {
-    if (!selectedProductType) return [];
-    const ids = new Set(chainPrices.filter((p) => p.product_type_id === selectedProductType.id).map((p) => p.inventory_item_id));
-    return chains.filter((c) => ids.has(c.id) && c.quantity_on_hand > 0);
-  }, [selectedProductType, chainPrices, chains]);
-
-  const materialsForProductType = useMemo(() => {
-    const mats = new Map<string, number>();
-    chainsForProductType.forEach((c) => { const m = c.material || 'Unspecified'; mats.set(m, (mats.get(m) || 0) + 1); });
-    return Array.from(mats.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [chainsForProductType]);
-
-  const chainsForMaterial = useMemo(() => {
-    if (!selectedMaterial) return [];
-    return chainsForProductType.filter((c) => (c.material || 'Unspecified') === selectedMaterial);
-  }, [selectedMaterial, chainsForProductType]);
-
-  const nonChainItems = useMemo(() => {
-    if (!selectedNonChainType) return [];
-    return inventory.filter((i) => i.type === selectedNonChainType && i.quantity_on_hand > 0);
-  }, [selectedNonChainType, inventory]);
-
-  // ── Helpers ──
-
-  const chainAvailCount = (ptId: string) =>
-    chains.filter((c) => c.quantity_on_hand > 0 && chainPrices.some((p) => p.inventory_item_id === c.id && p.product_type_id === ptId)).length;
-
-  const getChainPrice = (chain: InventoryItem): string => {
-    if (!selectedProductType) return `$${Number(chain.sell_price).toFixed(2)}`;
-    if (chain.pricing_mode === 'per_inch') return `$${Number(chain.sell_price).toFixed(2)}/in`;
-    const row = chainPrices.find((p) => p.inventory_item_id === chain.id && p.product_type_id === selectedProductType.id);
-    return row ? `$${Number(row.sell_price).toFixed(2)}` : `$${Number(chain.sell_price).toFixed(2)}`;
-  };
 
   const paymentLabels: Record<string, string> = { card_present: 'Card', card_not_present: 'Card (Online)', cash: 'Cash', venmo: 'Venmo', other: 'Other' };
-
-  // ── Navigation ──
-
-  const goHome = () => {
-    setSelectionStep('category'); setSelectedProductType(null); setSelectedMaterial(null);
-    setSelectedChain(null); setSelectedNonChainType(null); setShowCustomForm(false); setMeasureInches('');
-  };
-
-  const goBack = () => {
-    if (selectionStep === 'measure') { setSelectionStep('chain'); setSelectedChain(null); setMeasureInches(''); }
-    else if (selectionStep === 'chain') { if (selectedNonChainType) goHome(); else { setSelectionStep('material'); setSelectedMaterial(null); } }
-    else if (selectionStep === 'material') goHome();
-  };
-
-  // ── Add to cart (with jump ring metadata) ──
-
-  const selectCategory = (pt: ProductType) => {
-    setSelectedProductType(pt); setSelectedMaterial(null); setSelectedChain(null);
-    setSelectedNonChainType(null); setShowCustomForm(false); setSelectionStep('material');
-  };
-
-  const selectMaterial = (material: string) => { setSelectedMaterial(material); setSelectedChain(null); setSelectionStep('chain'); };
-
-  const selectChain = (chain: InventoryItem) => {
-    if (!selectedProductType) return;
-    const priceRow = chainPrices.find((p) => p.inventory_item_id === chain.id && p.product_type_id === selectedProductType.id);
-    if (chain.pricing_mode === 'per_inch') {
-      setSelectedChain(chain); setMeasureInches(String(selectedProductType.default_inches || '')); setSelectionStep('measure');
-    } else {
-      const price = priceRow ? Number(priceRow.sell_price) : Number(chain.sell_price);
-      cart.addItem({ inventory_item_id: chain.id, name: `${chain.name} ${selectedProductType.name}`, quantity: 1, unit_price: price,
-        discount_type: null, discount_value: 0, product_type_id: selectedProductType.id, product_type_name: selectedProductType.name,
-        inches_used: priceRow?.default_inches ? Number(priceRow.default_inches) : Number(selectedProductType.default_inches), pricing_mode: 'per_product',
-        _jump_rings_required: selectedProductType.jump_rings_required ?? 1, _inventory_type: 'chain', _material: chain.material });
-      toast.success(`Added ${selectedProductType.name}`); goHome();
-    }
-  };
-
-  const addMeasuredChain = () => {
-    if (!selectedChain || !selectedProductType || !measureInches) return;
-    const inches = Number(measureInches); if (inches <= 0) return;
-    const price = Math.round(inches * Number(selectedChain.sell_price) * 100) / 100;
-    cart.addItem({ inventory_item_id: selectedChain.id, name: `${selectedChain.name} ${selectedProductType.name}`, quantity: 1, unit_price: price,
-      discount_type: null, discount_value: 0, product_type_id: selectedProductType.id, product_type_name: selectedProductType.name,
-      inches_used: inches, pricing_mode: 'per_inch',
-      _jump_rings_required: selectedProductType.jump_rings_required ?? 1, _inventory_type: 'chain', _material: selectedChain.material });
-    toast.success(`Added ${selectedProductType.name} (${inches} in)`); goHome();
-  };
-
-  const addNonChainItem = (item: InventoryItem) => {
-    cart.addItem({ inventory_item_id: item.id, name: item.name, quantity: 1, unit_price: Number(item.sell_price),
-      discount_type: null, discount_value: 0, product_type_id: null, product_type_name: null, inches_used: null, pricing_mode: null,
-      _jump_rings_required: null, _inventory_type: item.type, _material: item.material });
-    toast.success(`Added ${item.name}`);
-  };
-
-  const addCustomItem = () => {
-    if (!customItem.name || !customItem.price) return;
-    cart.addItem({ inventory_item_id: null, name: customItem.name, quantity: 1, unit_price: Number(customItem.price),
-      discount_type: null, discount_value: 0, product_type_id: null, product_type_name: null, inches_used: null, pricing_mode: null,
-      _jump_rings_required: null, _inventory_type: null, _material: null });
-    toast.success(`Added ${customItem.name}`); setCustomItem({ name: '', price: '' }); goHome();
-  };
 
   // ── Client find/create ──
 
@@ -597,7 +471,6 @@ function EventModePageInner() {
     setEmailSent(false); setSmsSent(false); setEmailError(''); setSmsError('');
     setJumpRingResolutions([]); setActiveQueueEntry(null);
     setQueueRefresh((n) => n + 1);
-    goHome();
   };
 
   // ── Loading ──
@@ -614,15 +487,6 @@ function EventModePageInner() {
     );
   }
 
-  // ── Shared styles ──
-
-  const cardBase = 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-left cursor-pointer transition-all duration-200 hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.08)] hover:-translate-y-px active:scale-[0.97]';
-  const cardPrimary = `${cardBase} rounded-2xl p-7 min-h-[140px] shadow-[0_1px_3px_0_rgba(0,0,0,0.06)]`;
-  const cardSecondary = `${cardBase} rounded-xl p-5 min-h-[100px] shadow-[0_1px_2px_0_rgba(0,0,0,0.04)]`;
-  const cardCompact = `${cardBase} rounded-xl p-4 min-h-[72px] border-[var(--border-subtle)] shadow-none hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)]`;
-  const cardDisabled = 'opacity-30 cursor-not-allowed hover:shadow-none hover:translate-y-0 active:scale-100';
-  const sectionLabel = 'text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-tertiary)] mb-3 pl-0.5';
-  const backBtn = 'flex items-center gap-1.5 text-[13px] font-medium text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors mb-5';
   const pageTitle = 'text-[24px] font-bold text-[var(--text-primary)] tracking-tight leading-tight';
 
   return (
@@ -716,127 +580,32 @@ function EventModePageInner() {
 
           <div className="p-5 pb-28 md:pb-5 max-w-[720px] mx-auto">
 
-            {/* ◆◆◆ ITEMS STEP — luxury step-down grid ◆◆◆ */}
+            {/* ◆◆◆ ITEMS STEP — Material-first ProductSelector ◆◆◆ */}
             {step === 'items' && (
-              <div>
-                {selectionStep === 'category' && !showCustomForm && (
-                  <div>
-                    {primaryTypes.length > 0 && (
-                      <div className="mb-4">
-                        <div className={sectionLabel}>Services</div>
-                        <div className="grid grid-cols-2 gap-3">
-                          {primaryTypes.map((pt) => { const count = chainAvailCount(pt.id); return (
-                            <button key={pt.id} onClick={() => count > 0 && selectCategory(pt)} disabled={count === 0}
-                              className={`${cardPrimary} flex flex-col justify-between ${count === 0 ? cardDisabled : ''}`}>
-                              <div><div className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight leading-tight">{pt.name}</div>
-                              <div className="text-[12px] text-[var(--text-tertiary)] mt-1.5 font-medium">{pt.default_inches}&quot; standard</div></div>
-                              <div className="flex items-center gap-1 text-[11px] text-[var(--text-tertiary)] font-medium mt-4"><span>{count} chain{count !== 1 ? 's' : ''}</span><ChevronRight /></div>
-                            </button>); })}
-                        </div>
-                      </div>
-                    )}
-                    {secondaryTypes.length > 0 && (
-                      <div className="mb-4"><div className="grid grid-cols-3 gap-2.5">
-                        {secondaryTypes.map((pt) => { const count = chainAvailCount(pt.id); return (
-                          <button key={pt.id} onClick={() => count > 0 && selectCategory(pt)} disabled={count === 0}
-                            className={`${cardSecondary} flex flex-col justify-between ${count === 0 ? cardDisabled : ''}`}>
-                            <div className="text-[16px] font-semibold text-[var(--text-primary)]">{pt.name}</div>
-                            <div className="text-[11px] text-[var(--text-tertiary)] mt-2 font-medium">{pt.default_inches}&quot; standard</div>
-                          </button>); })}
-                      </div></div>
-                    )}
-                    {(nonChainTypes.length > 0 || true) && (
-                      <div><div className={sectionLabel}>Add-ons</div>
-                      <div className="grid grid-cols-3 gap-2">
-                        {nonChainTypes.map((type) => { const items = inventory.filter((i) => i.type === type && i.quantity_on_hand > 0); return (
-                          <button key={type} onClick={() => { setSelectedNonChainType(type); setSelectedProductType(null); setSelectedMaterial(null); setShowCustomForm(false); setSelectionStep('chain'); }}
-                            disabled={items.length === 0} className={`${cardCompact} flex flex-col justify-between ${items.length === 0 ? cardDisabled : ''}`}>
-                            <div className="text-[14px] font-semibold text-[var(--text-secondary)]">{NON_CHAIN_LABELS[type] || type}</div>
-                            <div className="text-[11px] text-[var(--text-tertiary)] mt-1">{items.length} items</div>
-                          </button>); })}
-                        <button onClick={() => { setShowCustomForm(true); setSelectedProductType(null); setSelectedMaterial(null); setSelectedNonChainType(null); }}
-                          className="bg-[var(--surface-raised)] border border-dashed border-[var(--border-strong)] rounded-xl p-4 min-h-[72px] text-left cursor-pointer transition-all hover:border-[var(--text-tertiary)] flex flex-col justify-between">
-                          <div className="text-[14px] font-semibold text-[var(--text-tertiary)]">Custom</div>
-                          <div className="text-[11px] text-[var(--text-tertiary)] mt-1">Name your price</div>
-                        </button>
-                      </div></div>
-                    )}
-                  </div>
-                )}
-
-                {selectionStep === 'category' && showCustomForm && (
-                  <div><button onClick={goHome} className={backBtn}><BackArrow /> Back</button>
-                  <div className="max-w-sm mx-auto space-y-5 pt-8">
-                    <h2 className={pageTitle + ' text-center'}>Custom Item</h2>
-                    <input className="w-full h-14 px-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-lg transition-all"
-                      placeholder="Item name" value={customItem.name} onChange={(e) => setCustomItem({ ...customItem, name: e.target.value })} autoFocus />
-                    <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-[var(--text-tertiary)] ">$</span>
-                    <input className="w-full h-14 pl-9 pr-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] text-lg  focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all"
-                      type="number" step="0.01" min="0" placeholder="0.00" value={customItem.price} onChange={(e) => setCustomItem({ ...customItem, price: e.target.value })}
-                      onKeyDown={(e) => { if (e.key === 'Enter') addCustomItem(); }} /></div>
-                    <button onClick={addCustomItem} disabled={!customItem.name || !customItem.price} className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm disabled:opacity-40 disabled:cursor-not-allowed" style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}>Add to Cart</button>
-                  </div></div>
-                )}
-
-                {selectionStep === 'material' && selectedProductType && (
-                  <div><button onClick={goBack} className={backBtn}><BackArrow /> Back</button>
-                  <div className="mb-6"><div className={sectionLabel}>Select Material</div><h2 className={pageTitle}>{selectedProductType.name}</h2></div>
-                  {materialsForProductType.length === 0 ? (
-                    <div className="text-center py-16"><p className="text-[var(--text-tertiary)] text-sm">No chains with pricing set for {selectedProductType.name}.</p></div>
-                  ) : (<div className="grid grid-cols-2 gap-3">
-                    {materialsForProductType.map(([material, count]) => (
-                      <button key={material} onClick={() => selectMaterial(material)} className={`${cardPrimary} flex flex-col justify-between`}>
-                        <div className="text-[18px] font-semibold text-[var(--text-primary)]">{material}</div>
-                        <div className="flex items-center justify-between mt-3"><span className="text-[12px] text-[var(--text-tertiary)] font-medium">{count} chain{count !== 1 ? 's' : ''}</span><ChevronRight /></div>
-                      </button>))}
-                  </div>)}</div>
-                )}
-
-                {selectionStep === 'chain' && selectedProductType && selectedMaterial && (
-                  <div><button onClick={goBack} className={backBtn}><BackArrow /> Back</button>
-                  <div className="mb-6"><div className={sectionLabel}>{selectedProductType.name} / {selectedMaterial}</div><h2 className={pageTitle}>Select Chain</h2></div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {chainsForMaterial.map((chain) => (
-                      <button key={chain.id} onClick={() => selectChain(chain)} className={`${cardSecondary} flex flex-col justify-between`}>
-                        <div><div className="text-[15px] font-semibold text-[var(--text-primary)]">{chain.name}</div>
-                        <div className="text-[12px] text-[var(--text-tertiary)] mt-1">{chain.quantity_on_hand.toFixed(0)} {chain.unit} in stock</div></div>
-                        <div className="text-[20px] font-bold text-[var(--text-primary)]  mt-3 tracking-tight">{getChainPrice(chain)}</div>
-                      </button>))}
-                  </div></div>
-                )}
-
-                {selectionStep === 'chain' && selectedNonChainType && (
-                  <div><button onClick={goHome} className={backBtn}><BackArrow /> Back</button>
-                  <div className="mb-6"><div className={sectionLabel}>{NON_CHAIN_LABELS[selectedNonChainType] || selectedNonChainType}</div></div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {nonChainItems.map((item) => (
-                      <button key={item.id} onClick={() => addNonChainItem(item)} className={`${cardSecondary} flex flex-col justify-between`}>
-                        <div><div className="text-[15px] font-semibold text-[var(--text-primary)]">{item.name}</div>
-                        <div className="text-[12px] text-[var(--text-tertiary)] mt-1">{item.material && `${item.material} — `}{item.quantity_on_hand} left</div></div>
-                        <div className="text-[20px] font-bold text-[var(--text-primary)]  mt-3 tracking-tight">${Number(item.sell_price).toFixed(2)}</div>
-                      </button>))}
-                  </div></div>
-                )}
-
-                {selectionStep === 'measure' && selectedChain && selectedProductType && (
-                  <div><button onClick={goBack} className={backBtn}><BackArrow /> Back</button>
-                  <div className="max-w-sm mx-auto pt-8 space-y-8">
-                    <div className="text-center"><div className={sectionLabel + ' text-center'}>{selectedChain.name} / {selectedProductType.name}</div>
-                    <div className="text-sm text-[var(--text-tertiary)]">${Number(selectedChain.sell_price).toFixed(2)}/in</div></div>
-                    <div><label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] mb-2.5 text-center">Measured Inches</label>
-                    <input type="number" step="0.25" min="0.25" value={measureInches} onChange={(e) => setMeasureInches(e.target.value)}
-                      className="w-full h-20 px-4 rounded-2xl border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] text-center text-[40px]  font-semibold focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all tracking-tight"
-                      autoFocus onKeyDown={(e) => { if (e.key === 'Enter') addMeasuredChain(); }} /></div>
-                    {measureInches && Number(measureInches) > 0 && (<div className="text-center">
-                      <div className="text-[11px] uppercase tracking-[0.06em] text-[var(--text-tertiary)] font-semibold mb-2">Calculated Price</div>
-                      <div className="text-[48px] font-bold text-[var(--text-primary)]  tracking-tighter leading-none">${(Number(measureInches) * Number(selectedChain.sell_price)).toFixed(2)}</div>
-                    </div>)}
-                    <button onClick={addMeasuredChain} disabled={!measureInches || Number(measureInches) <= 0}
-                      className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}>Add to Cart</button>
-                  </div></div>
-                )}
-              </div>
+              <ProductSelector
+                chains={chains}
+                inventory={inventory}
+                productTypes={productTypes}
+                chainPrices={chainPrices}
+                mode="event"
+                onAddToCart={(item) => {
+                  // Event Mode enriches with jump ring metadata
+                  const enriched = {
+                    ...item,
+                    _jump_rings_required: item.product_type_id
+                      ? (productTypes.find(pt => pt.id === item.product_type_id)?.jump_rings_required ?? 1)
+                      : null,
+                    _inventory_type: item.inventory_item_id
+                      ? (inventory.find(i => i.id === item.inventory_item_id)?.type ?? null)
+                      : null,
+                    _material: item.inventory_item_id
+                      ? (inventory.find(i => i.id === item.inventory_item_id)?.material ?? null)
+                      : null,
+                  };
+                  cart.addItem(enriched);
+                  toast.success(`Added ${item.name}`);
+                }}
+              />
             )}
 
             {/* ◆◆◆ TIP / PAYMENT (Task A: receipt step removed — payment goes straight to completeSale) ◆◆◆ */}
