@@ -1,8 +1,8 @@
 // ============================================================================
 // Dashboard Home — src/app/dashboard/page.tsx
 // ============================================================================
-// Enhanced with AI Business Insights panel and improved quick stats.
-// The insights section loads asynchronously so it never blocks the page.
+// Phase D3: Smart Dashboard — Context-aware card system.
+// Cards are generated from real data queries via /api/dashboard/cards.
 // ============================================================================
 
 'use client';
@@ -14,23 +14,14 @@ import { useRouter } from 'next/navigation';
 import {
   Button,
   Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
 } from '@/components/ui';
 import { format } from 'date-fns';
-import UpgradePrompt from '@/components/ui/UpgradePrompt';
-import { getSubscriptionTier, canAccessFeature } from '@/lib/subscription';
+import { DashboardCardGrid } from '@/components/dashboard';
+import type { DashboardCard } from '@/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
-
-interface Insight {
-  type: 'growth' | 'attention' | 'tip' | 'milestone';
-  title: string;
-  body: string;
-}
 
 interface QuickStats {
   todayRevenue: number;
@@ -78,12 +69,9 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<QuickStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
-  // AI insights state
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [insightsLoading, setInsightsLoading] = useState(false);
-  const [insightsError, setInsightsError] = useState(false);
-  const effectiveTier = tenant ? getSubscriptionTier(tenant) : 'starter';
-  const canSeeInsights = canAccessFeature(effectiveTier, 'ai_insights');
+  // Dashboard cards state
+  const [cards, setCards] = useState<DashboardCard[]>([]);
+  const [cardsLoading, setCardsLoading] = useState(true);
 
   // ── Fetch quick stats ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -167,7 +155,6 @@ export default function DashboardPage() {
         const lowStockItems = (lowStock || []).filter(
           (i) => i.quantity_on_hand <= i.reorder_threshold
         );
-        // Sort by most critical (lowest ratio of on_hand / threshold)
         lowStockItems.sort((a, b) => {
           const ratioA = a.reorder_threshold > 0 ? a.quantity_on_hand / a.reorder_threshold : 0;
           const ratioB = b.reorder_threshold > 0 ? b.quantity_on_hand / b.reorder_threshold : 0;
@@ -196,28 +183,26 @@ export default function DashboardPage() {
     fetchStats();
   }, [tenant?.id]);
 
-  // ── Fetch AI insights ──────────────────────────────────────────────────────
-  const fetchInsights = useCallback(async () => {
-    if (!canSeeInsights) return;
-    setInsightsLoading(true);
-    setInsightsError(false);
+  // ── Fetch dashboard cards ──────────────────────────────────────────────────
+  const fetchCards = useCallback(async () => {
+    setCardsLoading(true);
     try {
-      const res = await fetch('/api/insights');
-      if (!res.ok) throw new Error('Failed to fetch');
+      const res = await fetch('/api/dashboard/cards');
+      if (!res.ok) throw new Error('Failed to fetch cards');
       const data = await res.json();
-      setInsights(data.insights || []);
+      setCards(data.cards || []);
     } catch (err) {
-      console.error('Failed to fetch insights:', err);
-      setInsightsError(true);
+      console.error('Failed to fetch dashboard cards:', err);
+      setCards([]);
     } finally {
-      setInsightsLoading(false);
+      setCardsLoading(false);
     }
-  }, [canSeeInsights]);
+  }, []);
 
   useEffect(() => {
     if (!tenant?.id) return;
-    fetchInsights();
-  }, [tenant?.id, fetchInsights]);
+    fetchCards();
+  }, [tenant?.id, fetchCards]);
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (tenantLoading) {
@@ -244,23 +229,35 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Page header */}
-      <div>
-        <h1
-          className="text-2xl font-semibold text-text-primary"
-          style={{ fontFamily: 'var(--font-display)' }}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1
+            className="text-2xl font-semibold text-text-primary"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            {greeting}!
+          </h1>
+          <p className="text-text-secondary mt-1 text-sm">
+            Here&apos;s how {tenant.name} is doing today.
+          </p>
+        </div>
+        <button
+          onClick={() => fetchCards()}
+          disabled={cardsLoading}
+          className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+          title="Refresh dashboard cards"
         >
-          {greeting}!
-        </h1>
-        <p className="text-text-secondary mt-1 text-sm">
-          Here&apos;s how {tenant.name} is doing today.
-        </p>
+          <RefreshIcon
+            className={`w-4 h-4 ${cardsLoading ? 'animate-spin' : ''}`}
+          />
+          <span className="hidden sm:inline">Refresh</span>
+        </button>
       </div>
 
       {/* ================================================================== */}
       {/* Quick Stats Row                                                     */}
       {/* ================================================================== */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-        {/* Today's Revenue */}
         <StatCard
           label="Today's Revenue"
           loading={statsLoading}
@@ -272,7 +269,6 @@ export default function DashboardPage() {
           }
         />
 
-        {/* This Week vs Last Week */}
         <StatCard
           label="This Week"
           loading={statsLoading}
@@ -285,7 +281,7 @@ export default function DashboardPage() {
                     stats.weekPctChange >= 0 ? 'text-success-600' : 'text-error-500'
                   }
                 >
-                  {stats.weekPctChange >= 0 ? '↑' : '↓'}{' '}
+                  {stats.weekPctChange >= 0 ? '\u2191' : '\u2193'}{' '}
                   {Math.abs(Math.round(stats.weekPctChange))}%
                 </span>
                 <span className="text-text-tertiary">vs last week</span>
@@ -296,20 +292,18 @@ export default function DashboardPage() {
           }
         />
 
-        {/* Upcoming Events */}
         <StatCard
           label="Upcoming Events"
           loading={statsLoading}
           value={stats ? String(stats.upcomingEventsCount) : '0'}
           subtitle={
             stats?.nextEventName
-              ? `${stats.nextEventName} · ${format(new Date(stats.nextEventDate!), 'MMM d')}`
+              ? `${stats.nextEventName} \u00B7 ${format(new Date(stats.nextEventDate!), 'MMM d')}`
               : 'None scheduled'
           }
           onClick={() => router.push('/dashboard/events')}
         />
 
-        {/* Low Stock Alerts */}
         <StatCard
           label="Low Stock"
           loading={statsLoading}
@@ -363,96 +357,28 @@ export default function DashboardPage() {
       </div>
 
       {/* ================================================================== */}
-      {/* AI Business Insights                                                */}
+      {/* Smart Dashboard Cards                                               */}
       {/* ================================================================== */}
-      {canSeeInsights ? (
       <section>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <SparklesIcon className="w-5 h-5 text-amber-500" />
-            <h2
-              className="text-lg font-semibold text-text-primary"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              Your Business Insights
-            </h2>
-          </div>
-          <button
-            onClick={fetchInsights}
-            disabled={insightsLoading}
-            className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+        <div className="flex items-center gap-2.5 mb-4">
+          <SparklesIcon className="w-5 h-5 text-accent-500" />
+          <h2
+            className="text-lg font-semibold text-text-primary"
+            style={{ fontFamily: 'var(--font-display)' }}
           >
-            <RefreshIcon
-              className={`w-4 h-4 ${insightsLoading ? 'animate-spin' : ''}`}
-            />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
+            Your Dashboard
+          </h2>
         </div>
 
-        {/* Loading skeleton */}
-        {insightsLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <InsightSkeleton key={i} />
-            ))}
-          </div>
-        )}
-
-        {/* Error state */}
-        {!insightsLoading && insightsError && (
-          <Card>
-            <CardContent className="py-10 text-center">
-              <p className="text-text-secondary text-sm">
-                Insights are taking a break — check back soon!
-              </p>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="mt-3"
-                onClick={fetchInsights}
-              >
-                Try Again
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Insights grid */}
-        {!insightsLoading && !insightsError && insights.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
-            {insights.map((insight, idx) => (
-              <InsightCard key={idx} insight={insight} />
-            ))}
-          </div>
-        )}
-
-        {/* Empty state — no insights returned */}
-        {!insightsLoading && !insightsError && insights.length === 0 && (
-          <Card>
-            <CardContent className="py-10 text-center">
-              <SparklesIcon className="w-8 h-8 text-text-tertiary mx-auto mb-3" />
-              <p className="text-text-secondary text-sm">
-                Welcome to Sunstone! Once you start making sales, I&apos;ll have
-                personalized insights for your business here.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </section>
-      ) : (
-        <UpgradePrompt
-          feature="AI Business Insights"
-          description="Get personalized, AI-powered insights about your sales trends, inventory, and growth opportunities."
-          variant="inline"
+        <DashboardCardGrid
+          cards={cards}
+          loading={cardsLoading}
+          tenantName={tenant.name}
         />
-      )}
-
+      </section>
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sub-components
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
@@ -497,7 +423,7 @@ function StatCard({
             </p>
             <p
               className={`text-2xl font-semibold tracking-tight ${valueColor || 'text-text-primary'}`}
-              style={{ fontFamily: 'var(--)' }}
+              style={{ fontFamily: 'var(--font-display)' }}
             >
               {value}
             </p>
@@ -514,117 +440,8 @@ function StatCard({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Insight Card
-// ─────────────────────────────────────────────────────────────────────────────
-
-const INSIGHT_STYLES: Record<
-  Insight['type'],
-  { border: string; iconBg: string; iconColor: string }
-> = {
-  growth: {
-    border: 'border-l-green-500',
-    iconBg: 'bg-success-50',
-    iconColor: 'text-success-600',
-  },
-  attention: {
-    border: 'border-l-amber-500',
-    iconBg: 'bg-warning-50',
-    iconColor: 'text-warning-600',
-  },
-  tip: {
-    border: 'border-l-blue-500',
-    iconBg: 'bg-info-50',
-    iconColor: 'text-info-600',
-  },
-  milestone: {
-    border: 'border-l-purple-500',
-    iconBg: 'bg-purple-50',
-    iconColor: 'text-purple-600',
-  },
-};
-
-function InsightCard({ insight }: { insight: Insight }) {
-  const style = INSIGHT_STYLES[insight.type] || INSIGHT_STYLES.tip;
-
-  return (
-    <div
-      className={`rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] shadow-sm border-l-4 ${style.border} p-4 lg:p-5`}
-    >
-      <div className="flex items-start gap-3">
-        {/* Icon */}
-        <div
-          className={`shrink-0 w-8 h-8 rounded-lg ${style.iconBg} flex items-center justify-center`}
-        >
-          <InsightTypeIcon type={insight.type} className={`w-4 h-4 ${style.iconColor}`} />
-        </div>
-
-        {/* Content */}
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-text-primary leading-tight">
-            {insight.title}
-          </p>
-          <p className="text-sm text-text-secondary mt-1 leading-relaxed">
-            {insight.body}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InsightSkeleton() {
-  return (
-    <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] shadow-sm border-l-4 border-l-[var(--border-default)] p-4 lg:p-5">
-      <div className="flex items-start gap-3">
-        <div className="shrink-0 w-8 h-8 rounded-lg bg-[var(--surface-base)] animate-pulse" />
-        <div className="flex-1 space-y-2.5">
-          <div className="h-4 w-2/3 bg-[var(--surface-base)] rounded animate-pulse" />
-          <div className="h-3 w-full bg-[var(--surface-base)] rounded animate-pulse" />
-          <div className="h-3 w-4/5 bg-[var(--surface-base)] rounded animate-pulse" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Icons
 // ─────────────────────────────────────────────────────────────────────────────
-
-function InsightTypeIcon({
-  type,
-  className,
-}: {
-  type: Insight['type'];
-  className?: string;
-}) {
-  switch (type) {
-    case 'growth':
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2 20l5.5-5.5m0 0l3 3L16 12m0 0l4-4m-4 4v4m0-4h4" />
-        </svg>
-      );
-    case 'attention':
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-        </svg>
-      );
-    case 'tip':
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-        </svg>
-      );
-    case 'milestone':
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
-        </svg>
-      );
-  }
-}
 
 function SparklesIcon({ className }: { className?: string }) {
   return (

@@ -422,6 +422,30 @@ export const SUBSCRIPTION_PRICES: Record<SubscriptionTier, number> = {
 };
 
 // ============================================================================
+// Dashboard Cards
+// ============================================================================
+
+export type DashboardCardType =
+  | 'next_event'
+  | 'revenue_snapshot'
+  | 'suggested_outreach'
+  | 'inventory_alert'
+  | 'networking_nudge'
+  | 'recent_messages'
+  | 'sunstone_product';
+
+export interface DashboardCard {
+  type: DashboardCardType;
+  title: string;
+  body: string;
+  metric?: string;       // e.g. "$1,234" or "3 items"
+  sub?: string;          // secondary text below metric
+  actionLabel?: string;  // CTA button label
+  actionRoute?: string;  // route to navigate to
+  priority: number;      // lower = higher priority (1-100)
+}
+
+// ============================================================================
 // POS Cart Types (in-memory, not persisted until sale completes)
 // ============================================================================
 
