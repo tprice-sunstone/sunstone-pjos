@@ -343,6 +343,26 @@ export interface ClientSegment {
 }
 
 // ============================================================================
+// Message Templates
+// ============================================================================
+
+export type MessageChannel = 'sms' | 'email';
+export type MessageCategory = 'general' | 'aftercare' | 'promotion' | 'reminder' | 'follow_up' | 'thank_you' | 'booking';
+
+export interface MessageTemplate {
+  id: string;
+  tenant_id: string;
+  name: string;
+  channel: MessageChannel;
+  subject: string | null;
+  body: string;
+  category: MessageCategory;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
 // Platform Fee Rates
 // ============================================================================
 
