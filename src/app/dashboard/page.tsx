@@ -1,60 +1,18 @@
 // ============================================================================
 // Dashboard Home — src/app/dashboard/page.tsx
 // ============================================================================
-// Phase D3: Smart Dashboard — Context-aware card system.
-// Cards are generated from real data queries via /api/dashboard/cards.
+// Phase D3 v2: Pixel-perfect smart dashboard matching DashboardMock design.
+// Cards are generated from real data via /api/dashboard/cards.
 // ============================================================================
 
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/hooks/use-tenant';
 import { useRouter } from 'next/navigation';
-import {
-  Button,
-  Card,
-} from '@/components/ui';
-import { format } from 'date-fns';
 import { DashboardCardGrid } from '@/components/dashboard';
 import type { DashboardCard } from '@/types';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface QuickStats {
-  todayRevenue: number;
-  todaySalesCount: number;
-  weekRevenue: number;
-  lastWeekRevenue: number;
-  weekPctChange: number | null;
-  upcomingEventsCount: number;
-  nextEventName: string | null;
-  nextEventDate: string | null;
-  lowStockCount: number;
-  lowStockCritical: string | null;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-const money = (n: number) =>
-  n.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-
-const moneyExact = (n: number) =>
-  n.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+import { format } from 'date-fns';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
@@ -63,131 +21,17 @@ const moneyExact = (n: number) =>
 export default function DashboardPage() {
   const { tenant, isLoading: tenantLoading } = useTenant();
   const router = useRouter();
-  const supabase = createClient();
 
-  // Quick stats state
-  const [stats, setStats] = useState<QuickStats | null>(null);
-  const [statsLoading, setStatsLoading] = useState(true);
-
-  // Dashboard cards state
   const [cards, setCards] = useState<DashboardCard[]>([]);
   const [cardsLoading, setCardsLoading] = useState(true);
+  const [eventsThisWeek, setEventsThisWeek] = useState<number>(0);
 
-  // ── Fetch quick stats ──────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!tenant?.id) return;
-
-    const fetchStats = async () => {
-      setStatsLoading(true);
-      try {
-        const now = new Date();
-
-        // Today boundaries
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-
-        // This week (Mon-Sun)
-        const dayOfWeek = now.getDay();
-        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-        const thisWeekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
-        const lastWeekStart = new Date(thisWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const lastWeekEnd = thisWeekStart;
-
-        // Today's sales
-        const { data: todaySales } = await supabase
-          .from('sales')
-          .select('subtotal')
-          .eq('tenant_id', tenant.id)
-          .eq('status', 'completed')
-          .gte('created_at', todayStart.toISOString())
-          .lt('created_at', todayEnd.toISOString());
-
-        const todayRevenue = (todaySales || []).reduce((s, r) => s + (r.subtotal || 0), 0);
-        const todaySalesCount = (todaySales || []).length;
-
-        // This week sales
-        const { data: weekSales } = await supabase
-          .from('sales')
-          .select('subtotal')
-          .eq('tenant_id', tenant.id)
-          .eq('status', 'completed')
-          .gte('created_at', thisWeekStart.toISOString())
-          .lt('created_at', todayEnd.toISOString());
-
-        const weekRevenue = (weekSales || []).reduce((s, r) => s + (r.subtotal || 0), 0);
-
-        // Last week sales
-        const { data: lastWeekSales } = await supabase
-          .from('sales')
-          .select('subtotal')
-          .eq('tenant_id', tenant.id)
-          .eq('status', 'completed')
-          .gte('created_at', lastWeekStart.toISOString())
-          .lt('created_at', lastWeekEnd.toISOString());
-
-        const lastWeekRevenue = (lastWeekSales || []).reduce((s, r) => s + (r.subtotal || 0), 0);
-        const weekPctChange =
-          lastWeekRevenue > 0
-            ? ((weekRevenue - lastWeekRevenue) / lastWeekRevenue) * 100
-            : weekRevenue > 0
-              ? 100
-              : null;
-
-        // Upcoming events
-        const { data: upcomingEvents } = await supabase
-          .from('events')
-          .select('id, name, start_time')
-          .eq('tenant_id', tenant.id)
-          .gte('start_time', now.toISOString())
-          .order('start_time', { ascending: true })
-          .limit(5);
-
-        const upcomingEventsCount = (upcomingEvents || []).length;
-        const nextEvent = (upcomingEvents || [])[0] || null;
-
-        // Low stock inventory
-        const { data: lowStock } = await supabase
-          .from('inventory_items')
-          .select('name, quantity_on_hand, reorder_threshold')
-          .eq('tenant_id', tenant.id)
-          .eq('is_active', true);
-
-        const lowStockItems = (lowStock || []).filter(
-          (i) => i.quantity_on_hand <= i.reorder_threshold
-        );
-        lowStockItems.sort((a, b) => {
-          const ratioA = a.reorder_threshold > 0 ? a.quantity_on_hand / a.reorder_threshold : 0;
-          const ratioB = b.reorder_threshold > 0 ? b.quantity_on_hand / b.reorder_threshold : 0;
-          return ratioA - ratioB;
-        });
-
-        setStats({
-          todayRevenue,
-          todaySalesCount,
-          weekRevenue,
-          lastWeekRevenue,
-          weekPctChange,
-          upcomingEventsCount,
-          nextEventName: nextEvent?.name || null,
-          nextEventDate: nextEvent?.start_time || null,
-          lowStockCount: lowStockItems.length,
-          lowStockCritical: lowStockItems[0]?.name || null,
-        });
-      } catch (err) {
-        console.error('Failed to fetch stats:', err);
-      } finally {
-        setStatsLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, [tenant?.id]);
-
-  // ── Fetch dashboard cards ──────────────────────────────────────────────────
-  const fetchCards = useCallback(async () => {
+  // ── Fetch dashboard cards ──────────────────────────────────────────────
+  const fetchCards = useCallback(async (refresh = false) => {
     setCardsLoading(true);
     try {
-      const res = await fetch('/api/dashboard/cards');
+      const url = refresh ? '/api/dashboard/cards?refresh=1' : '/api/dashboard/cards';
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch cards');
       const data = await res.json();
       setCards(data.cards || []);
@@ -199,12 +43,40 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // ── Fetch events-this-week count for subtitle ──────────────────────────
   useEffect(() => {
     if (!tenant?.id) return;
+
     fetchCards();
+
+    // Quick client-side query for the subtitle context
+    const fetchContext = async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
+        const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+        const { count } = await supabase
+          .from('events')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenant.id)
+          .gte('start_time', weekStart.toISOString())
+          .lt('start_time', weekEnd.toISOString());
+
+        setEventsThisWeek(count || 0);
+      } catch {
+        // Non-critical
+      }
+    };
+
+    fetchContext();
   }, [tenant?.id, fetchCards]);
 
-  // ── Loading state ──────────────────────────────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────────
   if (tenantLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -221,221 +93,76 @@ export default function DashboardPage() {
     );
   }
 
-  // ── Greeting ───────────────────────────────────────────────────────────────
-  const hour = new Date().getHours();
+  // ── Greeting ───────────────────────────────────────────────────────────
+  const now = new Date();
+  const hour = now.getHours();
   const greeting =
     hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
+  // Use tenant name as display name (first word as first name feel)
+  const displayName = tenant.name.split(' ')[0] || tenant.name;
+
+  // Date context subtitle
+  const dateStr = format(now, 'EEEE, MMM d');
+  const contextStr = eventsThisWeek > 0
+    ? `${eventsThisWeek} event${eventsThisWeek !== 1 ? 's' : ''} this week`
+    : 'No events this week';
+
   return (
-    <div className="space-y-8">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
+    <div style={{ maxWidth: 900 }}>
+      {/* ================================================================ */}
+      {/* Header: Greeting + Open POS                                      */}
+      {/* ================================================================ */}
+      <div className="flex items-start justify-between" style={{ marginBottom: 24 }}>
         <div>
           <h1
-            className="text-2xl font-semibold text-text-primary"
-            style={{ fontFamily: 'var(--font-display)' }}
+            className="text-text-primary"
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 26,
+              fontWeight: 600,
+              letterSpacing: '-0.02em',
+              lineHeight: 1.2,
+              margin: 0,
+            }}
           >
-            {greeting}!
+            {greeting}, {displayName}
           </h1>
-          <p className="text-text-secondary mt-1 text-sm">
-            Here&apos;s how {tenant.name} is doing today.
+          <p
+            className="text-text-secondary"
+            style={{ fontSize: 13, marginTop: 4 }}
+          >
+            {dateStr} &mdash; {contextStr}
           </p>
         </div>
+
+        {/* Open POS button */}
         <button
-          onClick={() => fetchCards()}
-          disabled={cardsLoading}
-          className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
-          title="Refresh dashboard cards"
+          onClick={() => router.push('/dashboard/pos')}
+          className="bg-accent-500 text-[var(--text-on-accent)] hover:bg-accent-600 transition-colors flex items-center gap-2 shrink-0"
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            padding: '8px 16px',
+            borderRadius: 10,
+            border: 'none',
+            cursor: 'pointer',
+          }}
         >
-          <RefreshIcon
-            className={`w-4 h-4 ${cardsLoading ? 'animate-spin' : ''}`}
-          />
-          <span className="hidden sm:inline">Refresh</span>
+          <RegisterIcon />
+          Open POS
         </button>
       </div>
 
-      {/* ================================================================== */}
-      {/* Quick Stats Row                                                     */}
-      {/* ================================================================== */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-        <StatCard
-          label="Today's Revenue"
-          loading={statsLoading}
-          value={stats ? moneyExact(stats.todayRevenue) : '$0'}
-          subtitle={
-            stats && stats.todaySalesCount > 0
-              ? `${stats.todaySalesCount} sale${stats.todaySalesCount !== 1 ? 's' : ''}`
-              : 'No sales yet today'
-          }
-        />
-
-        <StatCard
-          label="This Week"
-          loading={statsLoading}
-          value={stats ? money(stats.weekRevenue) : '$0'}
-          subtitle={
-            stats?.weekPctChange !== null && stats?.weekPctChange !== undefined ? (
-              <span className="inline-flex items-center gap-1">
-                <span
-                  className={
-                    stats.weekPctChange >= 0 ? 'text-success-600' : 'text-error-500'
-                  }
-                >
-                  {stats.weekPctChange >= 0 ? '\u2191' : '\u2193'}{' '}
-                  {Math.abs(Math.round(stats.weekPctChange))}%
-                </span>
-                <span className="text-text-tertiary">vs last week</span>
-              </span>
-            ) : (
-              'vs last week'
-            )
-          }
-        />
-
-        <StatCard
-          label="Upcoming Events"
-          loading={statsLoading}
-          value={stats ? String(stats.upcomingEventsCount) : '0'}
-          subtitle={
-            stats?.nextEventName
-              ? `${stats.nextEventName} \u00B7 ${format(new Date(stats.nextEventDate!), 'MMM d')}`
-              : 'None scheduled'
-          }
-          onClick={() => router.push('/dashboard/events')}
-        />
-
-        <StatCard
-          label="Low Stock"
-          loading={statsLoading}
-          value={stats ? String(stats.lowStockCount) : '0'}
-          valueColor={
-            stats && stats.lowStockCount > 0 ? 'text-warning-600' : undefined
-          }
-          subtitle={
-            stats?.lowStockCritical
-              ? `${stats.lowStockCritical} is critical`
-              : 'All stocked up'
-          }
-          onClick={() => router.push('/dashboard/inventory')}
-        />
-      </div>
-
-      {/* ================================================================== */}
-      {/* Quick Actions                                                       */}
-      {/* ================================================================== */}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => router.push('/dashboard/pos')}
-        >
-          <span className="flex items-center gap-2">
-            <StorefrontIcon className="w-4 h-4" />
-            Open Store POS
-          </span>
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => router.push('/dashboard/events')}
-        >
-          <span className="flex items-center gap-2">
-            <CalendarIcon className="w-4 h-4" />
-            Events
-          </span>
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => router.push('/dashboard/reports')}
-        >
-          <span className="flex items-center gap-2">
-            <ChartIcon className="w-4 h-4" />
-            Reports
-          </span>
-        </Button>
-      </div>
-
-      {/* ================================================================== */}
-      {/* Smart Dashboard Cards                                               */}
-      {/* ================================================================== */}
-      <section>
-        <div className="flex items-center gap-2.5 mb-4">
-          <SparklesIcon className="w-5 h-5 text-accent-500" />
-          <h2
-            className="text-lg font-semibold text-text-primary"
-            style={{ fontFamily: 'var(--font-display)' }}
-          >
-            Your Dashboard
-          </h2>
-        </div>
-
-        <DashboardCardGrid
-          cards={cards}
-          loading={cardsLoading}
-          tenantName={tenant.name}
-        />
-      </section>
+      {/* ================================================================ */}
+      {/* Card Grid                                                        */}
+      {/* ================================================================ */}
+      <DashboardCardGrid
+        cards={cards}
+        loading={cardsLoading}
+        tenantName={tenant.name}
+      />
     </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Sub-components
-// ─────────────────────────────────────────────────────────────────────────────
-
-function StatCard({
-  label,
-  value,
-  subtitle,
-  loading,
-  valueColor,
-  onClick,
-}: {
-  label: string;
-  value: string;
-  subtitle?: React.ReactNode;
-  loading?: boolean;
-  valueColor?: string;
-  onClick?: () => void;
-}) {
-  const Wrapper = onClick ? 'button' : 'div';
-
-  return (
-    <Card
-      variant={onClick ? 'interactive' : 'default'}
-      className={onClick ? 'text-left' : ''}
-    >
-      <Wrapper
-        {...(onClick ? { onClick } : {})}
-        className="block w-full px-4 py-4 lg:px-5 lg:py-5"
-      >
-        {loading ? (
-          <div className="space-y-2.5">
-            <div className="h-3 w-20 bg-[var(--surface-base)] rounded animate-pulse" />
-            <div className="h-7 w-16 bg-[var(--surface-base)] rounded animate-pulse" />
-            <div className="h-3 w-28 bg-[var(--surface-base)] rounded animate-pulse" />
-          </div>
-        ) : (
-          <>
-            <p className="text-xs text-text-tertiary uppercase tracking-wide font-medium mb-1">
-              {label}
-            </p>
-            <p
-              className={`text-2xl font-semibold tracking-tight ${valueColor || 'text-text-primary'}`}
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              {value}
-            </p>
-            {subtitle && (
-              <p className="text-xs text-text-tertiary mt-1 truncate">
-                {subtitle}
-              </p>
-            )}
-          </>
-        )}
-      </Wrapper>
-    </Card>
   );
 }
 
@@ -443,42 +170,11 @@ function StatCard({
 // Icons
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SparklesIcon({ className }: { className?: string }) {
+function RegisterIcon() {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-    </svg>
-  );
-}
-
-function RefreshIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
-    </svg>
-  );
-}
-
-function StorefrontIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
-    </svg>
-  );
-}
-
-function CalendarIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-    </svg>
-  );
-}
-
-function ChartIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
     </svg>
   );
 }

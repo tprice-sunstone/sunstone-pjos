@@ -436,13 +436,70 @@ export type DashboardCardType =
 
 export interface DashboardCard {
   type: DashboardCardType;
+  priority: number;
+  // Type-specific payload — each card component reads its own shape
+  data: Record<string, unknown>;
+}
+
+// ── Per-card data shapes (used by card components) ────────────────────────
+
+export interface NextEventData {
+  eventName: string;
+  date: string;        // formatted date string
+  location: string | null;
+  daysUntil: number;
+  boothFee: number;
+}
+
+export interface RevenueData {
+  monthRevenue: number;
+  lastMonthRevenue: number;
+  pctChange: number | null;
+  salesCount: number;
+  eventsCount: number;
+  dailyBars: number[];  // 12 values, normalized 0-1
+}
+
+export interface InventoryAlertData {
+  items: {
+    name: string;
+    stock: number;
+    threshold: number;
+    status: 'critical' | 'low' | 'ok';
+  }[];
+}
+
+export interface OutreachData {
+  clients: {
+    name: string;
+    reason: string;
+  }[];
+}
+
+export interface NudgeData {
   title: string;
   body: string;
-  metric?: string;       // e.g. "$1,234" or "3 items"
-  sub?: string;          // secondary text below metric
-  actionLabel?: string;  // CTA button label
-  actionRoute?: string;  // route to navigate to
-  priority: number;      // lower = higher priority (1-100)
+  primaryLabel: string;
+  primaryRoute: string;
+  secondaryLabel?: string;
+  secondaryRoute?: string;
+}
+
+export interface MessagesData {
+  messages: {
+    sender: string;
+    initials: string;
+    text: string;
+    time: string;
+    isSystem: boolean;
+  }[];
+}
+
+export interface SunstoneProductData {
+  title: string;
+  body: string;
+  actionLabel: string;
+  actionRoute: string;
 }
 
 // ============================================================================

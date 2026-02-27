@@ -1,4 +1,11 @@
 export { DashboardCardGrid } from './DashboardCardGrid';
-export { DashboardCardComponent } from './DashboardCard';
+export { DashboardCardRenderer } from './DashboardCard';
 export { CardSkeleton } from './CardSkeleton';
 export { WelcomeCard } from './WelcomeCard';
+export { NextEventCard } from './NextEventCard';
+export { RevenueCard } from './RevenueCard';
+export { InventoryCard } from './InventoryCard';
+export { OutreachCard } from './OutreachCard';
+export { NudgeCard } from './NudgeCard';
+export { MessagesCard } from './MessagesCard';
+export { SunstoneProductCard } from './SunstoneProductCard';
