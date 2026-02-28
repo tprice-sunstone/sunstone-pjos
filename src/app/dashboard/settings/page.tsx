@@ -1,18 +1,13 @@
 // ============================================================================
-// Settings Page — DEFINITIVE VERSION — src/app/dashboard/settings/page.tsx
+// Settings Page — Phase D6 Accordion Redesign
 // ============================================================================
-// Layout (General tab):
-//   1. Business Information
-//   2. Branding (Logo Upload + Theme Picker)
-//   3. Subscription & Fees (Plan tier + Platform Fee Handling — combined)
-//   4. Payment Processing (Pick one: Square OR Stripe — single card)
-//   5. Tax Profiles
-//   6. Product Types (chain product types — inlined, with jump_rings_required)
-//   6b. Materials (standardized materials — component)
-//   7. Suppliers (chain supply vendors — inlined, cursor-jump bug fixed)
-//   8. Waiver Text
-// Subscription tab: Plan info, trial status, upgrade/manage (NEW - Task 28)
-// Team tab: Invite, role management, remove (unchanged)
+// Single-page accordion with 6 collapsible sections:
+//   1. My Business — name, type, phone, website, logo, theme
+//   2. Payments — Square/Stripe connections, fee handling
+//   3. Plan & Billing — current plan, trial, upgrade, comparison
+//   4. Tax & Receipts — tax profile CRUD
+//   5. Waiver — waiver text editor with confirmation
+//   6. Team — members, invites, roles
 // ============================================================================
 
 'use client';
@@ -29,11 +24,6 @@ import {
   Input,
   Select,
   Textarea,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardFooter,
   Badge,
   Modal,
   ModalHeader,
@@ -42,8 +32,7 @@ import {
 } from '@/components/ui';
 import { applyTheme } from '@/lib/theme';
 import { THEMES, LIGHT_THEMES, DARK_THEMES, getThemeById, DEFAULT_THEME_ID, type ThemeDefinition } from '@/lib/themes';
-import MaterialsSection from '@/components/settings/MaterialsSection';
-import type { TaxProfile, FeeHandling, BusinessType, ProductType, Supplier, SubscriptionTier } from '@/types';
+import type { TaxProfile, FeeHandling, BusinessType, SubscriptionTier } from '@/types';
 import { PLATFORM_FEE_RATES, SUBSCRIPTION_PRICES } from '@/types';
 import { getSubscriptionTier } from '@/lib/subscription';
 
@@ -60,8 +49,6 @@ const BUSINESS_TYPE_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-
-// Team member limits by subscription tier
 const TEAM_MEMBER_LIMITS: Record<string, number> = {
   starter: 1,
   pro: 3,
@@ -79,7 +66,6 @@ const ALL_ROLE_OPTIONS = [
   { value: 'admin', label: 'Admin' },
 ];
 
-// Plan feature lists for subscription tab
 const PLAN_FEATURES: Record<string, string[]> = {
   pro: [
     '1.5% platform fee (down from 3%)',
@@ -115,8 +101,8 @@ interface TeamMember {
   is_pending: boolean;
 }
 
-type SettingsTab = 'general' | 'subscription' | 'team';
 type PaymentProcessor = 'square' | 'stripe';
+type SectionId = 'business' | 'payments' | 'billing' | 'tax' | 'waiver' | 'team';
 
 // ============================================================================
 // Subscription Helpers
@@ -137,6 +123,179 @@ function isTrialActive(status: string | null, trialEndsAt: string | null): boole
 }
 
 // ============================================================================
+// Accordion Section Component
+// ============================================================================
+
+function AccordionSection({
+  icon,
+  title,
+  summary,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  summary: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border border-[var(--border-default)] rounded-2xl overflow-hidden bg-[var(--surface-raised)]">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-5 py-4 min-h-[56px] text-left transition-colors hover:bg-[var(--surface-subtle)]"
+      >
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-8 h-8 rounded-lg bg-[var(--surface-subtle)] flex items-center justify-center shrink-0 text-[var(--text-secondary)]">
+            {icon}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h3>
+            {!isOpen && summary && (
+              <p className="text-xs text-[var(--text-tertiary)] truncate mt-0.5">{summary}</p>
+            )}
+          </div>
+        </div>
+        <svg
+          className={`w-5 h-5 text-[var(--text-tertiary)] shrink-0 ml-3 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="px-5 pb-5 border-t border-[var(--border-subtle)]">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Section Icons
+// ============================================================================
+
+const IconBusiness = (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72" />
+  </svg>
+);
+
+const IconPayments = (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+  </svg>
+);
+
+const IconBilling = (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+  </svg>
+);
+
+const IconTax = (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V13.5zm0 2.25h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V18zm2.498-6.75h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V13.5zm0 2.25h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V18zm2.504-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zm0 2.25h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V18zm2.498-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zM8.25 6h7.5v2.25h-7.5V6zM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 002.25 2.25h10.5a2.25 2.25 0 002.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0012 2.25z" />
+  </svg>
+);
+
+const IconWaiver = (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+  </svg>
+);
+
+const IconTeam = (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+  </svg>
+);
+
+// ============================================================================
+// Theme Preview Card
+// ============================================================================
+
+function ThemePreviewCard({
+  theme,
+  isSelected,
+  onSelect,
+}: {
+  theme: ThemeDefinition;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      onClick={onSelect}
+      className={`relative rounded-xl border-2 overflow-hidden transition-all duration-200 hover:scale-[1.03] text-left ${
+        isSelected
+          ? 'border-[var(--accent-primary)] shadow-md ring-2 ring-[var(--accent-subtle)]'
+          : 'border-transparent hover:border-[var(--border-strong)]'
+      }`}
+    >
+      <div
+        className="p-3 space-y-2"
+        style={{ backgroundColor: theme.background }}
+      >
+        <div
+          className="text-xs font-semibold truncate"
+          style={{ color: theme.textPrimary, fontFamily: `'${theme.headingFont}', serif` }}
+        >
+          {theme.name}
+        </div>
+        <div
+          className="text-[9px] truncate"
+          style={{ color: theme.textSecondary }}
+        >
+          {theme.description}
+        </div>
+        <div
+          className="p-2 space-y-1.5"
+          style={{
+            backgroundColor: theme.surfaceRaised,
+            border: `1px solid ${theme.borderDefault}`,
+            borderRadius: theme.cardRadius,
+          }}
+        >
+          <div
+            className="h-1.5 rounded-full w-3/4"
+            style={{ backgroundColor: theme.textSecondary, opacity: 0.4 }}
+          />
+          <div
+            className="h-1.5 rounded-full w-1/2"
+            style={{ backgroundColor: theme.textTertiary, opacity: 0.3 }}
+          />
+        </div>
+        <div
+          className="h-5 flex items-center justify-center"
+          style={{ backgroundColor: theme.accent, borderRadius: theme.cardRadius }}
+        >
+          <span
+            className="text-[8px] font-semibold"
+            style={{ color: theme.textOnAccent }}
+          >
+            Button
+          </span>
+        </div>
+      </div>
+      {isSelected && (
+        <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--accent-primary)] flex items-center justify-center">
+          <svg className="w-3 h-3 text-[var(--text-on-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </div>
+      )}
+    </button>
+  );
+}
+
+// ============================================================================
 // Page Component
 // ============================================================================
 
@@ -153,84 +312,44 @@ function SettingsPage() {
     }
   }, [can, router]);
 
-  // Tab state — check URL for ?tab=subscription
-  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const tab = params.get('tab');
-      if (tab === 'subscription' || tab === 'team') return tab;
-    }
-    return 'general';
-  });
+  // ── Accordion state ──
+  const [openSection, setOpenSection] = useState<SectionId | null>(null);
+  const toggleSection = (id: SectionId) => {
+    setOpenSection((prev) => (prev === id ? null : id));
+  };
 
-  // Business info
+  // ── Business info ──
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState('');
   const [businessPhone, setBusinessPhone] = useState('');
   const [businessWebsite, setBusinessWebsite] = useState('');
   const [savingBusiness, setSavingBusiness] = useState(false);
 
-  // Theme
+  // ── Theme ──
   const [selectedThemeId, setSelectedThemeId] = useState(DEFAULT_THEME_ID);
   const [savingBrand, setSavingBrand] = useState(false);
 
-  // Logo upload
+  // ── Logo upload ──
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
-  // Fee handling
+  // ── Fee handling ──
   const [feeHandling, setFeeHandling] = useState<FeeHandling>('pass_to_customer');
 
-  // Tax profiles
+  // ── Tax profiles ──
   const [taxProfiles, setTaxProfiles] = useState<TaxProfile[]>([]);
   const [newTax, setNewTax] = useState({ name: '', rate: '' });
 
-  // Product types
-  const [productTypes, setProductTypes] = useState<ProductType[]>([]);
-  const [ptLoading, setPtLoading] = useState(true);
-  const [ptEditingId, setPtEditingId] = useState<string | null>(null);
-  const [ptEditName, setPtEditName] = useState('');
-  const [ptEditInches, setPtEditInches] = useState('');
-  const [ptEditJumpRings, setPtEditJumpRings] = useState('1');
-  const [ptShowAdd, setPtShowAdd] = useState(false);
-  const [ptNewName, setPtNewName] = useState('');
-  const [ptNewInches, setPtNewInches] = useState('');
-  const [ptNewJumpRings, setPtNewJumpRings] = useState('1');
-  const [ptSaving, setPtSaving] = useState(false);
-
-  // Suppliers
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [supLoading, setSupLoading] = useState(true);
-  const [supEditingId, setSupEditingId] = useState<string | null>(null);
-  // Individual fields instead of object (prevents cursor-jump)
-  const [supEditName, setSupEditName] = useState('');
-  const [supEditContactName, setSupEditContactName] = useState('');
-  const [supEditContactEmail, setSupEditContactEmail] = useState('');
-  const [supEditContactPhone, setSupEditContactPhone] = useState('');
-  const [supEditWebsite, setSupEditWebsite] = useState('');
-  const [supEditNotes, setSupEditNotes] = useState('');
-  const [supShowAdd, setSupShowAdd] = useState(false);
-  const [supAddName, setSupAddName] = useState('');
-  const [supAddContactName, setSupAddContactName] = useState('');
-  const [supAddContactEmail, setSupAddContactEmail] = useState('');
-  const [supAddContactPhone, setSupAddContactPhone] = useState('');
-  const [supAddWebsite, setSupAddWebsite] = useState('');
-  const [supAddNotes, setSupAddNotes] = useState('');
-  const [supSaving, setSupSaving] = useState(false);
-
-  // Queue
-  const [avgServiceMinutes, setAvgServiceMinutes] = useState(10);
-  const [savingQueue, setSavingQueue] = useState(false);
-
-  // Waiver
+  // ── Waiver ──
   const [waiverText, setWaiverText] = useState('');
+  const [showWaiverConfirm, setShowWaiverConfirm] = useState(false);
 
-  // Payment
+  // ── Payment ──
   const [paymentTab, setPaymentTab] = useState<PaymentProcessor>('square');
   const [disconnectingSquare, setDisconnectingSquare] = useState(false);
   const [disconnectingStripe, setDisconnectingStripe] = useState(false);
 
-  // Team state
+  // ── Team state ──
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [teamLoading, setTeamLoading] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -241,11 +360,11 @@ function SettingsPage() {
   const [confirmRemove, setConfirmRemove] = useState<TeamMember | null>(null);
   const [removing, setRemoving] = useState(false);
 
-  // Subscription state (Task 28)
+  // ── Subscription state ──
   const [subscribing, setSubscribing] = useState(false);
 
   // ============================================================================
-  // OAuth redirect handling (updated for subscription checkout)
+  // OAuth redirect handling
   // ============================================================================
 
   useEffect(() => {
@@ -257,32 +376,38 @@ function SettingsPage() {
 
     if (squareSuccess === 'square_connected') {
       toast.success('Square connected successfully!');
+      setOpenSection('payments');
     }
     if (squareError === 'square_denied') {
       toast.error('Square authorization was denied.');
+      setOpenSection('payments');
     } else if (squareError) {
       toast.error('Failed to connect Square. Please try again.');
+      setOpenSection('payments');
     }
 
     if (stripeParam === 'connected') {
       toast.success('Stripe connected successfully!');
+      setOpenSection('payments');
     } else if (stripeParam === 'error') {
       toast.error('Failed to connect Stripe. Please try again.');
+      setOpenSection('payments');
     }
 
-    // Subscription checkout redirects
     if (checkoutParam === 'success') {
       toast.success('Subscription activated! Welcome aboard.');
+      setOpenSection('billing');
       refetch();
     } else if (checkoutParam === 'canceled') {
       toast.info('Subscription checkout was canceled.');
+      setOpenSection('billing');
     }
 
-    // Set active tab from URL
+    // Map old tab params to accordion sections
     if (tabParam === 'subscription') {
-      setActiveTab('subscription');
+      setOpenSection('billing');
     } else if (tabParam === 'team') {
-      setActiveTab('team');
+      setOpenSection('team');
     }
 
     // Clean up URL params
@@ -318,7 +443,6 @@ function SettingsPage() {
     setBusinessWebsite((tenant as any).website || '');
     setFeeHandling(tenant.fee_handling);
     setWaiverText(tenant.waiver_text);
-    setAvgServiceMinutes((tenant as any).avg_service_minutes ?? 10);
     setLogoUrl((tenant as any).logo_url || null);
     if (tenant.theme_id) {
       setSelectedThemeId(tenant.theme_id);
@@ -340,89 +464,10 @@ function SettingsPage() {
   }, [tenant]);
 
   // ============================================================================
-  // Load product types
-  // ============================================================================
-
-  const loadProductTypes = useCallback(async () => {
-    if (!tenant) return;
-    try {
-      const res = await fetch(`/api/product-types?tenantId=${tenant.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setProductTypes(data);
-          setPtLoading(false);
-          return;
-        }
-      }
-      // Fallback: direct Supabase query
-      const { data } = await supabase
-        .from('product_types')
-        .select('*')
-        .eq('tenant_id', tenant.id)
-        .order('sort_order');
-      setProductTypes((data || []) as ProductType[]);
-    } catch {
-      // Final fallback
-      const { data } = await supabase
-        .from('product_types')
-        .select('*')
-        .eq('tenant_id', tenant.id)
-        .order('sort_order');
-      setProductTypes((data || []) as ProductType[]);
-    } finally {
-      setPtLoading(false);
-    }
-  }, [tenant, supabase]);
-
-  useEffect(() => {
-    if (tenant) loadProductTypes();
-  }, [tenant, loadProductTypes]);
-
-  // ============================================================================
-  // Load suppliers
-  // ============================================================================
-
-  const loadSuppliers = useCallback(async () => {
-    if (!tenant) return;
-    try {
-      const res = await fetch(`/api/suppliers?tenantId=${tenant.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setSuppliers(data);
-          setSupLoading(false);
-          return;
-        }
-      }
-      // Fallback: direct Supabase query
-      const { data } = await supabase
-        .from('suppliers')
-        .select('*')
-        .eq('tenant_id', tenant.id)
-        .order('name');
-      setSuppliers((data || []) as Supplier[]);
-    } catch {
-      const { data } = await supabase
-        .from('suppliers')
-        .select('*')
-        .eq('tenant_id', tenant.id)
-        .order('name');
-      setSuppliers((data || []) as Supplier[]);
-    } finally {
-      setSupLoading(false);
-    }
-  }, [tenant, supabase]);
-
-  useEffect(() => {
-    if (tenant) loadSuppliers();
-  }, [tenant, loadSuppliers]);
-
-  // ============================================================================
   // Team functions
   // ============================================================================
 
-  const fetchTeam = async () => {
+  const fetchTeam = useCallback(async () => {
     setTeamLoading(true);
     try {
       const res = await fetch('/api/team');
@@ -435,13 +480,14 @@ function SettingsPage() {
     } finally {
       setTeamLoading(false);
     }
-  };
+  }, []);
 
+  // Fetch team when team section opens
   useEffect(() => {
-    if (activeTab === 'team' && can('team:manage')) {
+    if (openSection === 'team' && can('team:manage')) {
       fetchTeam();
     }
-  }, [activeTab]);
+  }, [openSection, can, fetchTeam]);
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) {
@@ -569,7 +615,7 @@ function SettingsPage() {
       .eq('id', tenant.id);
     setSavingBrand(false);
     if (error) { toast.error(error.message); return; }
-    toast.success('Branding updated');
+    toast.success('Theme saved');
     refetch();
   };
 
@@ -579,7 +625,6 @@ function SettingsPage() {
     applyTheme(theme);
   };
 
-  // ── Logo Upload ──
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !tenant) return;
@@ -608,7 +653,6 @@ function SettingsPage() {
         .from('tenant-assets')
         .getPublicUrl(filePath);
 
-      // Append cache-buster
       const url = `${publicUrl}?t=${Date.now()}`;
 
       const { error: updateError } = await supabase
@@ -658,20 +702,6 @@ function SettingsPage() {
     refetch();
   };
 
-  const saveAvgServiceMinutes = async () => {
-    if (!tenant) return;
-    setSavingQueue(true);
-    const clamped = Math.min(60, Math.max(1, avgServiceMinutes));
-    const { error } = await supabase
-      .from('tenants')
-      .update({ avg_service_minutes: clamped })
-      .eq('id', tenant.id);
-    setSavingQueue(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success('Average service time updated');
-    refetch();
-  };
-
   const saveWaiverText = async () => {
     if (!tenant) return;
     const { error } = await supabase
@@ -679,6 +709,7 @@ function SettingsPage() {
       .update({ waiver_text: waiverText })
       .eq('id', tenant.id);
     if (error) { toast.error(error.message); return; }
+    setShowWaiverConfirm(false);
     toast.success('Waiver text updated');
   };
 
@@ -736,7 +767,7 @@ function SettingsPage() {
   };
 
   // ============================================================================
-  // Subscription handlers (Task 28)
+  // Subscription handlers
   // ============================================================================
 
   const handleSubscribe = async (planTier: 'pro' | 'business') => {
@@ -782,266 +813,6 @@ function SettingsPage() {
   };
 
   // ============================================================================
-  // Product Types handlers (with jump_rings_required)
-  // ============================================================================
-
-  const ptHandleAdd = async () => {
-    if (!tenant || !ptNewName.trim() || !ptNewInches) return;
-    setPtSaving(true);
-    try {
-      // Try API route first
-      const res = await fetch('/api/product-types', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenant_id: tenant.id,
-          name: ptNewName.trim(),
-          default_inches: Number(ptNewInches),
-          jump_rings_required: Number(ptNewJumpRings) || 1,
-        }),
-      });
-
-      if (res.ok) {
-        toast.success('Product type added');
-      } else {
-        // Fallback: direct Supabase insert
-        const { data: existing } = await supabase
-          .from('product_types')
-          .select('sort_order')
-          .eq('tenant_id', tenant.id)
-          .order('sort_order', { ascending: false })
-          .limit(1);
-        const nextSort = existing && existing.length > 0 ? existing[0].sort_order + 1 : 1;
-
-        const { error } = await supabase.from('product_types').insert({
-          tenant_id: tenant.id,
-          name: ptNewName.trim(),
-          default_inches: Number(ptNewInches),
-          jump_rings_required: Number(ptNewJumpRings) || 1,
-          sort_order: nextSort,
-          is_default: false,
-        });
-        if (error) {
-          if (error.code === '23505') {
-            toast.error('A product type with this name already exists');
-          } else {
-            toast.error(error.message);
-          }
-          return;
-        }
-        toast.success('Product type added');
-      }
-      setPtShowAdd(false);
-      setPtNewName('');
-      setPtNewInches('');
-      setPtNewJumpRings('1');
-      await loadProductTypes();
-    } catch {
-      toast.error('Failed to add product type');
-    } finally {
-      setPtSaving(false);
-    }
-  };
-
-  const ptStartEdit = (pt: ProductType) => {
-    setPtEditingId(pt.id);
-    setPtEditName(pt.name);
-    setPtEditInches(String(pt.default_inches));
-    setPtEditJumpRings(String(pt.jump_rings_required ?? 1));
-  };
-
-  const ptHandleEdit = async () => {
-    if (!ptEditingId || !ptEditName.trim() || !ptEditInches) return;
-    setPtSaving(true);
-    try {
-      // Try API route first
-      const res = await fetch(`/api/product-types/${ptEditingId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: ptEditName.trim(),
-          default_inches: Number(ptEditInches),
-          jump_rings_required: Number(ptEditJumpRings) || 1,
-        }),
-      });
-      if (!res.ok) {
-        // Fallback: direct Supabase
-        const { error } = await supabase
-          .from('product_types')
-          .update({
-            name: ptEditName.trim(),
-            default_inches: Number(ptEditInches),
-            jump_rings_required: Number(ptEditJumpRings) || 1,
-          })
-          .eq('id', ptEditingId);
-        if (error) throw error;
-      }
-      toast.success('Product type updated');
-      setPtEditingId(null);
-      await loadProductTypes();
-    } catch {
-      toast.error('Failed to update product type');
-    } finally {
-      setPtSaving(false);
-    }
-  };
-
-  const ptHandleDelete = async (pt: ProductType) => {
-    if (pt.is_default) return;
-    if (!confirm(`Delete "${pt.name}"? This cannot be undone.`)) return;
-    try {
-      const res = await fetch(`/api/product-types/${pt.id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        // Fallback
-        const { error } = await supabase.from('product_types').delete().eq('id', pt.id);
-        if (error) throw error;
-      }
-      toast.success('Product type deleted');
-      await loadProductTypes();
-    } catch {
-      toast.error('Failed to delete');
-    }
-  };
-
-  const ptHandleReorder = async (index: number, direction: 'up' | 'down') => {
-    const swapIndex = direction === 'up' ? index - 1 : index + 1;
-    if (swapIndex < 0 || swapIndex >= productTypes.length) return;
-    const updated = [...productTypes];
-    const sortA = updated[index].sort_order;
-    const sortB = updated[swapIndex].sort_order;
-    [updated[index], updated[swapIndex]] = [updated[swapIndex], updated[index]];
-    setProductTypes(updated);
-    try {
-      await Promise.all([
-        supabase.from('product_types').update({ sort_order: sortB }).eq('id', updated[index].id),
-        supabase.from('product_types').update({ sort_order: sortA }).eq('id', updated[swapIndex].id),
-      ]);
-    } catch {
-      toast.error('Failed to reorder');
-      await loadProductTypes();
-    }
-  };
-
-  // ============================================================================
-  // Supplier handlers
-  // ============================================================================
-
-  // Track whether the supplier being edited is Sunstone (website locked)
-  const [supEditIsSunstone, setSupEditIsSunstone] = useState(false);
-
-  const supStartEdit = (s: Supplier) => {
-    setSupEditingId(s.id);
-    setSupEditIsSunstone(s.is_sunstone);
-    setSupEditName(s.name);
-    setSupEditContactName(s.contact_name || '');
-    setSupEditContactEmail(s.contact_email || '');
-    setSupEditContactPhone(s.contact_phone || '');
-    setSupEditWebsite(s.website || '');
-    setSupEditNotes(s.notes || '');
-  };
-
-  const supCancelEdit = () => {
-    setSupEditingId(null);
-    setSupEditIsSunstone(false);
-    setSupEditName('');
-    setSupEditContactName('');
-    setSupEditContactEmail('');
-    setSupEditContactPhone('');
-    setSupEditWebsite('');
-    setSupEditNotes('');
-  };
-
-  const supHandleEdit = async () => {
-    if (!supEditingId || !supEditName.trim()) return;
-    setSupSaving(true);
-    const payload: any = {
-      contact_name: supEditContactName.trim() || null,
-      contact_email: supEditContactEmail.trim() || null,
-      contact_phone: supEditContactPhone.trim() || null,
-      notes: supEditNotes.trim() || null,
-    };
-    // Only include name and website if NOT Sunstone (those fields are locked)
-    if (!supEditIsSunstone) {
-      payload.name = supEditName.trim();
-      payload.website = supEditWebsite.trim() || null;
-    }
-    try {
-      const res = await fetch(`/api/suppliers/${supEditingId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        // Fallback
-        const { error } = await supabase.from('suppliers').update(payload).eq('id', supEditingId);
-        if (error) throw error;
-      }
-      toast.success('Supplier updated');
-      supCancelEdit();
-      await loadSuppliers();
-    } catch {
-      toast.error('Failed to update supplier');
-    } finally {
-      setSupSaving(false);
-    }
-  };
-
-  const supHandleAdd = async () => {
-    if (!tenant || !supAddName.trim()) return;
-    setSupSaving(true);
-    const payload = {
-      tenant_id: tenant.id,
-      name: supAddName.trim(),
-      contact_name: supAddContactName.trim() || null,
-      contact_email: supAddContactEmail.trim() || null,
-      contact_phone: supAddContactPhone.trim() || null,
-      website: supAddWebsite.trim() || null,
-      notes: supAddNotes.trim() || null,
-    };
-    try {
-      const res = await fetch('/api/suppliers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        // Fallback
-        const { error } = await supabase.from('suppliers').insert(payload);
-        if (error) throw error;
-      }
-      toast.success('Supplier added');
-      setSupShowAdd(false);
-      setSupAddName('');
-      setSupAddContactName('');
-      setSupAddContactEmail('');
-      setSupAddContactPhone('');
-      setSupAddWebsite('');
-      setSupAddNotes('');
-      await loadSuppliers();
-    } catch {
-      toast.error('Failed to add supplier');
-    } finally {
-      setSupSaving(false);
-    }
-  };
-
-  const supHandleDelete = async (s: Supplier) => {
-    if (s.is_sunstone) return;
-    if (!confirm(`Delete "${s.name}"?`)) return;
-    try {
-      const res = await fetch(`/api/suppliers/${s.id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const { error } = await supabase.from('suppliers').delete().eq('id', s.id);
-        if (error) throw error;
-      }
-      toast.success('Supplier deleted');
-      await loadSuppliers();
-    } catch {
-      toast.error('Failed to delete');
-    }
-  };
-
-  // ============================================================================
   // Render
   // ============================================================================
 
@@ -1050,13 +821,13 @@ function SettingsPage() {
       <div className="text-text-tertiary py-12 text-center">Loading…</div>
     );
 
+  // Derived state
   const tier = tenant.subscription_tier;
   const feeRate = PLATFORM_FEE_RATES[tier];
   const squareConnected = !!(tenant as any).square_merchant_id;
   const stripeConnected = !!tenant.stripe_account_id;
-  const showTeamTab = can('team:manage');
+  const showTeamSection = can('team:manage');
 
-  // Subscription derived state
   const trialActive = isTrialActive(tenant.subscription_status, tenant.trial_ends_at);
   const trialDays = getTrialDaysRemaining(tenant.trial_ends_at);
   const hasActiveSubscription = tenant.subscription_status === 'active';
@@ -1066,765 +837,362 @@ function SettingsPage() {
   const activeMembers = teamMembers.filter((m) => !m.is_pending);
   const pendingMembers = teamMembers.filter((m) => m.is_pending);
 
+  // ── Summary lines ──
+  const businessTypeLabel = BUSINESS_TYPE_OPTIONS.find((o) => o.value === businessType)?.label;
+  const businessSummary = businessName
+    ? `${businessName}${businessTypeLabel && businessType ? ` · ${businessTypeLabel}` : ''}`
+    : 'Set up your business info';
+
+  const paymentSummary = squareConnected && stripeConnected
+    ? 'Square + Stripe connected'
+    : squareConnected
+      ? 'Square connected'
+      : stripeConnected
+        ? 'Stripe connected'
+        : 'Connect a payment processor';
+
+  const billingSummary = isPastDue
+    ? 'Payment failed — update payment method'
+    : trialActive
+      ? `Pro Trial · ${trialDays} day${trialDays !== 1 ? 's' : ''} left`
+      : hasActiveSubscription
+        ? `${tier.charAt(0).toUpperCase() + tier.slice(1)} Plan · $${SUBSCRIPTION_PRICES[tier]}/mo`
+        : 'Starter · Free';
+
+  const taxSummary = taxProfiles.length > 0
+    ? `${taxProfiles.length} tax profile${taxProfiles.length !== 1 ? 's' : ''}`
+    : 'No tax profiles configured';
+
+  const waiverSummary = waiverText
+    ? waiverText.slice(0, 60) + (waiverText.length > 60 ? '…' : '')
+    : 'Default waiver text';
+
+  const totalTeamMembers = activeMembers.length + pendingMembers.length;
+  const teamSummary = totalTeamMembers > 0
+    ? `${activeMembers.length} member${activeMembers.length !== 1 ? 's' : ''}${pendingMembers.length > 0 ? ` · ${pendingMembers.length} pending` : ''}`
+    : 'Manage your team';
+
   return (
-    <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-6 pb-24">
+    <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-3 pb-24">
       {/* Page header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-text-primary" style={{ fontFamily: 'var(--font-display)' }}>
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display)' }}>
           Settings
         </h1>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-[var(--border-subtle)]">
-        <button
-          onClick={() => setActiveTab('general')}
-          className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-            activeTab === 'general'
-              ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
-              : 'border-transparent text-text-tertiary hover:text-text-primary'
-          }`}
-        >
-          General
-        </button>
-        <button
-          onClick={() => setActiveTab('subscription')}
-          className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-            activeTab === 'subscription'
-              ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
-              : 'border-transparent text-text-tertiary hover:text-text-primary'
-          }`}
-        >
-          Subscription
-        </button>
-        {showTeamTab && (
-          <button
-            onClick={() => setActiveTab('team')}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-              activeTab === 'team'
-                ? 'border-[var(--accent-primary)] text-[var(--accent-primary)]'
-                : 'border-transparent text-text-tertiary hover:text-text-primary'
-            }`}
-          >
-            Team
-          </button>
-        )}
-      </div>
-
       {/* ================================================================ */}
-      {/* General Settings Tab                                             */}
+      {/* Section 1: My Business                                          */}
       {/* ================================================================ */}
-      {activeTab === 'general' && (
-        <div className="space-y-8">
-
-          {/* ── 1. Business Info ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Business Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+      <AccordionSection
+        icon={IconBusiness}
+        title="My Business"
+        summary={businessSummary}
+        isOpen={openSection === 'business'}
+        onToggle={() => toggleSection('business')}
+      >
+        <div className="space-y-6 pt-4">
+          {/* Business info fields */}
+          <div className="space-y-4">
+            <Input
+              label="Business Name"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="My Jewelry Studio"
+            />
+            <Select
+              label="Business Type"
+              value={businessType}
+              onChange={(e) => setBusinessType(e.target.value)}
+              options={BUSINESS_TYPE_OPTIONS}
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Business Name"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                placeholder="My Jewelry Studio"
+                label="Phone"
+                type="tel"
+                value={businessPhone}
+                onChange={(e) => setBusinessPhone(e.target.value)}
+                placeholder="(555) 123-4567"
               />
-              <Select
-                label="Business Type"
-                value={businessType}
-                onChange={(e) => setBusinessType(e.target.value)}
-                options={BUSINESS_TYPE_OPTIONS}
+              <Input
+                label="Website"
+                type="url"
+                value={businessWebsite}
+                onChange={(e) => setBusinessWebsite(e.target.value)}
+                placeholder="https://myshop.com"
               />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                  label="Phone"
-                  type="tel"
-                  value={businessPhone}
-                  onChange={(e) => setBusinessPhone(e.target.value)}
-                  placeholder="(555) 123-4567"
-                />
-                <Input
-                  label="Website"
-                  type="url"
-                  value={businessWebsite}
-                  onChange={(e) => setBusinessWebsite(e.target.value)}
-                  placeholder="https://myshop.com"
-                />
-              </div>
-            </CardContent>
-            <CardFooter>
+            </div>
+            <div className="flex justify-end">
               <Button variant="primary" onClick={saveBusinessInfo} loading={savingBusiness}>
                 Save Business Info
               </Button>
-            </CardFooter>
-          </Card>
+            </div>
+          </div>
 
-          {/* ── 2. Branding (Logo + Theme + Color) ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Branding</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
+          {/* Divider */}
+          <div className="border-t border-[var(--border-subtle)]" />
 
-              {/* Logo Upload */}
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">Logo</label>
-                <div className="flex items-center gap-4">
-                  {logoUrl ? (
-                    <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-[var(--border-default)] bg-[var(--surface-raised)]">
-                      <img
-                        src={logoUrl}
-                        alt="Business logo"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      className="w-16 h-16 rounded-xl border-2 border-dashed border-[var(--border-default)] flex items-center justify-center"
-                      style={{ backgroundColor: 'var(--surface-raised)' }}
-                    >
-                      <svg className="w-6 h-6 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a1.5 1.5 0 001.5-1.5V5.25a1.5 1.5 0 00-1.5-1.5H3.75a1.5 1.5 0 00-1.5 1.5v14.25a1.5 1.5 0 001.5 1.5z" />
-                      </svg>
-                    </div>
-                  )}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="inline-flex">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoUpload}
-                        className="hidden"
-                        disabled={uploadingLogo}
-                      />
-                      <span className="text-sm font-medium text-[var(--accent-primary)] hover:underline cursor-pointer">
-                        {uploadingLogo ? 'Uploading…' : logoUrl ? 'Change logo' : 'Upload logo'}
-                      </span>
-                    </label>
-                    {logoUrl && (
-                      <button
-                        onClick={removeLogo}
-                        disabled={uploadingLogo}
-                        className="text-xs text-red-500 hover:underline text-left"
-                      >
-                        Remove logo
-                      </button>
-                    )}
-                    <span className="text-xs text-text-tertiary">PNG or JPG, max 2MB</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Theme Selector */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-text-primary">Theme</label>
-                <p className="text-sm text-text-secondary">
-                  Choose a theme to set the entire look and feel of your app.
-                </p>
-
-                {/* Light themes */}
-                <div className="space-y-2">
-                  <span className="text-xs font-medium text-text-tertiary uppercase tracking-wider">Light</span>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-                    {LIGHT_THEMES.map((theme) => (
-                      <ThemePreviewCard
-                        key={theme.id}
-                        theme={theme}
-                        isSelected={selectedThemeId === theme.id}
-                        onSelect={() => selectTheme(theme.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Dark themes */}
-                <div className="space-y-2">
-                  <span className="text-xs font-medium text-text-tertiary uppercase tracking-wider">Dark</span>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {DARK_THEMES.map((theme) => (
-                      <ThemePreviewCard
-                        key={theme.id}
-                        theme={theme}
-                        isSelected={selectedThemeId === theme.id}
-                        onSelect={() => selectTheme(theme.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-            </CardContent>
-            <CardFooter>
-              <Button variant="primary" onClick={saveBranding} loading={savingBrand}>
-                Save Branding
-              </Button>
-            </CardFooter>
-          </Card>
-
-          
-          {/* ── 4. Payment Processing (pick one) ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Processing</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-text-secondary">
-                Connect one payment processor to accept card payments. Payments settle directly to your account.
-              </p>
-
-              {/* Processor selector tabs */}
-              <div className="flex rounded-lg border border-[var(--border-default)] overflow-hidden">
-                <button
-                  onClick={() => setPaymentTab('square')}
-                  className={`flex-1 py-3 text-sm font-medium text-center transition-colors ${
-                    paymentTab === 'square'
-                      ? 'bg-[var(--accent-primary)] text-white'
-                      : 'bg-[var(--surface-base)] text-text-secondary hover:bg-[var(--surface-raised)]'
-                  }`}
-                >
-                  Square {squareConnected && '✓'}
-                </button>
-                <button
-                  onClick={() => setPaymentTab('stripe')}
-                  className={`flex-1 py-3 text-sm font-medium text-center transition-colors border-l border-[var(--border-default)] ${
-                    paymentTab === 'stripe'
-                      ? 'bg-[var(--accent-primary)] text-white'
-                      : 'bg-[var(--surface-base)] text-text-secondary hover:bg-[var(--surface-raised)]'
-                  }`}
-                >
-                  Stripe {stripeConnected && '✓'}
-                </button>
-              </div>
-
-              {/* Square pane */}
-              {paymentTab === 'square' && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    {squareConnected ? (
-                      <>
-                        <Badge variant="accent" size="md">Connected</Badge>
-                        <span className="text-sm text-text-secondary">
-                          {(tenant as any).square_merchant_id}
-                        </span>
-                      </>
-                    ) : (
-                      <Badge variant="default" size="md">Not connected</Badge>
-                    )}
-                  </div>
-                  {squareConnected ? (
-                    <Button variant="danger" onClick={disconnectSquare} loading={disconnectingSquare}>
-                      Disconnect Square
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      onClick={() => { window.location.href = '/api/square/authorize'; }}
-                    >
-                      Connect Square
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              {/* Stripe pane */}
-              {paymentTab === 'stripe' && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    {stripeConnected ? (
-                      <>
-                        <Badge variant="accent" size="md">Connected</Badge>
-                        <span className="text-sm text-text-secondary">
-                          {tenant.stripe_account_id}
-                        </span>
-                      </>
-                    ) : (
-                      <Badge variant="default" size="md">Not connected</Badge>
-                    )}
-                  </div>
-                  {stripeConnected ? (
-                    <Button variant="danger" onClick={disconnectStripe} loading={disconnectingStripe}>
-                      Disconnect Stripe
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      onClick={() => { window.location.href = '/api/stripe/authorize'; }}
-                    >
-                      Connect Stripe
-                    </Button>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* ── 5. Tax Profiles ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Tax Profiles</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {taxProfiles.length > 0 && (
-                <div className="space-y-2">
-                  {taxProfiles.map((tp) => (
-                    <div
-                      key={tp.id}
-                      className="flex items-center justify-between bg-[var(--surface-base)] rounded-lg px-4 py-3"
-                    >
-                      <div>
-                        <span className="font-medium text-text-primary">{tp.name}</span>
-                        <span className="text-text-tertiary ml-2">
-                          {(tp.rate * 100).toFixed(2)}%
-                        </span>
-                      </div>
-                      <Button variant="danger" size="sm" onClick={() => deleteTaxProfile(tp.id)}>
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {taxProfiles.length === 0 && (
-                <p className="text-sm text-text-tertiary">No tax profiles yet. Add one below.</p>
-              )}
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Profile name (e.g. Texas)"
-                    value={newTax.name}
-                    onChange={(e) => setNewTax({ ...newTax, name: e.target.value })}
+          {/* Logo Upload */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">Logo</label>
+            <div className="flex items-center gap-4">
+              {logoUrl ? (
+                <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-[var(--border-default)] bg-[var(--surface-raised)]">
+                  <img
+                    src={logoUrl}
+                    alt="Business logo"
+                    className="w-full h-full object-contain"
                   />
                 </div>
-                <div className="w-28">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Rate %"
-                    value={newTax.rate}
-                    onChange={(e) => setNewTax({ ...newTax, rate: e.target.value })}
-                  />
-                </div>
-                <Button variant="secondary" onClick={addTaxProfile}>
-                  Add
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ── 6. Product Types (with jump_rings_required) ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Product Types</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-text-tertiary">
-                Define the products you sell from chain (bracelet, anklet, etc.). These appear as options when making a sale.
-              </p>
-
-              {ptLoading ? (
-                <div className="text-sm text-text-tertiary py-2">Loading…</div>
-              ) : productTypes.length > 0 ? (
-                <div className="border border-[var(--border-default)] rounded-xl overflow-hidden divide-y divide-[var(--border-subtle)]">
-                  {productTypes.map((pt, index) => (
-                    <div key={pt.id}>
-                      {ptEditingId === pt.id ? (
-                        <div className="p-3 bg-[var(--surface-raised)] space-y-2">
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={ptEditName}
-                              onChange={(e) => setPtEditName(e.target.value)}
-                              className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                              placeholder="Name"
-                            />
-                            <div className="relative w-28">
-                              <input
-                                type="number"
-                                step="0.25"
-                                min="0.25"
-                                value={ptEditInches}
-                                onChange={(e) => setPtEditInches(e.target.value)}
-                                className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                              />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-tertiary)]">in</span>
-                            </div>
-                            <div className="relative w-20">
-                              <input
-                                type="number"
-                                step="1"
-                                min="0"
-                                value={ptEditJumpRings}
-                                onChange={(e) => setPtEditJumpRings(e.target.value)}
-                                className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                                title="Jump rings required per product"
-                              />
-                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--text-tertiary)]">JR</span>
-                            </div>
-                          </div>
-                          <div className="flex gap-2 justify-end">
-                            <Button variant="ghost" size="sm" onClick={() => setPtEditingId(null)}>Cancel</Button>
-                            <Button variant="primary" size="sm" onClick={ptHandleEdit} disabled={ptSaving}>
-                              {ptSaving ? 'Saving…' : 'Save'}
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 px-3 py-2.5">
-                          <div className="flex flex-col gap-0.5">
-                            <button
-                              onClick={() => ptHandleReorder(index, 'up')}
-                              disabled={index === 0}
-                              className="p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] disabled:opacity-30 disabled:cursor-not-allowed"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => ptHandleReorder(index, 'down')}
-                              disabled={index === productTypes.length - 1}
-                              className="p-0.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] disabled:opacity-30 disabled:cursor-not-allowed"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                              </svg>
-                            </button>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="text-sm text-[var(--text-primary)] font-medium">{pt.name}</span>
-                            <span className="text-xs text-[var(--text-tertiary)] ml-2">
-                              {Number(pt.default_inches).toFixed(2)} in
-                            </span>
-                            <span className="text-xs text-[var(--text-tertiary)] ml-2">
-                              · {pt.jump_rings_required ?? 1} JR
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              onClick={() => ptStartEdit(pt)}
-                              className="text-xs text-[var(--accent-primary)] hover:underline px-2 py-1"
-                            >
-                              Edit
-                            </button>
-                            {pt.is_default ? (
-                              <span className="text-[var(--text-tertiary)] px-2 py-1 flex items-center" title="Default types cannot be deleted">
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                                </svg>
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => ptHandleDelete(pt)}
-                                className="text-xs text-red-500 hover:underline px-2 py-1"
-                              >
-                                Delete
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
               ) : (
-                <p className="text-sm text-text-tertiary py-2">No product types yet. Run the chain products migration to seed defaults, or add below.</p>
-              )}
-
-              {/* Add form */}
-              {ptShowAdd ? (
-                <div className="p-3 border border-[var(--border-default)] rounded-xl bg-[var(--surface-raised)] space-y-2">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={ptNewName}
-                      onChange={(e) => setPtNewName(e.target.value)}
-                      className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                      placeholder="Product name (e.g., Belly Chain)"
-                      autoFocus
-                    />
-                    <div className="relative w-28">
-                      <input
-                        type="number"
-                        step="0.25"
-                        min="0.25"
-                        value={ptNewInches}
-                        onChange={(e) => setPtNewInches(e.target.value)}
-                        className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                        placeholder="0.00"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-tertiary)]">in</span>
-                    </div>
-                    <div className="relative w-20">
-                      <input
-                        type="number"
-                        step="1"
-                        min="0"
-                        value={ptNewJumpRings}
-                        onChange={(e) => setPtNewJumpRings(e.target.value)}
-                        className="w-full h-9 px-3 pr-8 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                        placeholder="1"
-                        title="Jump rings required"
-                      />
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--text-tertiary)]">JR</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 justify-end">
-                    <Button variant="ghost" size="sm" onClick={() => { setPtShowAdd(false); setPtNewName(''); setPtNewInches(''); setPtNewJumpRings('1'); }}>Cancel</Button>
-                    <Button variant="primary" size="sm" onClick={ptHandleAdd} disabled={ptSaving || !ptNewName.trim() || !ptNewInches}>
-                      {ptSaving ? 'Adding…' : 'Add'}
-                    </Button>
-                  </div>
+                <div
+                  className="w-16 h-16 rounded-xl border-2 border-dashed border-[var(--border-default)] flex items-center justify-center"
+                  style={{ backgroundColor: 'var(--surface-raised)' }}
+                >
+                  <svg className="w-6 h-6 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a1.5 1.5 0 001.5-1.5V5.25a1.5 1.5 0 00-1.5-1.5H3.75a1.5 1.5 0 00-1.5 1.5v14.25a1.5 1.5 0 001.5 1.5z" />
+                  </svg>
                 </div>
-              ) : (
-                <Button variant="secondary" size="sm" onClick={() => setPtShowAdd(true)}>
-                  + Add Product Type
-                </Button>
               )}
-            </CardContent>
-          </Card>
-
-          {/* ── 6b. Materials ── */}
-          <Card>
-            <CardContent className="pt-6">
-              <MaterialsSection tenantId={tenant.id} />
-            </CardContent>
-          </Card>
-
-          {/* ── 7. Suppliers ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Suppliers</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-text-tertiary">
-                Manage your chain and supply vendors.
-              </p>
-
-              {supLoading ? (
-                <div className="text-sm text-text-tertiary py-2">Loading…</div>
-              ) : suppliers.length > 0 ? (
-                <div className="border border-[var(--border-default)] rounded-xl overflow-hidden divide-y divide-[var(--border-subtle)]">
-                  {suppliers.map((s) => (
-                    <div key={s.id}>
-                      {supEditingId === s.id ? (
-                        /* Edit form — individual state fields prevent cursor-jump */
-                        <div className="p-3 bg-[var(--surface-raised)] space-y-2">
-                          {supEditIsSunstone && (
-                            <p className="text-xs text-[var(--text-tertiary)] italic">
-                              You can save your Sunstone rep&apos;s contact info here. Company name and website are locked.
-                            </p>
-                          )}
-                          <input
-                            type="text"
-                            value={supEditName}
-                            onChange={(e) => setSupEditName(e.target.value)}
-                            className={`w-full h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] ${
-                              supEditIsSunstone ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                            placeholder="Supplier name *"
-                            disabled={supEditIsSunstone}
-                          />
-                          <div className="grid grid-cols-2 gap-2">
-                            <input
-                              type="text"
-                              value={supEditContactName}
-                              onChange={(e) => setSupEditContactName(e.target.value)}
-                              className="h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                              placeholder="Contact name"
-                            />
-                            <input
-                              type="email"
-                              value={supEditContactEmail}
-                              onChange={(e) => setSupEditContactEmail(e.target.value)}
-                              className="h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                              placeholder="Email"
-                            />
-                            <input
-                              type="tel"
-                              value={supEditContactPhone}
-                              onChange={(e) => setSupEditContactPhone(e.target.value)}
-                              className="h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                              placeholder="Phone"
-                            />
-                            <input
-                              type="url"
-                              value={supEditWebsite}
-                              onChange={(e) => setSupEditWebsite(e.target.value)}
-                              className={`h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] ${
-                                supEditIsSunstone ? 'opacity-50 cursor-not-allowed' : ''
-                              }`}
-                              placeholder="Website"
-                              disabled={supEditIsSunstone}
-                              title={supEditIsSunstone ? 'Sunstone website cannot be changed' : ''}
-                            />
-                          </div>
-                          <textarea
-                            value={supEditNotes}
-                            onChange={(e) => setSupEditNotes(e.target.value)}
-                            className="w-full h-16 px-3 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] resize-none"
-                            placeholder="Notes (optional)"
-                          />
-                          <div className="flex gap-2 justify-end">
-                            <Button variant="ghost" size="sm" onClick={supCancelEdit}>Cancel</Button>
-                            <Button variant="primary" size="sm" onClick={supHandleEdit} disabled={supSaving || !supEditName.trim()}>
-                              {supSaving ? 'Saving…' : 'Save'}
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between px-3 py-2.5">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              {s.is_sunstone && <img src="/sunstone-logo.png" alt="Sunstone" className="w-4 h-4 object-contain" />}
-                              <span className="text-sm text-[var(--text-primary)] font-medium">{s.name}</span>
-                            </div>
-                            {s.website && (
-                              <span className="text-xs text-[var(--text-tertiary)]">{s.website.replace(/^https?:\/\//, '')}</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              onClick={() => supStartEdit(s)}
-                              className="text-xs text-[var(--accent-primary)] hover:underline px-2 py-1"
-                            >
-                              Edit
-                            </button>
-                            {s.is_sunstone ? (
-                              <span className="text-[var(--text-tertiary)] px-2 py-1" title="Sunstone Supply cannot be deleted"><svg className="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg></span>
-                            ) : (
-                              <button
-                                onClick={() => supHandleDelete(s)}
-                                className="text-xs text-red-500 hover:underline px-2 py-1"
-                              >
-                                Delete
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-text-tertiary py-2">No suppliers yet. Run the chain products migration to seed Sunstone Supply, or add below.</p>
-              )}
-
-              {/* Add form — individual state fields prevent cursor-jump */}
-              {supShowAdd ? (
-                <div className="p-3 border border-[var(--border-default)] rounded-xl bg-[var(--surface-raised)] space-y-2">
+              <div className="flex flex-col gap-1.5">
+                <label className="inline-flex">
                   <input
-                    type="text"
-                    value={supAddName}
-                    onChange={(e) => setSupAddName(e.target.value)}
-                    className="w-full h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                    placeholder="Supplier name *"
-                    autoFocus
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                    disabled={uploadingLogo}
                   />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      value={supAddContactName}
-                      onChange={(e) => setSupAddContactName(e.target.value)}
-                      className="h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                      placeholder="Contact name"
-                    />
-                    <input
-                      type="email"
-                      value={supAddContactEmail}
-                      onChange={(e) => setSupAddContactEmail(e.target.value)}
-                      className="h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                      placeholder="Email"
-                    />
-                    <input
-                      type="tel"
-                      value={supAddContactPhone}
-                      onChange={(e) => setSupAddContactPhone(e.target.value)}
-                      className="h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                      placeholder="Phone"
-                    />
-                    <input
-                      type="url"
-                      value={supAddWebsite}
-                      onChange={(e) => setSupAddWebsite(e.target.value)}
-                      className="h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]"
-                      placeholder="Website"
-                    />
-                  </div>
-                  <textarea
-                    value={supAddNotes}
-                    onChange={(e) => setSupAddNotes(e.target.value)}
-                    className="w-full h-16 px-3 py-2 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] resize-none"
-                    placeholder="Notes (optional)"
+                  <span className="text-sm font-medium text-[var(--accent-primary)] hover:underline cursor-pointer">
+                    {uploadingLogo ? 'Uploading…' : logoUrl ? 'Change logo' : 'Upload logo'}
+                  </span>
+                </label>
+                {logoUrl && (
+                  <button
+                    onClick={removeLogo}
+                    disabled={uploadingLogo}
+                    className="text-xs text-red-500 hover:underline text-left"
+                  >
+                    Remove logo
+                  </button>
+                )}
+                <span className="text-xs text-[var(--text-tertiary)]">PNG or JPG, max 2MB</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-[var(--border-subtle)]" />
+
+          {/* Theme Selector */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-[var(--text-primary)]">Theme</label>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Choose a theme to set the entire look and feel of your app.
+            </p>
+
+            {/* Light themes */}
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wider">Light</span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                {LIGHT_THEMES.map((theme) => (
+                  <ThemePreviewCard
+                    key={theme.id}
+                    theme={theme}
+                    isSelected={selectedThemeId === theme.id}
+                    onSelect={() => selectTheme(theme.id)}
                   />
-                  <div className="flex gap-2 justify-end">
-                    <Button variant="ghost" size="sm" onClick={() => {
-                      setSupShowAdd(false);
-                      setSupAddName(''); setSupAddContactName(''); setSupAddContactEmail('');
-                      setSupAddContactPhone(''); setSupAddWebsite(''); setSupAddNotes('');
-                    }}>Cancel</Button>
-                    <Button variant="primary" size="sm" onClick={supHandleAdd} disabled={supSaving || !supAddName.trim()}>
-                      {supSaving ? 'Adding…' : 'Add'}
-                    </Button>
-                  </div>
-                </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Dark themes */}
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wider">Dark</span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                {DARK_THEMES.map((theme) => (
+                  <ThemePreviewCard
+                    key={theme.id}
+                    theme={theme}
+                    isSelected={selectedThemeId === theme.id}
+                    onSelect={() => selectTheme(theme.id)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button variant="primary" onClick={saveBranding} loading={savingBrand}>
+                Save Theme
+              </Button>
+            </div>
+          </div>
+        </div>
+      </AccordionSection>
+
+      {/* ================================================================ */}
+      {/* Section 2: Payments                                              */}
+      {/* ================================================================ */}
+      <AccordionSection
+        icon={IconPayments}
+        title="Payments"
+        summary={paymentSummary}
+        isOpen={openSection === 'payments'}
+        onToggle={() => toggleSection('payments')}
+      >
+        <div className="space-y-5 pt-4">
+          <p className="text-sm text-[var(--text-secondary)]">
+            Connect one payment processor to accept card payments. Payments settle directly to your account.
+          </p>
+
+          {/* Processor selector tabs */}
+          <div className="flex rounded-lg border border-[var(--border-default)] overflow-hidden">
+            <button
+              onClick={() => setPaymentTab('square')}
+              className={`flex-1 py-3 text-sm font-medium text-center transition-colors ${
+                paymentTab === 'square'
+                  ? 'bg-[var(--accent-primary)] text-white'
+                  : 'bg-[var(--surface-base)] text-[var(--text-secondary)] hover:bg-[var(--surface-raised)]'
+              }`}
+            >
+              Square {squareConnected && '✓'}
+            </button>
+            <button
+              onClick={() => setPaymentTab('stripe')}
+              className={`flex-1 py-3 text-sm font-medium text-center transition-colors border-l border-[var(--border-default)] ${
+                paymentTab === 'stripe'
+                  ? 'bg-[var(--accent-primary)] text-white'
+                  : 'bg-[var(--surface-base)] text-[var(--text-secondary)] hover:bg-[var(--surface-raised)]'
+              }`}
+            >
+              Stripe {stripeConnected && '✓'}
+            </button>
+          </div>
+
+          {/* Square pane */}
+          {paymentTab === 'square' && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                {squareConnected ? (
+                  <>
+                    <Badge variant="accent" size="md">Connected</Badge>
+                    <span className="text-sm text-[var(--text-secondary)]">
+                      {(tenant as any).square_merchant_id}
+                    </span>
+                  </>
+                ) : (
+                  <Badge variant="default" size="md">Not connected</Badge>
+                )}
+              </div>
+              {squareConnected ? (
+                <Button variant="danger" onClick={disconnectSquare} loading={disconnectingSquare}>
+                  Disconnect Square
+                </Button>
               ) : (
-                <Button variant="secondary" size="sm" onClick={() => setSupShowAdd(true)}>
-                  + Add Supplier
+                <Button
+                  variant="primary"
+                  onClick={() => { window.location.href = '/api/square/authorize'; }}
+                >
+                  Connect Square
                 </Button>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          )}
 
-          {/* ── 8. Queue Settings ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Queue Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Input
-                label="Average service time per customer (minutes)"
-                type="number"
-                min={1}
-                max={60}
-                value={avgServiceMinutes}
-                onChange={(e) => setAvgServiceMinutes(Number(e.target.value) || 10)}
-                helperText="Used to estimate wait times for customers in your queue"
-              />
-            </CardContent>
-            <CardFooter>
-              <Button variant="primary" onClick={saveAvgServiceMinutes} loading={savingQueue}>
-                Save Queue Settings
-              </Button>
-            </CardFooter>
-          </Card>
+          {/* Stripe pane */}
+          {paymentTab === 'stripe' && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                {stripeConnected ? (
+                  <>
+                    <Badge variant="accent" size="md">Connected</Badge>
+                    <span className="text-sm text-[var(--text-secondary)]">
+                      {tenant.stripe_account_id}
+                    </span>
+                  </>
+                ) : (
+                  <Badge variant="default" size="md">Not connected</Badge>
+                )}
+              </div>
+              {stripeConnected ? (
+                <Button variant="danger" onClick={disconnectStripe} loading={disconnectingStripe}>
+                  Disconnect Stripe
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  onClick={() => { window.location.href = '/api/stripe/authorize'; }}
+                >
+                  Connect Stripe
+                </Button>
+              )}
+            </div>
+          )}
 
-          {/* ── 9. Waiver Text ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Waiver Text</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={waiverText}
-                onChange={(e) => setWaiverText(e.target.value)}
-                rows={6}
-                helperText="This text will be shown to customers when they sign a waiver."
-              />
-            </CardContent>
-            <CardFooter>
-              <Button variant="primary" onClick={saveWaiverText}>
-                Save Waiver Text
-              </Button>
-            </CardFooter>
-          </Card>
+          {/* Fee handling */}
+          {feeRate > 0 && (
+            <>
+              <div className="border-t border-[var(--border-subtle)]" />
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-[var(--text-primary)]">Platform Fee Handling</span>
+                  <Badge variant="default" size="sm">{(feeRate * 100).toFixed(1)}% fee</Badge>
+                </div>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  Choose how the platform fee is handled for each sale.
+                </p>
+                <label className="flex items-start gap-3 p-4 rounded-lg border border-[var(--border-default)] cursor-pointer hover:border-[var(--border-strong)] transition-colors has-[:checked]:border-[var(--accent-primary)] has-[:checked]:bg-[var(--surface-subtle)]">
+                  <input
+                    type="radio"
+                    name="feeHandling"
+                    checked={feeHandling === 'pass_to_customer'}
+                    onChange={() => setFeeHandling('pass_to_customer')}
+                    className="mt-1 accent-[var(--accent-primary)]"
+                  />
+                  <div>
+                    <div className="font-medium text-[var(--text-primary)]">Pass to customer</div>
+                    <div className="text-sm text-[var(--text-secondary)]">
+                      Fee appears as a &quot;Service Fee&quot; line item on the receipt.
+                    </div>
+                  </div>
+                </label>
+                <label className="flex items-start gap-3 p-4 rounded-lg border border-[var(--border-default)] cursor-pointer hover:border-[var(--border-strong)] transition-colors has-[:checked]:border-[var(--accent-primary)] has-[:checked]:bg-[var(--surface-subtle)]">
+                  <input
+                    type="radio"
+                    name="feeHandling"
+                    checked={feeHandling === 'absorb'}
+                    onChange={() => setFeeHandling('absorb')}
+                    className="mt-1 accent-[var(--accent-primary)]"
+                  />
+                  <div>
+                    <div className="font-medium text-[var(--text-primary)]">Absorb fee</div>
+                    <div className="text-sm text-[var(--text-secondary)]">
+                      Fee deducted from your payout. Customer sees no additional charges.
+                    </div>
+                  </div>
+                </label>
+                <div className="flex justify-end">
+                  <Button variant="primary" onClick={saveFeeHandling}>
+                    Save Fee Handling
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </AccordionSection>
 
       {/* ================================================================ */}
-      {/* Subscription Tab (Task 28)                                       */}
+      {/* Section 3: Plan & Billing                                        */}
       {/* ================================================================ */}
-      {activeTab === 'subscription' && (
-        <div className="space-y-6">
+      <AccordionSection
+        icon={IconBilling}
+        title="Plan & Billing"
+        summary={billingSummary}
+        isOpen={openSection === 'billing'}
+        onToggle={() => toggleSection('billing')}
+      >
+        <div className="space-y-6 pt-4">
 
           {/* Trial banner */}
           {trialActive && (
@@ -1871,34 +1239,25 @@ function SettingsPage() {
             </div>
           )}
 
-          {/* Current plan status */}
+          {/* Current plan status (active subscription) */}
           {hasActiveSubscription && !isPastDue && (
-            <Card>
-              <CardContent className="py-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Badge variant="accent" size="md">
-                      {tier.charAt(0).toUpperCase() + tier.slice(1)} Plan
-                    </Badge>
-                    <span className="text-sm text-text-secondary">
-                      ${SUBSCRIPTION_PRICES[tier]}/mo
-                    </span>
-                    <span className="text-xs text-success-600 font-medium">Active</span>
-                  </div>
-                  <Button variant="secondary" onClick={handleManageSubscription}>
-                    Manage Subscription
-                  </Button>
-                </div>
-                {tenant.subscription_period_end && (
-                  <p className="text-xs text-text-tertiary mt-3">
-                    Next billing date: {new Date(tenant.subscription_period_end).toLocaleDateString()}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)]">
+              <div className="flex items-center gap-3">
+                <Badge variant="accent" size="md">
+                  {tier.charAt(0).toUpperCase() + tier.slice(1)} Plan
+                </Badge>
+                <span className="text-sm text-[var(--text-secondary)]">
+                  ${SUBSCRIPTION_PRICES[tier]}/mo
+                </span>
+                <span className="text-xs text-success-600 font-medium">Active</span>
+              </div>
+              <Button variant="secondary" onClick={handleManageSubscription}>
+                Manage Subscription
+              </Button>
+            </div>
           )}
 
-          {/* Starter plan notice (trial expired, no subscription) */}
+          {/* Starter plan notice */}
           {!trialActive && !hasActiveSubscription && !isPastDue && effectiveTier === 'starter' && (
             <div className="bg-warning-50 border border-warning-200 rounded-2xl p-5">
               <h3 className="text-base font-semibold text-warning-600">You&apos;re on the Starter plan</h3>
@@ -1908,16 +1267,16 @@ function SettingsPage() {
             </div>
           )}
 
-          {/* Plan cards — show when not on active paid subscription */}
+          {/* Plan cards */}
           {(!hasActiveSubscription || trialActive) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Pro card */}
-              <div className="border border-[var(--border-default)] rounded-2xl p-5 space-y-4 bg-[var(--surface-raised)]">
+              <div className="border border-[var(--border-default)] rounded-2xl p-5 space-y-4 bg-[var(--surface-base)]">
                 <div>
                   <h3 className="text-lg font-bold text-[var(--text-primary)]">Pro</h3>
                   <div className="flex items-baseline gap-1 mt-1">
                     <span className="text-3xl font-bold text-[var(--text-primary)]">$129</span>
-                    <span className="text-sm text-text-tertiary">/mo</span>
+                    <span className="text-sm text-[var(--text-tertiary)]">/mo</span>
                   </div>
                 </div>
                 <ul className="space-y-2">
@@ -1941,7 +1300,7 @@ function SettingsPage() {
               </div>
 
               {/* Business card */}
-              <div className="border-2 border-[var(--accent-primary)] rounded-2xl p-5 space-y-4 bg-[var(--surface-raised)] relative">
+              <div className="border-2 border-[var(--accent-primary)] rounded-2xl p-5 space-y-4 bg-[var(--surface-base)] relative">
                 <div className="absolute -top-3 right-4">
                   <Badge variant="accent" size="sm">Best Value</Badge>
                 </div>
@@ -1949,7 +1308,7 @@ function SettingsPage() {
                   <h3 className="text-lg font-bold text-[var(--text-primary)]">Business</h3>
                   <div className="flex items-baseline gap-1 mt-1">
                     <span className="text-3xl font-bold text-[var(--text-primary)]">$279</span>
-                    <span className="text-sm text-text-tertiary">/mo</span>
+                    <span className="text-sm text-[var(--text-tertiary)]">/mo</span>
                   </div>
                 </div>
                 <ul className="space-y-2">
@@ -1974,261 +1333,280 @@ function SettingsPage() {
             </div>
           )}
 
+          {/* Next billing date */}
+          {hasActiveSubscription && tenant.subscription_period_end && (
+            <p className="text-xs text-[var(--text-tertiary)]">
+              Next billing date: {new Date(tenant.subscription_period_end).toLocaleDateString()}
+            </p>
+          )}
+
           {/* Plan comparison table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Plan Comparison</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--border-subtle)]">
-                      <th className="text-left py-2 pr-4 text-text-tertiary font-medium">Feature</th>
-                      <th className="text-center py-2 px-3 text-text-tertiary font-medium">Starter</th>
-                      <th className="text-center py-2 px-3 text-text-tertiary font-medium">Pro</th>
-                      <th className="text-center py-2 px-3 text-text-tertiary font-medium">Business</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border-subtle)]">
-                    <tr>
-                      <td className="py-2.5 pr-4 text-text-secondary">Platform fee</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary">3%</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary">1.5%</td>
-                      <td className="py-2.5 px-3 text-center text-success-600 font-semibold">0%</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 pr-4 text-text-secondary">Sunny AI</td>
-                      <td className="py-2.5 px-3 text-center text-text-tertiary">5/mo</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary">Unlimited</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary">Unlimited</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 pr-4 text-text-secondary">Business insights</td>
-                      <td className="py-2.5 px-3 text-center text-text-tertiary">—</td>
-                      <td className="py-2.5 px-3 text-center text-success-600">✓</td>
-                      <td className="py-2.5 px-3 text-center text-success-600">✓</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 pr-4 text-text-secondary">Full P&L reports</td>
-                      <td className="py-2.5 px-3 text-center text-text-tertiary">—</td>
-                      <td className="py-2.5 px-3 text-center text-success-600">✓</td>
-                      <td className="py-2.5 px-3 text-center text-success-600">✓</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 pr-4 text-text-secondary">CRM</td>
-                      <td className="py-2.5 px-3 text-center text-text-tertiary">—</td>
-                      <td className="py-2.5 px-3 text-center text-success-600">✓</td>
-                      <td className="py-2.5 px-3 text-center text-success-600">✓</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 pr-4 text-text-secondary">Team members</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary">1</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary">3</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary">Unlimited</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2.5 pr-4 text-text-secondary">Price</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary font-semibold">Free</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary font-semibold">$129/mo</td>
-                      <td className="py-2.5 px-3 text-center text-text-primary font-semibold">$279/mo</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* ── 3. Subscription & Fees (combined) ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Subscription & Fees</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Plan info */}
-              <div className="flex items-center gap-4 flex-wrap">
-                <Badge variant="accent" size="md">
-                  {tier.charAt(0).toUpperCase() + tier.slice(1)}
-                </Badge>
-                <span className="text-text-secondary">
-                  ${SUBSCRIPTION_PRICES[tier]}/mo
-                </span>
-                <span className="text-text-tertiary">·</span>
-                <span className="text-text-secondary">
-                  {(feeRate * 100).toFixed(1)}% platform fee
-                </span>
-              </div>
-
-              {/* Fee handling */}
-              {feeRate > 0 && (
-                <div className="space-y-3 pt-2 border-t border-[var(--border-subtle)]">
-                  <p className="text-sm text-text-secondary">
-                    Choose how the {(feeRate * 100).toFixed(1)}% platform fee is handled for each sale.
-                  </p>
-                  <label className="flex items-start gap-3 p-4 rounded-lg border border-border-default cursor-pointer hover:border-border-strong transition-colors has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50">
-                    <input
-                      type="radio"
-                      name="feeHandling"
-                      checked={feeHandling === 'pass_to_customer'}
-                      onChange={() => setFeeHandling('pass_to_customer')}
-                      className="mt-1 accent-[var(--accent-500)]"
-                    />
-                    <div>
-                      <div className="font-medium text-text-primary">Pass to customer</div>
-                      <div className="text-sm text-text-secondary">
-                        Fee appears as a &quot;Service Fee&quot; line item on the receipt. Customer pays it.
-                      </div>
-                    </div>
-                  </label>
-                  <label className="flex items-start gap-3 p-4 rounded-lg border border-border-default cursor-pointer hover:border-border-strong transition-colors has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50">
-                    <input
-                      type="radio"
-                      name="feeHandling"
-                      checked={feeHandling === 'absorb'}
-                      onChange={() => setFeeHandling('absorb')}
-                      className="mt-1 accent-[var(--accent-500)]"
-                    />
-                    <div>
-                      <div className="font-medium text-text-primary">Absorb fee</div>
-                      <div className="text-sm text-text-secondary">
-                        Fee deducted from your payout. Customer sees no additional charges.
-                      </div>
-                    </div>
-                  </label>
-                </div>
-              )}
-            </CardContent>
-            {feeRate > 0 && (
-              <CardFooter>
-                <Button variant="primary" onClick={saveFeeHandling}>
-                  Save Fee Handling
-                </Button>
-              </CardFooter>
-            )}
-          </Card>
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-[var(--text-primary)]">Plan Comparison</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border-subtle)]">
+                    <th className="text-left py-2 pr-4 text-[var(--text-tertiary)] font-medium">Feature</th>
+                    <th className="text-center py-2 px-3 text-[var(--text-tertiary)] font-medium">Starter</th>
+                    <th className="text-center py-2 px-3 text-[var(--text-tertiary)] font-medium">Pro</th>
+                    <th className="text-center py-2 px-3 text-[var(--text-tertiary)] font-medium">Business</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-subtle)]">
+                  <tr>
+                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Platform fee</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)]">3%</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)]">1.5%</td>
+                    <td className="py-2.5 px-3 text-center text-success-600 font-semibold">0%</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Sunny AI</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-tertiary)]">5/mo</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)]">Unlimited</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)]">Unlimited</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Business insights</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-tertiary)]">—</td>
+                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Full P&L reports</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-tertiary)]">—</td>
+                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">CRM</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-tertiary)]">—</td>
+                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Team members</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)]">1</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)]">3</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)]">Unlimited</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Price</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)] font-semibold">Free</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)] font-semibold">$129/mo</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)] font-semibold">$279/mo</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      )}
+      </AccordionSection>
 
       {/* ================================================================ */}
-      {/* Team Management Tab                                              */}
+      {/* Section 4: Tax & Receipts                                        */}
       {/* ================================================================ */}
-      {activeTab === 'team' && showTeamTab && (
-        <div className="space-y-6">
-          {/* Header with invite button — gated by tier */}
-          {(() => {
-            const effectiveTierForTeam = tenant ? getSubscriptionTier(tenant) : 'starter';
-            const memberLimit = TEAM_MEMBER_LIMITS[effectiveTierForTeam] || 1;
-            const totalMembers = activeMembers.length + pendingMembers.length;
-            const atLimit = totalMembers >= memberLimit;
-            const limitLabel = memberLimit === Infinity ? '∞' : String(memberLimit);
-
-            return (
-              <>
-                <div className="flex items-center justify-between">
+      <AccordionSection
+        icon={IconTax}
+        title="Tax & Receipts"
+        summary={taxSummary}
+        isOpen={openSection === 'tax'}
+        onToggle={() => toggleSection('tax')}
+      >
+        <div className="space-y-4 pt-4">
+          {taxProfiles.length > 0 && (
+            <div className="space-y-2">
+              {taxProfiles.map((tp) => (
+                <div
+                  key={tp.id}
+                  className="flex items-center justify-between bg-[var(--surface-base)] rounded-lg px-4 py-3"
+                >
                   <div>
-                    <h2 className="text-lg font-semibold text-text-primary">Team Members</h2>
-                    <p className="text-sm text-text-secondary mt-0.5">
+                    <span className="font-medium text-[var(--text-primary)]">{tp.name}</span>
+                    <span className="text-[var(--text-tertiary)] ml-2">
+                      {(tp.rate * 100).toFixed(2)}%
+                    </span>
+                  </div>
+                  <Button variant="danger" size="sm" onClick={() => deleteTaxProfile(tp.id)}>
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          {taxProfiles.length === 0 && (
+            <p className="text-sm text-[var(--text-tertiary)]">No tax profiles yet. Add one below.</p>
+          )}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Input
+                placeholder="Profile name (e.g. Texas)"
+                value={newTax.name}
+                onChange={(e) => setNewTax({ ...newTax, name: e.target.value })}
+              />
+            </div>
+            <div className="w-28">
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="Rate %"
+                value={newTax.rate}
+                onChange={(e) => setNewTax({ ...newTax, rate: e.target.value })}
+              />
+            </div>
+            <Button variant="secondary" onClick={addTaxProfile}>
+              Add
+            </Button>
+          </div>
+        </div>
+      </AccordionSection>
+
+      {/* ================================================================ */}
+      {/* Section 5: Waiver                                                */}
+      {/* ================================================================ */}
+      <AccordionSection
+        icon={IconWaiver}
+        title="Waiver"
+        summary={waiverSummary}
+        isOpen={openSection === 'waiver'}
+        onToggle={() => toggleSection('waiver')}
+      >
+        <div className="space-y-4 pt-4">
+          <p className="text-sm text-[var(--text-secondary)]">
+            This text is shown to customers when they sign a waiver before their appointment.
+          </p>
+          <Textarea
+            value={waiverText}
+            onChange={(e) => setWaiverText(e.target.value)}
+            rows={6}
+          />
+          <div className="flex justify-end">
+            <Button variant="primary" onClick={() => setShowWaiverConfirm(true)}>
+              Save Waiver Text
+            </Button>
+          </div>
+        </div>
+      </AccordionSection>
+
+      {/* ================================================================ */}
+      {/* Section 6: Team                                                  */}
+      {/* ================================================================ */}
+      {showTeamSection && (
+        <AccordionSection
+          icon={IconTeam}
+          title="Team"
+          summary={teamSummary}
+          isOpen={openSection === 'team'}
+          onToggle={() => toggleSection('team')}
+        >
+          <div className="space-y-5 pt-4">
+            {(() => {
+              const effectiveTierForTeam = tenant ? getSubscriptionTier(tenant) : 'starter';
+              const memberLimit = TEAM_MEMBER_LIMITS[effectiveTierForTeam] || 1;
+              const totalMembers = activeMembers.length + pendingMembers.length;
+              const atLimit = totalMembers >= memberLimit;
+              const limitLabel = memberLimit === Infinity ? '∞' : String(memberLimit);
+
+              return (
+                <>
+                  {/* Header with invite button */}
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-[var(--text-secondary)]">
                       {memberLimit === Infinity
                         ? `${totalMembers} team member${totalMembers !== 1 ? 's' : ''} — unlimited on Business`
                         : `${totalMembers} of ${limitLabel} team member${memberLimit !== 1 ? 's' : ''}`
                       }
                     </p>
+                    <Button
+                      variant="primary"
+                      onClick={() => setShowInviteModal(true)}
+                      disabled={atLimit}
+                      title={atLimit ? 'Team member limit reached for your plan' : 'Invite a new team member'}
+                    >
+                      <span className="flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Invite
+                      </span>
+                    </Button>
                   </div>
-                  <Button
-                    variant="primary"
-                    onClick={() => setShowInviteModal(true)}
-                    disabled={atLimit}
-                    title={atLimit ? 'Team member limit reached for your plan' : 'Invite a new team member'}
-                  >
-                    <span className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                      </svg>
-                      Invite
-                    </span>
-                  </Button>
-                </div>
 
-                {/* Tier-specific upgrade message when at limit */}
-                {atLimit && effectiveTierForTeam === 'starter' && (
-                  <Card className="border-accent-200 bg-accent-50/30">
-                    <CardContent className="py-4">
+                  {/* Tier upgrade messages */}
+                  {atLimit && effectiveTierForTeam === 'starter' && (
+                    <div className="p-4 rounded-xl border border-[var(--accent-200)] bg-[var(--accent-50)]/30">
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-full bg-accent-100 flex items-center justify-center shrink-0 mt-0.5">
-                          <svg className="w-4 h-4 text-accent-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <div className="w-8 h-8 rounded-full bg-[var(--accent-100)] flex items-center justify-center shrink-0 mt-0.5">
+                          <svg className="w-4 h-4 text-[var(--accent-600)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                           </svg>
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-text-primary">Add team members with Pro</p>
-                          <p className="text-sm text-text-secondary mt-0.5">
+                          <p className="text-sm font-medium text-[var(--text-primary)]">Add team members with Pro</p>
+                          <p className="text-sm text-[var(--text-secondary)] mt-0.5">
                             The Starter plan includes 1 team member (you). Upgrade to Pro for up to 3 team members, or Business for unlimited.
                           </p>
-                          <Link
-                            href="/dashboard/settings?tab=subscription"
-                            className="inline-flex items-center gap-1 text-sm font-medium text-accent-600 hover:text-accent-700 mt-2"
+                          <button
+                            onClick={() => toggleSection('billing')}
+                            className="inline-flex items-center gap-1 text-sm font-medium text-[var(--accent-primary)] hover:underline mt-2"
                           >
                             View Plans
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                             </svg>
-                          </Link>
+                          </button>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
-                {atLimit && effectiveTierForTeam === 'pro' && (
-                  <Card className="border-accent-200 bg-accent-50/30">
-                    <CardContent className="py-4">
+                    </div>
+                  )}
+                  {atLimit && effectiveTierForTeam === 'pro' && (
+                    <div className="p-4 rounded-xl border border-[var(--accent-200)] bg-[var(--accent-50)]/30">
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-full bg-accent-100 flex items-center justify-center shrink-0 mt-0.5">
-                          <svg className="w-4 h-4 text-accent-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <div className="w-8 h-8 rounded-full bg-[var(--accent-100)] flex items-center justify-center shrink-0 mt-0.5">
+                          <svg className="w-4 h-4 text-[var(--accent-600)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                           </svg>
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-text-primary">Need more team members?</p>
-                          <p className="text-sm text-text-secondary mt-0.5">
+                          <p className="text-sm font-medium text-[var(--text-primary)]">Need more team members?</p>
+                          <p className="text-sm text-[var(--text-secondary)] mt-0.5">
                             Pro includes up to 3 team members. Upgrade to Business for unlimited team members.
                           </p>
-                          <Link
-                            href="/dashboard/settings?tab=subscription"
-                            className="inline-flex items-center gap-1 text-sm font-medium text-accent-600 hover:text-accent-700 mt-2"
+                          <button
+                            onClick={() => toggleSection('billing')}
+                            className="inline-flex items-center gap-1 text-sm font-medium text-[var(--accent-primary)] hover:underline mt-2"
                           >
                             View Plans
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                             </svg>
-                          </Link>
+                          </button>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </>
-            );
-          })()}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
-          {/* Active Members */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Active ({activeMembers.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {teamLoading ? (
-                <p className="text-sm text-text-tertiary py-4 text-center">Loading…</p>
-              ) : activeMembers.length === 0 ? (
-                <p className="text-sm text-text-tertiary py-4 text-center">
-                  No team members yet. Invite someone to get started.
-                </p>
-              ) : (
-                <div className="divide-y divide-[var(--border-subtle)]">
+            {/* Active Members */}
+            {teamLoading ? (
+              <p className="text-sm text-[var(--text-tertiary)] py-4 text-center">Loading…</p>
+            ) : activeMembers.length === 0 ? (
+              <p className="text-sm text-[var(--text-tertiary)] py-4 text-center">
+                No team members yet. Invite someone to get started.
+              </p>
+            ) : (
+              <div>
+                <h4 className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
+                  Active ({activeMembers.length})
+                </h4>
+                <div className="divide-y divide-[var(--border-subtle)] border border-[var(--border-default)] rounded-xl overflow-hidden">
                   {activeMembers.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between py-3 gap-3">
+                    <div key={member.id} className="flex items-center justify-between py-3 px-4 gap-3 bg-[var(--surface-base)]">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-text-primary truncate">
+                          <span className="text-sm font-medium text-[var(--text-primary)] truncate">
                             {member.display_name || member.invited_email || 'Unknown'}
                           </span>
                           {member.is_owner && (
@@ -2236,7 +1614,7 @@ function SettingsPage() {
                           )}
                         </div>
                         {member.invited_email && member.display_name && (
-                          <div className="text-xs text-text-tertiary truncate">
+                          <div className="text-xs text-[var(--text-tertiary)] truncate">
                             {member.invited_email}
                           </div>
                         )}
@@ -2272,23 +1650,21 @@ function SettingsPage() {
                     </div>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            )}
 
-          {/* Pending Invites */}
-          {pendingMembers.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Pending Invites ({pendingMembers.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="divide-y divide-[var(--border-subtle)]">
+            {/* Pending Invites */}
+            {pendingMembers.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
+                  Pending Invites ({pendingMembers.length})
+                </h4>
+                <div className="divide-y divide-[var(--border-subtle)] border border-[var(--border-default)] rounded-xl overflow-hidden">
                   {pendingMembers.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between py-3 gap-3">
+                    <div key={member.id} className="flex items-center justify-between py-3 px-4 gap-3 bg-[var(--surface-base)]">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-text-secondary truncate">
+                          <span className="text-sm text-[var(--text-secondary)] truncate">
                             {member.invited_email || 'Unknown'}
                           </span>
                           <Badge variant="warning" size="sm">Pending</Badge>
@@ -2297,7 +1673,7 @@ function SettingsPage() {
                           </Badge>
                         </div>
                         {member.display_name && (
-                          <div className="text-xs text-text-tertiary">{member.display_name}</div>
+                          <div className="text-xs text-[var(--text-tertiary)]">{member.display_name}</div>
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -2317,39 +1693,37 @@ function SettingsPage() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            )}
 
-          {/* Role legend */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Role Permissions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-sm">
+            {/* Role legend */}
+            <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
+              <h4 className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+                Role Permissions
+              </h4>
+              <div className="space-y-2 text-sm">
                 <div>
-                  <span className="font-medium text-text-primary">Admin</span>
-                  <span className="text-text-secondary ml-2">
+                  <span className="font-medium text-[var(--text-primary)]">Admin</span>
+                  <span className="text-[var(--text-secondary)] ml-2">
                     — Full access to everything including settings, payments, and team management.
                   </span>
                 </div>
                 <div>
-                  <span className="font-medium text-text-primary">Manager</span>
-                  <span className="text-text-secondary ml-2">
-                    — Can use POS, manage inventory and events, view reports, apply discounts, and process refunds. Cannot access settings or team management.
+                  <span className="font-medium text-[var(--text-primary)]">Manager</span>
+                  <span className="text-[var(--text-secondary)] ml-2">
+                    — Can use POS, manage inventory and events, view reports, apply discounts, and process refunds.
                   </span>
                 </div>
                 <div>
-                  <span className="font-medium text-text-primary">Staff</span>
-                  <span className="text-text-secondary ml-2">
-                    — Can use POS, manage queue, and view inventory/events/clients. Cannot edit, delete, or apply discounts.
+                  <span className="font-medium text-[var(--text-primary)]">Staff</span>
+                  <span className="text-[var(--text-secondary)] ml-2">
+                    — Can use POS, manage queue, and view inventory/events/clients.
                   </span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </div>
+        </AccordionSection>
       )}
 
       {/* ================================================================ */}
@@ -2357,7 +1731,7 @@ function SettingsPage() {
       {/* ================================================================ */}
       <Modal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} size="sm">
         <ModalHeader>
-          <h2 className="text-lg font-semibold text-text-primary">Invite Team Member</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Invite Team Member</h2>
         </ModalHeader>
         <ModalBody className="space-y-4">
           <Input
@@ -2400,12 +1774,12 @@ function SettingsPage() {
         size="sm"
       >
         <ModalHeader>
-          <h2 className="text-lg font-semibold text-text-primary">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
             {confirmRemove?.is_pending ? 'Cancel Invite' : 'Remove Team Member'}
           </h2>
         </ModalHeader>
         <ModalBody>
-          <p className="text-sm text-text-secondary">
+          <p className="text-sm text-[var(--text-secondary)]">
             {confirmRemove?.is_pending
               ? `Cancel the pending invite for ${confirmRemove.invited_email}? They won't be able to join your team.`
               : `Remove ${confirmRemove?.display_name || confirmRemove?.invited_email} from your team? They'll lose access to your business on Sunstone.`
@@ -2421,101 +1795,39 @@ function SettingsPage() {
           </Button>
         </ModalFooter>
       </Modal>
-    </div>
-  );
-}
 
-// ============================================================================
-// Theme Preview Card
-// ============================================================================
-
-function ThemePreviewCard({
-  theme,
-  isSelected,
-  onSelect,
-}: {
-  theme: ThemeDefinition;
-  isSelected: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      onClick={onSelect}
-      className={`relative rounded-xl border-2 overflow-hidden transition-all duration-200 hover:scale-[1.03] text-left ${
-        isSelected
-          ? 'border-[var(--accent-primary)] shadow-md ring-2 ring-[var(--accent-subtle)]'
-          : 'border-transparent hover:border-[var(--border-strong)]'
-      }`}
-    >
-      {/* Mini preview */}
-      <div
-        className="p-3 space-y-2"
-        style={{ backgroundColor: theme.background }}
+      {/* ================================================================ */}
+      {/* Waiver Save Confirmation Modal                                   */}
+      {/* ================================================================ */}
+      <Modal
+        isOpen={showWaiverConfirm}
+        onClose={() => setShowWaiverConfirm(false)}
+        size="sm"
       >
-        {/* Theme name */}
-        <div
-          className="text-xs font-semibold truncate"
-          style={{ color: theme.textPrimary, fontFamily: `'${theme.headingFont}', serif` }}
-        >
-          {theme.name}
-        </div>
-
-        {/* Description */}
-        <div
-          className="text-[9px] truncate"
-          style={{ color: theme.textSecondary }}
-        >
-          {theme.description}
-        </div>
-
-        {/* Fake card */}
-        <div
-          className="p-2 space-y-1.5"
-          style={{
-            backgroundColor: theme.surfaceRaised,
-            border: `1px solid ${theme.borderDefault}`,
-            borderRadius: theme.cardRadius,
-          }}
-        >
-          <div
-            className="h-1.5 rounded-full w-3/4"
-            style={{ backgroundColor: theme.textSecondary, opacity: 0.4 }}
-          />
-          <div
-            className="h-1.5 rounded-full w-1/2"
-            style={{ backgroundColor: theme.textTertiary, opacity: 0.3 }}
-          />
-        </div>
-
-        {/* Fake accent button */}
-        <div
-          className="h-5 flex items-center justify-center"
-          style={{ backgroundColor: theme.accent, borderRadius: theme.cardRadius }}
-        >
-          <span
-            className="text-[8px] font-semibold"
-            style={{ color: theme.textOnAccent }}
-          >
-            Button
-          </span>
-        </div>
-      </div>
-
-      {/* Selected checkmark */}
-      {isSelected && (
-        <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--accent-primary)] flex items-center justify-center">
-          <svg className="w-3 h-3 text-[var(--text-on-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-          </svg>
-        </div>
-      )}
-    </button>
+        <ModalHeader>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Update Waiver Text</h2>
+        </ModalHeader>
+        <ModalBody>
+          <p className="text-sm text-[var(--text-secondary)]">
+            Are you sure you want to update the waiver text? This change will apply to all future waivers shown to your customers.
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="ghost" onClick={() => setShowWaiverConfirm(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={saveWaiverText}>
+            Update Waiver
+          </Button>
+        </ModalFooter>
+      </Modal>
+    </div>
   );
 }
 
 export default function SettingsPageWrapper() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><p className="text-text-secondary">Loading...</p></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><p className="text-[var(--text-secondary)]">Loading...</p></div>}>
       <SettingsPage />
     </Suspense>
   );
