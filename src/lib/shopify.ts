@@ -49,35 +49,60 @@ export interface CachedCatalog {
 // GraphQL Helper
 // ─────────────────────────────────────────────────────────────────────────────
 
+const SHOPIFY_API_VERSION = '2025-01';
+
 async function shopifyAdminQuery(query: string, variables?: Record<string, any>) {
   const domain = process.env.SHOPIFY_STORE_DOMAIN;
   const token = process.env.SHOPIFY_ADMIN_TOKEN;
+
+  console.log('[Shopify] ENV check — SHOPIFY_STORE_DOMAIN:', domain ? `"${domain}"` : 'MISSING');
+  console.log('[Shopify] ENV check — SHOPIFY_ADMIN_TOKEN:', token ? `set (${token.length} chars, starts with "${token.slice(0, 6)}...")` : 'MISSING');
 
   if (!domain || !token) {
     throw new Error('Shopify environment variables not configured (SHOPIFY_STORE_DOMAIN, SHOPIFY_ADMIN_TOKEN)');
   }
 
-  const response = await fetch(
-    `https://${domain}/admin/api/2024-01/graphql.json`,
-    {
+  const url = `https://${domain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
+  console.log('[Shopify] Request URL:', url);
+  console.log('[Shopify] Query preview:', query.slice(0, 120).replace(/\s+/g, ' ').trim() + '...');
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Shopify-Access-Token': token,
       },
       body: JSON.stringify({ query, variables }),
-    }
-  );
+    });
+  } catch (fetchErr: any) {
+    console.error('[Shopify] Fetch failed (network/DNS):', fetchErr.message);
+    throw new Error(`Shopify fetch failed: ${fetchErr.message}`);
+  }
+
+  console.log('[Shopify] Response status:', response.status, response.statusText);
+  console.log('[Shopify] Response headers — x-request-id:', response.headers.get('x-request-id') || 'none');
 
   if (!response.ok) {
-    throw new Error(`Shopify API error: ${response.status} ${response.statusText}`);
+    let errorBody = '';
+    try {
+      errorBody = await response.text();
+    } catch {
+      errorBody = '(could not read response body)';
+    }
+    console.error('[Shopify] Non-OK response body:', errorBody.slice(0, 500));
+    throw new Error(`Shopify API error ${response.status}: ${errorBody.slice(0, 200)}`);
   }
 
   const json = await response.json();
+
   if (json.errors) {
-    throw new Error(`Shopify GraphQL error: ${json.errors[0].message}`);
+    console.error('[Shopify] GraphQL errors:', JSON.stringify(json.errors, null, 2));
+    throw new Error(`Shopify GraphQL error: ${json.errors.map((e: any) => e.message).join('; ')}`);
   }
 
+  console.log('[Shopify] Query succeeded, top-level keys:', Object.keys(json.data || {}));
   return json.data;
 }
 
@@ -89,11 +114,13 @@ export async function fetchAllProducts(): Promise<SunstoneProduct[]> {
   const products: SunstoneProduct[] = [];
   let cursor: string | null = null;
   let hasNextPage = true;
+  let page = 0;
 
   while (hasNextPage) {
+    page++;
     const afterClause = cursor ? `, after: "${cursor}"` : '';
     const query = `{
-      products(first: 50${afterClause}) {
+      products(first: 50, query: "status:active"${afterClause}) {
         pageInfo { hasNextPage }
         edges {
           cursor
@@ -104,7 +131,6 @@ export async function fetchAllProducts(): Promise<SunstoneProduct[]> {
             handle
             productType
             tags
-            status
             featuredImage {
               url
               altText
@@ -115,7 +141,6 @@ export async function fetchAllProducts(): Promise<SunstoneProduct[]> {
                   title
                   price
                   sku
-                  inventoryQuantity
                 }
               }
             }
@@ -132,12 +157,13 @@ export async function fetchAllProducts(): Promise<SunstoneProduct[]> {
       }
     }`;
 
+    console.log(`[Shopify] Fetching products page ${page}${cursor ? ` (cursor: ${cursor.slice(0, 20)}...)` : ''}`);
     const data = await shopifyAdminQuery(query);
     const edges = data.products.edges;
+    console.log(`[Shopify] Page ${page}: ${edges.length} products returned`);
 
     for (const edge of edges) {
       const node = edge.node;
-      if (node.status !== 'ACTIVE') continue;
 
       products.push({
         id: node.id,
@@ -152,7 +178,7 @@ export async function fetchAllProducts(): Promise<SunstoneProduct[]> {
           title: v.node.title,
           price: v.node.price,
           sku: v.node.sku || '',
-          inventoryQuantity: v.node.inventoryQuantity ?? 0,
+          inventoryQuantity: 0, // No longer queried — use Inventory API if needed
         })),
         collections: (node.collections?.edges || []).map((c: any) => c.node.handle),
         url: `https://permanentjewelry.sunstonewelders.com/products/${node.handle}`,
@@ -167,6 +193,7 @@ export async function fetchAllProducts(): Promise<SunstoneProduct[]> {
     }
   }
 
+  console.log(`[Shopify] Total products fetched: ${products.length}`);
   return products;
 }
 
@@ -196,7 +223,6 @@ export async function fetchProductsByCollection(collectionHandle: string): Promi
                   title
                   price
                   sku
-                  inventoryQuantity
                 }
               }
             }
@@ -232,7 +258,7 @@ export async function fetchProductsByCollection(collectionHandle: string): Promi
         title: v.node.title,
         price: v.node.price,
         sku: v.node.sku || '',
-        inventoryQuantity: v.node.inventoryQuantity ?? 0,
+        inventoryQuantity: 0,
       })),
       collections: (node.collections?.edges || []).map((c: any) => c.node.handle),
       url: `https://permanentjewelry.sunstonewelders.com/products/${node.handle}`,
