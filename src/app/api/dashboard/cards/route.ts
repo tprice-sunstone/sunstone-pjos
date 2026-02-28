@@ -23,11 +23,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
+import { getCachedCatalog, type SunstoneProduct, type ShopifyDiscount } from '@/lib/shopify';
 import type { DashboardCard } from '@/types';
 
 // Bump this version whenever card generation logic changes. Cached cards with
 // a different version are treated as stale and regenerated on next load.
-const CARD_CACHE_VERSION = 2;
+const CARD_CACHE_VERSION = 3;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -428,6 +429,33 @@ async function generateCards(
     console.error('Dashboard cards: next_event failed:', err);
   }
 
+  // ── Fetch Shopify catalog (used by Sunny's Take + Spotlight) ─────────
+  let shopifyCatalog: Awaited<ReturnType<typeof getCachedCatalog>> = null;
+  try {
+    shopifyCatalog = await getCachedCatalog();
+  } catch {
+    // Non-critical — continue without catalog data
+  }
+
+  // Build a concise catalog summary for Sunny's Take
+  let catalogSummary: string | null = null;
+  if (shopifyCatalog && shopifyCatalog.products.length > 0) {
+    const summaryParts: string[] = [];
+    // Active promotions
+    const activePromos = shopifyCatalog.discounts.filter((d) => {
+      if (d.status !== 'ACTIVE') return false;
+      if (d.endsAt && new Date(d.endsAt) <= new Date()) return false;
+      return true;
+    });
+    if (activePromos.length > 0) {
+      summaryParts.push(`Active promotions: ${activePromos.map((d) => `${d.title}${d.summary ? ` (${d.summary})` : ''}`).join(', ')}`);
+    }
+    // Top 3 products (variety)
+    const topProducts = shopifyCatalog.products.slice(0, 3);
+    summaryParts.push(`Featured products: ${topProducts.map((p) => `${p.title} ($${p.variants[0]?.price || '?'})`).join(', ')}`);
+    catalogSummary = summaryParts.join('\n');
+  }
+
   // ── Sunny's Take (AI insight — one Claude call per 24h cache refresh) ───
   try {
     const sunnyInsight = await generateSunnyTake(
@@ -439,6 +467,7 @@ async function generateCards(
       clientCountResult.count || 0,
       staleClientsResult.data || [],
       tenantAgeDays,
+      catalogSummary,
     );
     if (sunnyInsight) {
       cards.push({
@@ -723,7 +752,7 @@ async function generateCards(
 // Sunny's Take — personalized AI insight via Claude API
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SUNNY_SYSTEM_PROMPT = `You are Sunny, a friendly and knowledgeable permanent jewelry business mentor. Given the following business data, write a 2-3 sentence personalized insight. Be specific (use actual numbers), encouraging, and include ONE actionable suggestion. Keep it warm and conversational — like a smart friend checking in on their business. Do not use emojis. Do not start with "Hey" or "Hi". Jump straight into the insight.`;
+const SUNNY_SYSTEM_PROMPT = `You are Sunny, a friendly and knowledgeable permanent jewelry business mentor. Given the following business data, write a 2-3 sentence personalized insight. Be specific (use actual numbers), encouraging, and include ONE actionable suggestion. Keep it warm and conversational — like a smart friend checking in on their business. Do not use emojis. Do not start with "Hey" or "Hi". Jump straight into the insight. If there are relevant Sunstone products (especially promotions), you may briefly mention one product that could help the artist, but keep it natural — not salesy.`;
 
 async function generateSunnyTake(
   thisMonthSales: any[],
@@ -734,6 +763,7 @@ async function generateSunnyTake(
   clientCount: number,
   staleClients: any[],
   tenantAgeDays: number,
+  catalogSummary?: string | null,
 ): Promise<string | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -787,7 +817,12 @@ async function generateSunnyTake(
     },
   };
 
-  const userMessage = `Here is the current business data for a permanent jewelry artist:\n\n${JSON.stringify(businessData, null, 2)}`;
+  let userMessage = `Here is the current business data for a permanent jewelry artist:\n\n${JSON.stringify(businessData, null, 2)}`;
+
+  // Append catalog summary if available (active promotions, featured products)
+  if (catalogSummary) {
+    userMessage += `\n\nSunstone Supply catalog highlights:\n${catalogSummary}`;
+  }
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -840,91 +875,122 @@ async function getSunstoneSpotlight(
     if (config?.value) {
       const spotlight = config.value as Record<string, any>;
 
-      // Custom mode: admin has pinned a specific product
-      if (spotlight.mode === 'custom' && spotlight.custom_product_id) {
+      // Custom mode: admin has pinned a specific Shopify product by handle
+      if (spotlight.mode === 'custom' && spotlight.custom_product_handle) {
         // Check auto-expiry
         if (spotlight.custom_expires_at) {
           const expiresAt = new Date(spotlight.custom_expires_at);
           if (expiresAt <= new Date()) {
             // Expired — reset to rotate mode (non-blocking, fire-and-forget)
             void db.from('platform_config')
-              .update({ value: { mode: 'rotate', rotation_index: 0 }, updated_at: new Date().toISOString() })
+              .update({ value: { mode: 'rotate' }, updated_at: new Date().toISOString() })
               .eq('key', 'sunstone_spotlight');
-            // Fall through to rotation below
+            // Fall through to catalog rotation below
           } else {
-            // Not expired — use pinned product
-            const { data: product } = await db
-              .from('sunstone_product_catalog')
-              .select('*')
-              .eq('id', spotlight.custom_product_id)
-              .eq('active', true)
-              .single();
-
-            if (product) {
-              return {
-                title: product.name,
-                body: product.subtitle || 'Check out this featured product from Sunstone.',
-                actionLabel: product.cta_label || 'Order from Sunstone',
-                actionRoute: product.cta_url,
-                imageUrl: product.image_url || null,
-                badge: 'Featured This Week',
-              };
-            }
+            // Not expired — find pinned product in Shopify cache
+            const pinned = await findShopifyProduct(spotlight.custom_product_handle);
+            if (pinned) return pinned;
           }
         } else {
           // No expiry set — use pinned product indefinitely
-          const { data: product } = await db
-            .from('sunstone_product_catalog')
-            .select('*')
-            .eq('id', spotlight.custom_product_id)
-            .eq('active', true)
-            .single();
-
-          if (product) {
-            return {
-              title: product.name,
-              body: product.subtitle || 'Check out this featured product from Sunstone.',
-              actionLabel: product.cta_label || 'Order from Sunstone',
-              actionRoute: product.cta_url,
-              imageUrl: product.image_url || null,
-              badge: 'Featured This Week',
-            };
-          }
+          const pinned = await findShopifyProduct(spotlight.custom_product_handle);
+          if (pinned) return pinned;
         }
       }
     }
   } catch {
-    // platform_config table may not exist yet — fall through to rotation
+    // platform_config table may not exist yet — fall through to catalog
   }
 
-  // Step 2: Weekly rotation from active catalog products
-  try {
-    const { data: products } = await db
-      .from('sunstone_product_catalog')
-      .select('*')
-      .eq('active', true)
-      .order('sort_order', { ascending: true });
+  // Step 2: Use Shopify cached catalog
+  const catalog = await getCachedCatalog();
+  if (!catalog || catalog.products.length === 0) return null;
 
-    if (products && products.length > 0) {
-      const weekNumber = getISOWeek(new Date());
-      const index = weekNumber % products.length;
-      const product = products[index];
+  // Step 2a: If there's an active discount, feature a product from that discount
+  const activeDiscount = catalog.discounts.find((d) => {
+    if (d.status !== 'ACTIVE') return false;
+    if (d.endsAt && new Date(d.endsAt) <= new Date()) return false;
+    return true;
+  });
 
-      return {
-        title: product.name,
-        body: product.subtitle || 'A top pick from Sunstone Supply.',
-        actionLabel: product.cta_label || 'Order from Sunstone',
-        actionRoute: product.cta_url,
-        imageUrl: product.image_url || null,
-        badge: 'Featured This Week',
-      };
+  if (activeDiscount) {
+    // Try to find a product matching the discount title/keywords
+    const discountProduct = findDiscountProduct(catalog.products, activeDiscount);
+    if (discountProduct) {
+      return formatShopifySpotlight(discountProduct, activeDiscount.title, true);
     }
-  } catch {
-    // sunstone_product_catalog table may not exist yet
   }
 
-  // No catalog data available
-  return null;
+  // Step 2b: Weekly rotation through all products
+  const weekNumber = getISOWeek(new Date());
+  const index = weekNumber % catalog.products.length;
+  const product = catalog.products[index];
+
+  return formatShopifySpotlight(product, null, false);
+}
+
+/** Look up a product from the Shopify cache by handle */
+async function findShopifyProduct(handle: string): Promise<Record<string, unknown> | null> {
+  const catalog = await getCachedCatalog();
+  if (!catalog) return null;
+
+  const product = catalog.products.find((p) => p.handle === handle);
+  if (!product) return null;
+
+  return formatShopifySpotlight(product, null, false);
+}
+
+/** Try to find a product related to an active discount */
+function findDiscountProduct(
+  products: SunstoneProduct[],
+  discount: ShopifyDiscount
+): SunstoneProduct | null {
+  const titleWords = discount.title.toLowerCase().split(/\s+/);
+
+  // Score each product by keyword overlap with discount title
+  let best: SunstoneProduct | null = null;
+  let bestScore = 0;
+
+  for (const p of products) {
+    const productText = `${p.title} ${p.productType} ${p.tags.join(' ')} ${p.collections.join(' ')}`.toLowerCase();
+    let score = 0;
+    for (const word of titleWords) {
+      if (word.length >= 3 && productText.includes(word)) score++;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = p;
+    }
+  }
+
+  // Only return if there's reasonable keyword overlap
+  return bestScore >= 1 ? best : products[0] || null;
+}
+
+/** Format a Shopify product into a spotlight card data object */
+function formatShopifySpotlight(
+  product: SunstoneProduct,
+  discountTitle: string | null,
+  isSale: boolean
+): Record<string, unknown> {
+  const defaultVariant = product.variants[0];
+  const price = defaultVariant?.price ? `$${defaultVariant.price}` : null;
+
+  // Truncate description to ~120 chars for the card body
+  const body = product.description
+    ? product.description.replace(/<[^>]*>/g, '').slice(0, 120).trim() + (product.description.length > 120 ? '...' : '')
+    : 'A top pick from Sunstone Supply.';
+
+  return {
+    title: product.title,
+    body,
+    actionLabel: 'Order from Sunstone',
+    actionRoute: product.url,
+    imageUrl: product.imageUrl || null,
+    badge: isSale ? (discountTitle || 'Sale') : 'Featured This Week',
+    price: isSale ? price : price,
+    salePrice: isSale && discountTitle ? price : null,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -505,6 +505,8 @@ export interface SunstoneProductData {
   actionRoute: string;
   imageUrl?: string | null;
   badge?: string;
+  price?: string | null;
+  salePrice?: string | null;
 }
 
 export interface GettingStartedData {

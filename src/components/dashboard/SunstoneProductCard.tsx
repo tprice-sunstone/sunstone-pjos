@@ -19,24 +19,31 @@ export function SunstoneProductCard({ data }: { data: SunstoneProductData }) {
       }}
     >
       <div style={{ display: 'flex', minHeight: 140 }}>
-        {/* Image placeholder — gradient with sparkle icon */}
+        {/* Image area — real product photo or accent gradient fallback */}
         <div
           className="hidden sm:flex"
           style={{
             width: 160,
             flexShrink: 0,
-            background: 'linear-gradient(145deg, var(--accent-400), var(--accent-600))',
+            background: data.imageUrl
+              ? 'var(--surface-raised)'
+              : 'linear-gradient(145deg, var(--accent-400), var(--accent-600))',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
+            overflow: 'hidden',
           }}
         >
           {data.imageUrl ? (
             <img
               src={data.imageUrl}
               alt={data.title}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+              }}
             />
           ) : (
             <span
@@ -75,7 +82,11 @@ export function SunstoneProductCard({ data }: { data: SunstoneProductData }) {
             </span>
             {data.badge && (
               <span
-                className="bg-accent-500 text-[var(--text-on-accent)]"
+                className={
+                  data.salePrice
+                    ? 'bg-red-500 text-white'
+                    : 'bg-accent-500 text-[var(--text-on-accent)]'
+                }
                 style={{
                   fontSize: 9,
                   fontWeight: 600,
@@ -102,6 +113,41 @@ export function SunstoneProductCard({ data }: { data: SunstoneProductData }) {
           >
             {data.title}
           </p>
+
+          {/* Price line */}
+          {(data.price || data.salePrice) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              {data.salePrice ? (
+                <>
+                  <span
+                    className="text-text-tertiary"
+                    style={{
+                      fontSize: 13,
+                      textDecoration: 'line-through',
+                    }}
+                  >
+                    {data.price}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: 'var(--accent-primary, #e53e3e)',
+                    }}
+                  >
+                    {data.salePrice}
+                  </span>
+                </>
+              ) : (
+                <span
+                  className="text-text-secondary"
+                  style={{ fontSize: 14, fontWeight: 600 }}
+                >
+                  {data.price}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Description */}
           <p

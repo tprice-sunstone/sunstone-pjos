@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
 import { getSubscriptionTier, getSunnyQuestionLimit } from '@/lib/subscription';
+import { getCachedCatalog, formatCatalogForPrompt } from '@/lib/shopify';
 import {
   EQUIPMENT_KNOWLEDGE,
   WELDING_TECHNIQUE_KNOWLEDGE,
@@ -754,11 +755,14 @@ export async function POST(request: NextRequest) {
       .map(s => `[${s.label}]\n${stringify(s.data)}`)
       .join('\n\n');
 
-    // 5. Fetch RICH tenant context + approved additions
-    const [biz, additionsRes] = await Promise.all([
+    // 5. Fetch RICH tenant context + approved additions + Shopify catalog
+    const [biz, additionsRes, shopifyCatalog] = await Promise.all([
       fetchTenantContext(serviceClient, tenantId),
       serviceClient.from('mentor_knowledge_additions').select('question, answer').eq('is_active', true),
+      getCachedCatalog().catch(() => null),
     ]);
+
+    const catalogText = shopifyCatalog ? formatCatalogForPrompt(shopifyCatalog) : '';
 
     const additions = (additionsRes.data || []);
     const additionsText = additions.length > 0
@@ -819,7 +823,7 @@ GUIDELINES:
 - Competitors: help generically, no trash talk, don't troubleshoot their hardware.
 - Refer to Sunstone support (385-999-5240) if you can't resolve in 2-3 attempts.
 
-PRODUCT SEARCH:
+${catalogText ? `SUNSTONE SUPPLY CATALOG (live from Shopify):\n${catalogText}\n\nWhen an artist asks about products, chains, or supplies they can order from Sunstone, reference the catalog above with specific product names, prices, and URLs. If the product isn't in the catalog, say you don't see it listed and suggest they check sunstonewelders.com.\n` : ''}PRODUCT SEARCH:
 When an artist asks about products to buy, include at END:
 <!-- PRODUCT_SEARCH: descriptive search terms -->
 
