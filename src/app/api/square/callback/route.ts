@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(settingsUrl);
     }
 
-    console.log('[Square Callback] ✅ Square connected successfully for tenant:', state.tenant_id);
+    console.log('[Square Callback] Square connected successfully for tenant:', state.tenant_id);
     settingsUrl.searchParams.set('success', 'square_connected');
     return NextResponse.redirect(settingsUrl);
 

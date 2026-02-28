@@ -2,52 +2,93 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 const DEFAULT_TEMPLATES = [
-  // SMS
+  // SMS Templates
   {
-    name: 'Aftercare Reminder',
-    channel: 'sms',
-    category: 'aftercare',
-    is_default: true,
-    body: 'Hi {{client_name}}! 💍 Thanks for your new permanent jewelry from {{business_name}}! Remember: avoid pulling or tugging for the first 24 hours, and it\'s fine to shower and swim. Questions? Text us at {{business_phone}}!',
-  },
-  {
-    name: 'Thank You',
+    name: 'Welcome New Client',
     channel: 'sms',
     category: 'thank_you',
     is_default: true,
-    body: 'Hi {{client_name}}! Thank you so much for visiting {{business_name}} today! We loved creating your piece. 💍✨',
+    body: 'Hi {{client_name}}, thank you for getting welded with {{business_name}}! We loved having you. Your permanent jewelry is designed to stay with you — no clasps, no fuss. If you ever need anything, just text us back.',
   },
   {
-    name: 'Booking Reminder',
+    name: 'Aftercare',
+    channel: 'sms',
+    category: 'aftercare',
+    is_default: true,
+    body: 'Hi {{client_name}}, quick note from {{business_name}} — your new permanent jewelry is waterproof and made to last. Shower, swim, sleep in it. If it ever feels irritated, give it a few days to adjust. Questions? Just text us.',
+  },
+  {
+    name: 'Social Media Request',
+    channel: 'sms',
+    category: 'follow_up',
+    is_default: true,
+    body: 'Hi {{client_name}}, we hope you\'re loving your new piece from {{business_name}}! If you get a chance, we\'d love for you to share a photo and tag us on Instagram. It means the world to a small business like ours.',
+  },
+  {
+    name: 'Review Request + Party Invite',
+    channel: 'sms',
+    category: 'follow_up',
+    is_default: true,
+    body: 'Hi {{client_name}}, it\'s been a week since your visit with {{business_name}} and we hope you\'re still loving your jewelry! If you have a sec, a quick review would mean so much to us. Also — did you know we do private parties? Grab 5 friends and the host gets a free bracelet. Just reply if you\'re interested!',
+  },
+  {
+    name: 'Miss You / Re-engagement',
+    channel: 'sms',
+    category: 'promotion',
+    is_default: true,
+    body: 'Hi {{client_name}}, it\'s been a while since your last visit with {{business_name}}! We have new chains in stock and would love to weld you again. Want to book a time?',
+  },
+  {
+    name: 'Birthday',
+    channel: 'sms',
+    category: 'promotion',
+    is_default: true,
+    body: 'Happy birthday, {{client_name}}! We\'d love to celebrate with you — come get a special birthday piece from {{business_name}}. Text us to set something up.',
+  },
+  {
+    name: 'Private Party Invite',
     channel: 'sms',
     category: 'booking',
     is_default: true,
-    body: 'Hi {{client_name}}! Just a reminder about your appointment with {{business_name}} tomorrow. We can\'t wait to see you! 💍',
+    body: 'Hi {{client_name}}, it was great meeting you! Did you know {{business_name}} does private permanent jewelry parties? It\'s a perfect girls\' night — we bring everything to you. Interested? Just reply and we\'ll get you set up.',
   },
-  // Email
   {
-    name: 'Aftercare Instructions',
-    channel: 'email',
-    category: 'aftercare',
+    name: 'Event Follow-Up',
+    channel: 'sms',
+    category: 'follow_up',
     is_default: true,
-    subject: 'Your Permanent Jewelry Care Guide 💍',
-    body: 'Hi {{client_name}},\n\nThank you for choosing {{business_name}} for your permanent jewelry! Here\'s everything you need to know about caring for your new piece:\n\n✨ First 24 Hours\n• Avoid pulling or tugging on your jewelry\n• Be gentle when getting dressed\n\n🚿 Daily Wear\n• Showering is perfectly fine!\n• Swimming in pools and the ocean is safe\n• Apply lotions and perfumes before putting on other jewelry\n\n💎 Long-Term Care\n• Your permanent jewelry is designed to last — no special cleaning needed\n• If it ever feels loose or needs attention, just reach out to us\n\nWe loved creating your piece and hope you enjoy it every day!\n\nWith love,\n{{business_name}}',
+    body: 'Hi {{client_name}}, thanks for stopping by our booth! We loved welding you. If you have friends who are interested, we\'d love to connect. Feel free to share our info.',
   },
   {
-    name: 'Thank You',
+    name: 'Referral Thank You',
+    channel: 'sms',
+    category: 'thank_you',
+    is_default: true,
+    body: 'Hi {{client_name}}, we heard you sent a friend our way — thank you so much! Referrals mean the world to a small business like {{business_name}}. We appreciate you.',
+  },
+  {
+    name: 'Event Announcement',
+    channel: 'sms',
+    category: 'promotion',
+    is_default: true,
+    body: 'Hi {{client_name}}, {{business_name}} will be at [Event Name] on [Date]! Come say hi and add to your collection. We\'ll have new chains and styles. Hope to see you there!',
+  },
+  // Email Templates
+  {
+    name: 'Welcome Email',
     channel: 'email',
     category: 'thank_you',
     is_default: true,
-    subject: 'Thank you for choosing {{business_name}}!',
-    body: 'Hi {{client_name}},\n\nThank you so much for visiting us today! We absolutely loved creating your permanent jewelry piece.\n\nIf you have any questions about your jewelry or want to book another appointment, don\'t hesitate to reach out.\n\nWe hope to see you again soon! 💍✨\n\nWarmly,\n{{business_name}}',
+    subject: 'Welcome to {{business_name}}',
+    body: 'Hi {{client_name}},\n\nThank you for choosing {{business_name}} for your permanent jewelry! We loved having you, and we hope you\'re enjoying your new piece.\n\nPermanent jewelry is designed to stay with you through everything — showers, swimming, sleeping, all of it. No clasps to break, no pieces to lose.\n\nIf you ever have questions about your jewelry or want to add more pieces to your collection, just reply to this email or text us anytime.\n\nWelcome to the family.\n\n{{business_name}}',
   },
   {
-    name: 'Special Promotion',
+    name: 'Private Party Email',
     channel: 'email',
-    category: 'promotion',
+    category: 'booking',
     is_default: true,
-    subject: 'Something special from {{business_name}} ✨',
-    body: 'Hi {{client_name}},\n\nWe have something exciting to share with you!\n\n[Add your promotion details here]\n\nWe\'d love to see you again — book your next appointment today!\n\nXO,\n{{business_name}}',
+    subject: 'Host a Permanent Jewelry Party',
+    body: 'Hi {{client_name}},\n\nIt was so great meeting you! I wanted to reach out because {{business_name}} offers private permanent jewelry parties — and they\'re a blast.\n\nHere\'s how it works: you pick the place (your home, office, or wherever), invite your friends, and we bring everything to you. Everyone gets welded, and it makes for an unforgettable girls\' night, birthday, or celebration.\n\nInterested? Just reply and we\'ll get the details sorted.\n\n{{business_name}}',
   },
 ];
 

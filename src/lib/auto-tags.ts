@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { queueWorkflow } from '@/lib/workflows';
 
 interface AutoTagContext {
   type: 'sale' | 'waiver';
@@ -25,10 +26,10 @@ export async function autoTagClient(
     .eq('auto_apply', true);
 
   if (!autoTags || autoTags.length === 0) {
-    // Seed default auto-tags
+    // Seed default auto-tags with luxury palette colors
     await supabase.from('client_tags').insert([
-      { tenant_id: tenantId, name: 'New Client', color: '#6366F1', auto_apply: true, auto_apply_rule: 'new_client' },
-      { tenant_id: tenantId, name: 'Repeat Client', color: '#059669', auto_apply: true, auto_apply_rule: 'repeat_client' },
+      { tenant_id: tenantId, name: 'New Client', color: '#6B7F99', auto_apply: true, auto_apply_rule: 'new_client' },
+      { tenant_id: tenantId, name: 'Repeat Client', color: '#9C8B7A', auto_apply: true, auto_apply_rule: 'repeat_client' },
     ]);
     const { data: seeded } = await supabase
       .from('client_tags')
@@ -58,9 +59,8 @@ export async function autoTagClient(
     }
   }
 
-  // Event attendance tag
+  // Event attendance tag (Copper color)
   if (context.eventName) {
-    // Find or create event tag
     const tagName = context.eventName;
     let { data: eventTag } = await supabase
       .from('client_tags')
@@ -72,7 +72,7 @@ export async function autoTagClient(
     if (!eventTag) {
       const { data: created } = await supabase
         .from('client_tags')
-        .insert({ tenant_id: tenantId, name: tagName, color: '#7C3AED', auto_apply: false })
+        .insert({ tenant_id: tenantId, name: tagName, color: '#C07850', auto_apply: false })
         .select('id')
         .single();
       eventTag = created;
@@ -98,7 +98,7 @@ export async function autoTagClient(
     }
   }
 
-  // If it's a "repeat_client" scenario, remove "New Client" tag
+  // If repeat client, remove "New Client" tag
   if (totalSales >= 2) {
     const newClientTag = autoTags.find((t) => t.auto_apply_rule === 'new_client');
     if (newClientTag) {
@@ -116,5 +116,19 @@ export async function autoTagClient(
       .from('clients')
       .update({ last_visit_at: new Date().toISOString() })
       .eq('id', clientId);
+
+    // Queue workflow follow-up messages
+    try {
+      // Determine trigger type
+      const hasPrivatePartyTag = autoTags.some((t) => t.name === 'Private Party');
+      const triggerType = context.eventName
+        ? 'event_purchase'
+        : hasPrivatePartyTag
+          ? 'private_party_purchase'
+          : 'event_purchase'; // default to event purchase
+      await queueWorkflow(tenantId, clientId, triggerType);
+    } catch {
+      // Non-blocking — don't fail the auto-tag if workflow queueing fails
+    }
   }
 }

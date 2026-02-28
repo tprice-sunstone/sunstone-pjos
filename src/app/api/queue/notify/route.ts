@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
     const message = await client.messages.create({
-      body: `Hi ${name}! You're next at the ${tenantName || 'Sunstone'} booth. Please head over now! 💎`,
+      body: `Hi ${name}! You're next at the ${tenantName || 'Sunstone'} booth. Please head over now!`,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: phone,
     });

@@ -36,7 +36,6 @@ const sidebarItems: NavItem[] = [
   { href: '/dashboard/events',    label: 'Events',    icon: EventsIcon },
   { href: '/dashboard/pos',       label: 'POS',       icon: POSIcon },
   { href: '/dashboard/clients',   label: 'Clients',   icon: ClientsIcon },
-  { href: '/dashboard/broadcasts', label: 'Broadcasts', icon: BroadcastsIcon },
   { href: '/dashboard/inventory', label: 'Inventory',  icon: InventoryIcon },
   { href: '/dashboard/reports',   label: 'Reports',   icon: ReportsIcon },
   { href: '/dashboard/settings',  label: 'Settings',  icon: SettingsIcon, requirePermission: 'settings:manage' },
@@ -52,7 +51,6 @@ const phoneTabItems: NavItem[] = [
 
 /** More sheet items — items NOT on the phone tab bar */
 const moreSheetItems: NavItem[] = [
-  { href: '/dashboard/broadcasts', label: 'Broadcasts', icon: BroadcastsIcon },
   { href: '/dashboard/inventory', label: 'Inventory', icon: InventoryIcon },
   { href: '/dashboard/reports',   label: 'Reports',   icon: ReportsIcon },
   { href: '/dashboard/settings',  label: 'Settings',  icon: SettingsIcon, requirePermission: 'settings:manage' },

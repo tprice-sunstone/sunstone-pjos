@@ -1,13 +1,11 @@
 'use client';
 
 import { Button } from '@/components/ui';
-import { toast } from 'sonner';
 
 interface ClientsHeaderProps {
   clientCount: number;
   filteredCount: number;
   isFiltered: boolean;
-  waiverLink: string;
   canEdit: boolean;
   onAddClient: () => void;
 }
@@ -16,7 +14,6 @@ export default function ClientsHeader({
   clientCount,
   filteredCount,
   isFiltered,
-  waiverLink,
   canEdit,
   onAddClient,
 }: ClientsHeaderProps) {
@@ -28,23 +25,11 @@ export default function ClientsHeader({
           {isFiltered ? `${filteredCount} of ${clientCount} clients` : `${clientCount} clients`}
         </p>
       </div>
-      <div className="flex gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            navigator.clipboard.writeText(waiverLink);
-            toast.success('Waiver link copied');
-          }}
-        >
-          Copy Waiver Link
+      {canEdit && (
+        <Button variant="primary" onClick={onAddClient}>
+          + Add Client
         </Button>
-        {canEdit && (
-          <Button variant="primary" onClick={onAddClient}>
-            + Add Client
-          </Button>
-        )}
-      </div>
+      )}
     </div>
   );
 }

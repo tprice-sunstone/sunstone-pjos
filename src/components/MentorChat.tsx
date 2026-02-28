@@ -441,7 +441,7 @@ function EmptyState({ onSelectPrompt }: { onSelectPrompt: (text: string) => void
         className="text-lg font-semibold text-text-primary mb-1"
         style={{ fontFamily: 'var(--font-display, Fraunces, serif)' }}
       >
-        Hey there! I&apos;m Sunny ✨
+        Hey there! I&apos;m Sunny
       </h3>
       <p className="text-sm text-text-secondary mb-6 max-w-xs">
         Your permanent jewelry mentor. Ask me about welding, business, marketing, pricing — anything PJ!

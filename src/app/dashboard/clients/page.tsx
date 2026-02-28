@@ -32,6 +32,7 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [profileClientId, setProfileClientId] = useState<string | null>(null);
 
   // Tag state
@@ -39,15 +40,11 @@ export default function ClientsPage() {
   const [clientTagMap, setClientTagMap] = useState<ClientTagMap>({});
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [showTagManager, setShowTagManager] = useState(false);
-  const [tagDropdownClientId, setTagDropdownClientId] = useState<string | null>(null);
 
   // Segment state
   const [segments, setSegments] = useState<ClientSegment[]>([]);
   const [savingSegment, setSavingSegment] = useState(false);
   const [activeSegment, setActiveSegment] = useState<ClientSegment | null>(null);
-
-  // Bulk selection
-  const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
 
   // Subscription gating
   const isStarter = (() => {
@@ -157,44 +154,6 @@ export default function ClientsPage() {
     }
   };
 
-  const toggleClientTag = async (clientId: string, tagId: string) => {
-    const assigned = (clientTagMap[clientId] || []).includes(tagId);
-    if (assigned) {
-      await fetch(`/api/clients/${clientId}/tags`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tag_id: tagId }),
-      });
-    } else {
-      await fetch(`/api/clients/${clientId}/tags`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tag_id: tagId }),
-      });
-    }
-    setClientTagMap((prev) => {
-      const current = prev[clientId] || [];
-      return { ...prev, [clientId]: assigned ? current.filter((id) => id !== tagId) : [...current, tagId] };
-    });
-    fetchTags();
-  };
-
-  const bulkAssignTag = async (tagId: string) => {
-    const promises = Array.from(selectedClientIds).map((cid) => {
-      if ((clientTagMap[cid] || []).includes(tagId)) return Promise.resolve();
-      return fetch(`/api/clients/${cid}/tags`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tag_id: tagId }),
-      });
-    });
-    await Promise.all(promises);
-    toast.success(`Tagged ${selectedClientIds.size} clients`);
-    setSelectedClientIds(new Set());
-    fetchTagAssignments();
-    fetchTags();
-  };
-
   const handleAddClient = async (data: Partial<Client>) => {
     if (!tenant) return;
     const { error } = await supabase.from('clients').insert({ ...data, tenant_id: tenant.id });
@@ -204,24 +163,28 @@ export default function ClientsPage() {
     fetchClients();
   };
 
-  const waiverUrl = tenant
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/waiver?tenant=${tenant.slug}`
-    : '';
+  const handleEditClient = async (data: Partial<Client>) => {
+    if (!editingClient) return;
+    const { error } = await supabase.from('clients').update(data).eq('id', editingClient.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Client updated');
+    setEditingClient(null);
+    fetchClients();
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <ClientsHeader
         clientCount={clients.length}
         filteredCount={filteredClients.length}
         isFiltered={selectedTagIds.length > 0}
-        waiverLink={waiverUrl}
         canEdit={can('clients:edit')}
         onAddClient={() => setShowForm(true)}
       />
 
       {/* Search + Tag Filters */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <ClientSearch onSearch={setSearch} />
         {!isStarter && (
           <TagFilterChips
@@ -255,23 +218,9 @@ export default function ClientsPage() {
         clients={filteredClients}
         loading={loading}
         isStarter={isStarter}
-        canEdit={can('clients:edit')}
         tags={tags}
         clientTagMap={clientTagMap}
-        selectedClientIds={selectedClientIds}
-        tagDropdownClientId={tagDropdownClientId}
         hasFilters={!!search || selectedTagIds.length > 0}
-        onToggleSelect={(cid) => {
-          setSelectedClientIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(cid)) next.delete(cid); else next.add(cid);
-            return next;
-          });
-        }}
-        onClearSelection={() => setSelectedClientIds(new Set())}
-        onBulkAssignTag={bulkAssignTag}
-        onSetTagDropdown={setTagDropdownClientId}
-        onToggleClientTag={toggleClientTag}
         onOpenProfile={(client) => setProfileClientId(client.id)}
         onAddClient={() => setShowForm(true)}
       />
@@ -286,20 +235,22 @@ export default function ClientsPage() {
       )}
 
       {/* Client Profile Slide-in */}
-      {profileClientId && (
+      {profileClientId && tenant && (
         <ClientProfile
           clientId={profileClientId}
+          tenantId={tenant.id}
           onClose={() => setProfileClientId(null)}
-          onEdit={() => {}}
+          onEdit={(client) => { setProfileClientId(null); setEditingClient(client); }}
           onTagsChanged={() => { fetchTags(); fetchTagAssignments(); }}
         />
       )}
 
-      {/* Add Client Modal */}
-      {showForm && (
+      {/* Add/Edit Client Modal */}
+      {(showForm || editingClient) && (
         <ClientFormModal
-          onSave={handleAddClient}
-          onClose={() => setShowForm(false)}
+          client={editingClient}
+          onSave={editingClient ? handleEditClient : handleAddClient}
+          onClose={() => { setShowForm(false); setEditingClient(null); }}
         />
       )}
 

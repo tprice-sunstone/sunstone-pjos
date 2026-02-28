@@ -348,7 +348,7 @@ export default function ChainProductPicker({
           {/* No Products Configured (per-product mode only) */}
           {hasNoProducts && (
             <div className="p-6 text-center">
-              <div className="text-4xl mb-3">⚠️</div>
+              <div className="text-text-tertiary mb-3"><svg className="w-10 h-10 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg></div>
               <p className="text-[var(--text-primary)] font-medium mb-1">
                 No products configured
               </p>
@@ -402,7 +402,7 @@ export default function ChainProductPicker({
                 className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl hover:bg-[var(--surface-raised)] active:bg-[var(--surface-sunken)] transition-colors group"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-xl">✏️</span>
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" /></svg>
                   <span className="text-[var(--text-secondary)] font-medium">
                     Custom
                   </span>

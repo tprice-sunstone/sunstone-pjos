@@ -70,9 +70,9 @@ export async function POST(request: NextRequest) {
     // Build message
     let message: string;
     if (position === 1) {
-      message = `Hi ${firstName}! You're checked in and next up! We'll text you the moment we're ready for you. 💍`;
+      message = `Hi ${firstName}! You're checked in and next up! We'll text you the moment we're ready for you.`;
     } else {
-      message = `Hi ${firstName}! You're checked in and #${position} in line. Estimated wait: about ${estimatedWait} minutes. We'll text you when it's your turn! 💍`;
+      message = `Hi ${firstName}! You're checked in and #${position} in line. Estimated wait: about ${estimatedWait} minutes. We'll text you when it's your turn!`;
     }
 
     // Only send if Twilio is configured

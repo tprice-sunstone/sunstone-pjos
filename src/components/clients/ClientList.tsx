@@ -17,17 +17,11 @@ interface ClientListProps {
   clients: Client[];
   loading: boolean;
   isStarter: boolean;
-  canEdit: boolean;
   tags: TagWithCount[];
   clientTagMap: ClientTagMap;
-  selectedClientIds: Set<string>;
-  tagDropdownClientId: string | null;
+  clientSpendMap?: Record<string, number>;
+  suggestionClientIds?: Set<string>;
   hasFilters: boolean;
-  onToggleSelect: (clientId: string) => void;
-  onClearSelection: () => void;
-  onBulkAssignTag: (tagId: string) => void;
-  onSetTagDropdown: (clientId: string | null) => void;
-  onToggleClientTag: (clientId: string, tagId: string) => void;
   onOpenProfile: (client: Client) => void;
   onAddClient: () => void;
 }
@@ -36,23 +30,16 @@ export default function ClientList({
   clients,
   loading,
   isStarter,
-  canEdit,
   tags,
   clientTagMap,
-  selectedClientIds,
-  tagDropdownClientId,
+  clientSpendMap,
+  suggestionClientIds,
   hasFilters,
-  onToggleSelect,
-  onClearSelection,
-  onBulkAssignTag,
-  onSetTagDropdown,
-  onToggleClientTag,
   onOpenProfile,
   onAddClient,
 }: ClientListProps) {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortAsc, setSortAsc] = useState(true);
-  const [showBulkTagDropdown, setShowBulkTagDropdown] = useState(false);
 
   const getTag = (id: string) => tags.find((t) => t.id === id);
 
@@ -93,7 +80,7 @@ export default function ClientList({
             <p className="text-[var(--text-tertiary)] mb-4">
               {hasFilters ? 'No clients found' : 'No clients yet'}
             </p>
-            {!hasFilters && canEdit && (
+            {!hasFilters && (
               <Button variant="primary" onClick={onAddClient}>
                 Add Your First Client
               </Button>
@@ -105,45 +92,10 @@ export default function ClientList({
   }
 
   return (
-    <div className="space-y-3">
-      {/* Bulk actions bar */}
-      {!isStarter && selectedClientIds.size > 0 && (
-        <div className="flex items-center gap-3 bg-[var(--surface-subtle)] border border-[var(--border-default)] rounded-xl px-4 py-3">
-          <span className="text-sm text-[var(--text-secondary)]">{selectedClientIds.size} selected</span>
-          <div className="relative">
-            <Button variant="secondary" size="sm" onClick={() => setShowBulkTagDropdown(!showBulkTagDropdown)}>
-              Add Tag
-            </Button>
-            {showBulkTagDropdown && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowBulkTagDropdown(false)} />
-                <div className="absolute left-0 top-full mt-1 bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl shadow-lg z-20 min-w-[180px] py-1">
-                  {tags.map((tag) => (
-                    <button
-                      key={tag.id}
-                      onClick={() => { onBulkAssignTag(tag.id); setShowBulkTagDropdown(false); }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-[var(--surface-subtle)]"
-                    >
-                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
-                      {tag.name}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-          <button
-            onClick={onClearSelection}
-            className="text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] ml-auto"
-          >
-            Deselect all
-          </button>
-        </div>
-      )}
-
+    <div>
       {/* Sort controls */}
-      <div className="flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
-        <span>Sort by:</span>
+      <div className="flex items-center gap-3 text-[10px] text-[var(--text-tertiary)] mb-2">
+        <span>Sort:</span>
         {([
           { field: 'name' as SortField, label: 'Name' },
           { field: 'last_visit' as SortField, label: 'Last Visit' },
@@ -152,7 +104,7 @@ export default function ClientList({
           <button
             key={field}
             onClick={() => handleSort(field)}
-            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+            className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
               sortField === field
                 ? 'text-[var(--text-primary)] bg-[var(--surface-subtle)]'
                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
@@ -167,7 +119,7 @@ export default function ClientList({
       </div>
 
       {/* Client cards */}
-      <div className="grid gap-2">
+      <div>
         {sortedClients.map((client) => {
           const clientTagIds = clientTagMap[client.id] || [];
           const clientTags = clientTagIds.map(getTag).filter(Boolean) as TagWithCount[];
@@ -177,14 +129,8 @@ export default function ClientList({
               client={client}
               clientTags={clientTags}
               isStarter={isStarter}
-              canEdit={canEdit}
-              isSelected={selectedClientIds.has(client.id)}
-              allTags={tags}
-              clientTagIds={clientTagIds}
-              showTagDropdown={tagDropdownClientId === client.id}
-              onSelect={() => onToggleSelect(client.id)}
-              onToggleTagDropdown={() => onSetTagDropdown(tagDropdownClientId === client.id ? null : client.id)}
-              onToggleClientTag={(tagId) => onToggleClientTag(client.id, tagId)}
+              totalSpent={clientSpendMap?.[client.id]}
+              hasSuggestion={suggestionClientIds?.has(client.id)}
               onOpenProfile={() => onOpenProfile(client)}
             />
           );

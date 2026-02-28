@@ -295,7 +295,7 @@ function EventModePageInner() {
     const lowStockWarnings = getLowStockWarnings(resolutions, jumpRingInventory);
 
     for (const warning of lowStockWarnings) {
-      toast.warning(`⚠ Low jump ring stock: ${warning}`, { duration: 6000 });
+      toast.warning(`Low jump ring stock: ${warning}`, { duration: 6000 });
     }
 
     if (unresolvedItems.length > 0) {

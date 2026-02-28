@@ -1,7 +1,7 @@
 // ============================================================================
-// Tag Color Palette — theme-independent fixed colors
+// Tag Color Palette — luxury, theme-independent fixed colors
 // ============================================================================
-// Each entry has an rgba background (12% opacity) and a hex text color.
+// 10-color palette with rgba backgrounds (15% opacity) and hex text colors.
 // These look good on both light and dark themes.
 
 export interface TagColor {
@@ -11,23 +11,21 @@ export interface TagColor {
 }
 
 export const TAG_PALETTE: TagColor[] = [
-  { bg: 'rgba(100, 116, 139, 0.12)', text: '#64748B', label: 'Slate' },
-  { bg: 'rgba(220, 38, 38, 0.12)',   text: '#DC2626', label: 'Red' },
-  { bg: 'rgba(234, 88, 12, 0.12)',   text: '#EA580C', label: 'Orange' },
-  { bg: 'rgba(217, 119, 6, 0.12)',   text: '#D97706', label: 'Amber' },
-  { bg: 'rgba(5, 150, 105, 0.12)',   text: '#059669', label: 'Green' },
-  { bg: 'rgba(13, 148, 136, 0.12)',  text: '#0D9488', label: 'Teal' },
-  { bg: 'rgba(37, 99, 235, 0.12)',   text: '#2563EB', label: 'Blue' },
-  { bg: 'rgba(99, 102, 241, 0.12)',  text: '#6366F1', label: 'Indigo' },
-  { bg: 'rgba(124, 58, 237, 0.12)',  text: '#7C3AED', label: 'Purple' },
-  { bg: 'rgba(236, 72, 153, 0.12)',  text: '#EC4899', label: 'Pink' },
-  { bg: 'rgba(244, 63, 94, 0.12)',   text: '#F43F5E', label: 'Rose' },
-  { bg: 'rgba(20, 184, 166, 0.12)',  text: '#14B8A6', label: 'Cyan' },
+  { bg: 'rgba(201, 169, 110, 0.15)', text: '#C9A96E', label: 'Gold' },
+  { bg: 'rgba(183, 110, 121, 0.15)', text: '#B76E79', label: 'Rose' },
+  { bg: 'rgba(125, 142, 110, 0.15)', text: '#7D8E6E', label: 'Sage' },
+  { bg: 'rgba(107, 127, 153, 0.15)', text: '#6B7F99', label: 'Blue' },
+  { bg: 'rgba(156, 139, 122, 0.15)', text: '#9C8B7A', label: 'Taupe' },
+  { bg: 'rgba(192, 120, 80, 0.15)',  text: '#C07850', label: 'Copper' },
+  { bg: 'rgba(139, 110, 127, 0.15)', text: '#8B6E7F', label: 'Plum' },
+  { bg: 'rgba(122, 139, 140, 0.15)', text: '#7A8B8C', label: 'Slate' },
+  { bg: 'rgba(212, 160, 167, 0.15)', text: '#D4A0A7', label: 'Blush' },
+  { bg: 'rgba(92, 92, 92, 0.15)',    text: '#5C5C5C', label: 'Charcoal' },
 ];
 
 /**
  * Get the tag color entry for a given hex color.
- * Falls back to computing an rgba bg from the hex with 12% opacity.
+ * Falls back to computing an rgba bg from the hex with 15% opacity.
  */
 export function getTagColor(hex: string): { bg: string; text: string } {
   const match = TAG_PALETTE.find((p) => p.text.toLowerCase() === hex.toLowerCase());
@@ -36,5 +34,5 @@ export function getTagColor(hex: string): { bg: string; text: string } {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  return { bg: `rgba(${r}, ${g}, ${b}, 0.12)`, text: hex };
+  return { bg: `rgba(${r}, ${g}, ${b}, 0.15)`, text: hex };
 }

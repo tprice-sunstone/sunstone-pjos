@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import type { Client } from '@/types';
 
 interface Suggestion {
   client_id: string;
   client_name: string;
   initials: string;
   suggestion: string;
-  type: 'lapsed' | 'birthday' | 'new_lead' | 'event_follow_up';
+  type: 'lapsed' | 'birthday' | 'new_lead' | 'event_follow_up' | 'workflow';
+  workflow_queue_id?: string;
+  message_preview?: string;
+  template_description?: string;
 }
 
 interface NeedsAttentionProps {
@@ -24,8 +26,43 @@ export default function NeedsAttention({ tenantId, onOpenProfile, onSendMessage 
 
   const fetchSuggestions = useCallback(async () => {
     try {
-      const res = await fetch(`/api/clients/suggestions?tenantId=${tenantId}`);
-      if (res.ok) setSuggestions(await res.json());
+      // Fetch AI suggestions and workflow queue items in parallel
+      const [suggestionsRes, workflowRes] = await Promise.all([
+        fetch(`/api/clients/suggestions?tenantId=${tenantId}`),
+        fetch(`/api/clients/workflow-queue?tenantId=${tenantId}&status=ready`).catch(() => null),
+      ]);
+
+      const aiSuggestions: Suggestion[] = suggestionsRes.ok ? await suggestionsRes.json() : [];
+
+      // Add workflow items if available
+      let workflowItems: Suggestion[] = [];
+      if (workflowRes?.ok) {
+        const wfData = await workflowRes.json();
+        workflowItems = (wfData.ready || []).map((item: any) => ({
+          client_id: item.client_id,
+          client_name: item.client_name || 'Client',
+          initials: item.client_initials || '??',
+          suggestion: item.description || item.template_name,
+          type: 'workflow' as const,
+          workflow_queue_id: item.id,
+          message_preview: item.message_body?.slice(0, 60),
+          template_description: item.description,
+        }));
+      }
+
+      // Merge: workflow items first (they're actionable), then AI suggestions
+      const merged = [...workflowItems, ...aiSuggestions];
+      // Deduplicate by client_id (keep first occurrence)
+      const seen = new Set<string>();
+      const deduped: Suggestion[] = [];
+      for (const s of merged) {
+        const key = s.workflow_queue_id || s.client_id;
+        if (!seen.has(key)) {
+          seen.add(key);
+          deduped.push(s);
+        }
+      }
+      setSuggestions(deduped.slice(0, 5));
     } catch {
       // silent
     } finally {
@@ -35,55 +72,89 @@ export default function NeedsAttention({ tenantId, onOpenProfile, onSendMessage 
 
   useEffect(() => { fetchSuggestions(); }, [fetchSuggestions]);
 
+  const handleWorkflowAction = async (queueId: string, action: 'send' | 'skip') => {
+    try {
+      const method = action === 'send' ? 'POST' : 'PATCH';
+      const res = await fetch('/api/clients/workflow-queue', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queue_id: queueId }),
+      });
+      if (res.ok) {
+        setSuggestions((prev) => prev.filter((s) => s.workflow_queue_id !== queueId));
+      }
+    } catch {
+      // silent
+    }
+  };
+
   if (loading || suggestions.length === 0) return null;
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-[var(--text-primary)]">Needs Your Attention</h2>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
+          Needs Your Attention
+        </span>
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+          className="text-[11px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
         >
           {collapsed ? 'Show' : 'Hide'}
         </button>
       </div>
 
       {!collapsed && (
-        <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
-          {suggestions.map((s) => (
+        <div className="border border-[var(--border-subtle)] rounded-xl overflow-hidden">
+          {suggestions.map((s, i) => (
             <div
-              key={s.client_id}
-              className="flex-shrink-0 w-[220px] bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-4 space-y-3"
+              key={s.workflow_queue_id || s.client_id}
+              className={`flex items-center gap-3 px-3 py-2.5 ${
+                i < suggestions.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''
+              }`}
             >
-              {/* Avatar + name */}
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-[var(--surface-subtle)] flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-medium text-[var(--text-secondary)]">{s.initials}</span>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-[var(--text-primary)] truncate">{s.client_name}</p>
-                </div>
+              {/* Avatar */}
+              <div className="w-8 h-8 rounded-full bg-[var(--accent-muted)] flex items-center justify-center flex-shrink-0">
+                <span className="text-[11px] font-semibold" style={{ color: 'var(--accent-primary)' }}>
+                  {s.initials}
+                </span>
               </div>
 
-              {/* Suggestion text */}
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{s.suggestion}</p>
+              {/* Name + reason */}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-[var(--text-primary)] truncate">{s.client_name}</p>
+                <p className="text-[11px] text-[var(--text-secondary)] truncate">
+                  {s.type === 'workflow' ? (s.template_description || s.suggestion) : s.suggestion}
+                </p>
+              </div>
 
-              {/* Quick actions */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => onOpenProfile(s.client_id)}
-                  className="flex-1 text-[10px] font-medium py-1.5 rounded-lg bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                >
-                  View
-                </button>
-                <button
-                  onClick={() => onSendMessage(s.client_id)}
-                  className="flex-1 text-[10px] font-medium py-1.5 rounded-lg text-white transition-colors"
-                  style={{ backgroundColor: 'var(--accent-primary)' }}
-                >
-                  Message
-                </button>
+              {/* Action buttons */}
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {s.type === 'workflow' ? (
+                  <>
+                    <button
+                      onClick={() => handleWorkflowAction(s.workflow_queue_id!, 'send')}
+                      className="text-[10px] font-semibold px-3 py-1 rounded-md transition-colors"
+                      style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
+                    >
+                      Send
+                    </button>
+                    <button
+                      onClick={() => handleWorkflowAction(s.workflow_queue_id!, 'skip')}
+                      className="text-[10px] font-semibold px-2 py-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                    >
+                      Skip
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => onSendMessage(s.client_id)}
+                    className="text-[10px] font-semibold px-3 py-1 rounded-md transition-colors"
+                    style={{ backgroundColor: 'var(--accent-primary)', color: '#fff' }}
+                  >
+                    Reach Out
+                  </button>
+                )}
               </div>
             </div>
           ))}

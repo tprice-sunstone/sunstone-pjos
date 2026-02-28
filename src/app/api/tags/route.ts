@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 const DEFAULT_TAGS = [
-  { name: 'VIP', color: '#D97706', auto_apply: false, auto_apply_rule: null },
-  { name: 'Repeat Customer', color: '#059669', auto_apply: false, auto_apply_rule: null },
-  { name: 'Bridal Party', color: '#EC4899', auto_apply: false, auto_apply_rule: null },
-  { name: 'First Timer', color: '#2563EB', auto_apply: false, auto_apply_rule: null },
-  { name: 'Event Lead', color: '#7C3AED', auto_apply: false, auto_apply_rule: null },
-  // Auto-tags (seeded with auto_apply: true)
-  { name: 'New Client', color: '#6366F1', auto_apply: true, auto_apply_rule: 'new_client' },
-  { name: 'Repeat Client', color: '#059669', auto_apply: true, auto_apply_rule: 'repeat_client' },
+  // Auto-applied tags (system handles automatically)
+  { name: 'New Client', color: '#6B7F99', auto_apply: true, auto_apply_rule: 'new_client' },
+  { name: 'Repeat Client', color: '#9C8B7A', auto_apply: true, auto_apply_rule: 'repeat_client' },
+  // Manual tags (artist applies)
+  { name: 'VIP', color: '#C9A96E', auto_apply: false, auto_apply_rule: null },
+  { name: 'Girls Night', color: '#B76E79', auto_apply: false, auto_apply_rule: null },
+  { name: 'Private Party', color: '#8B6E7F', auto_apply: false, auto_apply_rule: null },
+  { name: 'Referral Source', color: '#7D8E6E', auto_apply: false, auto_apply_rule: null },
 ];
 
 export async function GET(request: NextRequest) {
@@ -53,6 +53,8 @@ export async function GET(request: NextRequest) {
     tenant_id: tag.tenant_id,
     name: tag.name,
     color: tag.color,
+    auto_apply: tag.auto_apply ?? false,
+    auto_apply_rule: tag.auto_apply_rule ?? null,
     created_at: tag.created_at,
     usage_count: tag.client_tag_assignments?.[0]?.count ?? 0,
   }));
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
     .insert({
       tenant_id,
       name: name.trim(),
-      color: color || '#6B7280',
+      color: color || '#7A8B8C',
     })
     .select()
     .single();

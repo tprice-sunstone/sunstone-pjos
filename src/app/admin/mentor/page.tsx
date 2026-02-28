@@ -226,7 +226,7 @@ function GapsTab({
   if (gaps.length === 0) {
     return (
       <div className="bg-[var(--surface-raised)] rounded-lg border border-[var(--border-default)] p-8 text-center">
-        <p className="text-[var(--text-secondary)] text-sm">No pending knowledge gaps — Sunny's doing great! ✨</p>
+        <p className="text-[var(--text-secondary)] text-sm">No pending knowledge gaps — Sunny's doing great!</p>
       </div>
     );
   }

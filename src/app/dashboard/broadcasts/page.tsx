@@ -55,7 +55,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   booking: '#0D9488',
 };
 
-type Tab = 'activity' | 'new' | 'templates';
+type Tab = 'activity' | 'new' | 'templates' | 'workflows';
 
 export default function BroadcastsPage() {
   return (
@@ -82,7 +82,7 @@ function BroadcastsContent() {
 
   // Sync tab with URL
   useEffect(() => {
-    if (tabParam && ['activity', 'new', 'templates'].includes(tabParam)) {
+    if (tabParam && ['activity', 'new', 'templates', 'workflows'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [tabParam]);
@@ -115,16 +115,17 @@ function BroadcastsContent() {
       {/* Header + Tab Bar */}
       <div>
         <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Broadcasts</h1>
-        <div className="flex gap-1 mt-4 bg-[var(--surface-subtle)] rounded-xl p-1 max-w-md">
+        <div className="flex gap-1 mt-4 bg-[var(--surface-subtle)] rounded-xl p-1 max-w-xl overflow-x-auto">
           {([
             { key: 'activity' as Tab, label: 'Activity' },
             { key: 'new' as Tab, label: 'New Broadcast' },
             { key: 'templates' as Tab, label: 'Templates' },
+            { key: 'workflows' as Tab, label: 'Workflows' },
           ]).map(({ key, label }) => (
             <button
               key={key}
               onClick={() => switchTab(key)}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
                 activeTab === key
                   ? 'bg-[var(--surface-raised)] text-[var(--text-primary)] shadow-sm'
                   : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
@@ -154,6 +155,9 @@ function BroadcastsContent() {
           tenantName={tenant.name}
           tenantPhone={tenant.phone || ''}
         />
+      )}
+      {activeTab === 'workflows' && tenant && (
+        <WorkflowsTab tenantId={tenant.id} />
       )}
     </div>
   );
@@ -900,6 +904,496 @@ function TemplateEditor({
         <Button variant="secondary" onClick={onClose}>Cancel</Button>
         <Button variant="primary" onClick={handleSave} loading={saving}>{isEditing ? 'Save Changes' : 'Create Template'}</Button>
       </ModalFooter>
+    </Modal>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Workflows Tab
+// ══════════════════════════════════════════════════════════════════════════════
+
+interface WorkflowTemplate {
+  id: string;
+  name: string;
+  trigger_type: string;
+  is_active: boolean;
+  created_at: string;
+  steps: WorkflowStep[];
+}
+
+interface WorkflowStep {
+  id: string;
+  step_order: number;
+  delay_hours: number;
+  channel: string;
+  template_name: string;
+  description: string;
+}
+
+const TRIGGER_LABELS: Record<string, string> = {
+  event_purchase: 'Event Purchase',
+  private_party_purchase: 'Private Party Purchase',
+  new_client: 'New Client',
+  repeat_client: 'Repeat Client',
+};
+
+function WorkflowsTab({ tenantId }: { tenantId: string }) {
+  const [workflows, setWorkflows] = useState<WorkflowTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingWorkflow, setEditingWorkflow] = useState<WorkflowTemplate | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+
+  const fetchWorkflows = useCallback(async () => {
+    const res = await fetch(`/api/workflows?tenantId=${tenantId}`);
+    if (res.ok) {
+      const data = await res.json();
+      setWorkflows(data);
+    }
+    setLoading(false);
+  }, [tenantId]);
+
+  useEffect(() => { fetchWorkflows(); }, [fetchWorkflows]);
+
+  const toggleActive = async (wf: WorkflowTemplate) => {
+    const res = await fetch('/api/workflows', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: wf.id, is_active: !wf.is_active }),
+    });
+    if (res.ok) {
+      setWorkflows((prev) =>
+        prev.map((w) => (w.id === wf.id ? { ...w, is_active: !w.is_active } : w))
+      );
+      toast.success(`Workflow ${wf.is_active ? 'paused' : 'activated'}`);
+    }
+  };
+
+  const handleDelete = async (wf: WorkflowTemplate) => {
+    const res = await fetch(`/api/workflows?id=${wf.id}`, { method: 'DELETE' });
+    if (res.ok) {
+      setWorkflows((prev) => prev.filter((w) => w.id !== wf.id));
+      toast.success('Workflow deleted');
+    }
+  };
+
+  const formatDelay = (hours: number): string => {
+    if (hours === 0) return 'Immediately';
+    if (hours < 24) return `${hours}h after`;
+    const days = Math.floor(hours / 24);
+    const remaining = hours % 24;
+    if (remaining === 0) return `${days}d after`;
+    return `${days}d ${remaining}h after`;
+  };
+
+  if (loading) {
+    return <div className="text-[var(--text-tertiary)] py-12 text-center">Loading...</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-[var(--text-secondary)]">
+          Automated follow-up sequences triggered by client actions
+        </p>
+        <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
+          + New Workflow
+        </Button>
+      </div>
+
+      {workflows.length === 0 && (
+        <Card padding="lg">
+          <CardContent>
+            <div className="text-center py-12">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[var(--surface-subtle)] flex items-center justify-center">
+                <svg className="w-6 h-6 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+                </svg>
+              </div>
+              <p className="text-[var(--text-secondary)] font-medium mb-1">No workflows yet</p>
+              <p className="text-[var(--text-tertiary)] text-sm mb-4">
+                Create automated follow-up sequences for your clients
+              </p>
+              <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
+                Create First Workflow
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {workflows.map((wf) => {
+        const isExpanded = expandedId === wf.id;
+        return (
+          <Card key={wf.id} padding="none">
+            <div className="p-4">
+              <div className="flex items-center gap-3">
+                {/* Active toggle */}
+                <button
+                  onClick={() => toggleActive(wf)}
+                  className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${
+                    wf.is_active ? 'bg-[var(--accent-primary)]' : 'bg-[var(--surface-subtle)]'
+                  }`}
+                  title={wf.is_active ? 'Pause workflow' : 'Activate workflow'}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                      wf.is_active ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+
+                {/* Workflow info */}
+                <button
+                  className="flex-1 text-left min-w-0"
+                  onClick={() => setExpandedId(isExpanded ? null : wf.id)}
+                >
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="font-medium text-sm text-[var(--text-primary)] truncate">
+                      {wf.name}
+                    </h3>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                      wf.is_active
+                        ? 'bg-success-100 text-success-600'
+                        : 'bg-[var(--surface-subtle)] text-[var(--text-tertiary)]'
+                    }`}>
+                      {wf.is_active ? 'Active' : 'Paused'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
+                    <span>Trigger: {TRIGGER_LABELS[wf.trigger_type] || wf.trigger_type}</span>
+                    <span>·</span>
+                    <span>{wf.steps?.length || 0} steps</span>
+                  </div>
+                </button>
+
+                {/* Actions */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => setEditingWorkflow(wf)}
+                    className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] transition-colors"
+                    title="Edit workflow"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : wf.id)}
+                    className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] transition-colors"
+                  >
+                    <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Expanded steps */}
+              {isExpanded && wf.steps && wf.steps.length > 0 && (
+                <div className="mt-4 pl-13 space-y-0">
+                  {[...wf.steps]
+                    .sort((a, b) => a.step_order - b.step_order)
+                    .map((step, idx) => (
+                    <div key={step.id} className="flex items-start gap-3 relative">
+                      {/* Vertical connector */}
+                      {idx < wf.steps.length - 1 && (
+                        <div className="absolute left-[11px] top-6 bottom-0 w-px bg-[var(--border-default)]" />
+                      )}
+                      {/* Step dot */}
+                      <div className="w-6 h-6 rounded-full border-2 border-[var(--accent-primary)] bg-[var(--surface-base)] flex items-center justify-center flex-shrink-0 z-10">
+                        <span className="text-[10px] font-bold text-[var(--accent-primary)]">{step.step_order}</span>
+                      </div>
+                      {/* Step content */}
+                      <div className="flex-1 pb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-[var(--text-primary)]">
+                            {step.template_name}
+                          </span>
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[var(--surface-subtle)] text-[var(--text-tertiary)] uppercase">
+                            {step.channel}
+                          </span>
+                        </div>
+                        <div className="text-xs text-[var(--text-tertiary)] mt-0.5">
+                          {formatDelay(step.delay_hours)}
+                          {step.description && ` — ${step.description}`}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {isExpanded && (!wf.steps || wf.steps.length === 0) && (
+                <div className="mt-4 pl-13 text-sm text-[var(--text-tertiary)]">
+                  No steps configured. Edit this workflow to add steps.
+                </div>
+              )}
+            </div>
+          </Card>
+        );
+      })}
+
+      {/* Create / Edit Workflow Modal */}
+      {(showCreate || editingWorkflow) && (
+        <WorkflowEditorModal
+          workflow={editingWorkflow}
+          tenantId={tenantId}
+          onClose={() => { setShowCreate(false); setEditingWorkflow(null); }}
+          onSaved={() => { setShowCreate(false); setEditingWorkflow(null); fetchWorkflows(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Workflow Editor Modal ────────────────────────────────────────────────────
+
+interface StepDraft {
+  delay_hours: number;
+  channel: string;
+  template_name: string;
+  description: string;
+}
+
+function WorkflowEditorModal({
+  workflow,
+  tenantId,
+  onClose,
+  onSaved,
+}: {
+  workflow: WorkflowTemplate | null;
+  tenantId: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isEditing = !!workflow;
+  const [name, setName] = useState(workflow?.name || '');
+  const [triggerType, setTriggerType] = useState(workflow?.trigger_type || 'event_purchase');
+  const [steps, setSteps] = useState<StepDraft[]>(
+    workflow?.steps
+      ?.sort((a, b) => a.step_order - b.step_order)
+      .map((s) => ({
+        delay_hours: s.delay_hours,
+        channel: s.channel,
+        template_name: s.template_name,
+        description: s.description,
+      })) || [{ delay_hours: 0, channel: 'sms', template_name: '', description: '' }]
+  );
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const addStep = () => {
+    const lastDelay = steps.length > 0 ? steps[steps.length - 1].delay_hours : 0;
+    setSteps([...steps, { delay_hours: lastDelay + 24, channel: 'sms', template_name: '', description: '' }]);
+  };
+
+  const removeStep = (idx: number) => {
+    setSteps(steps.filter((_, i) => i !== idx));
+  };
+
+  const updateStep = (idx: number, field: keyof StepDraft, value: any) => {
+    setSteps(steps.map((s, i) => (i === idx ? { ...s, [field]: value } : s)));
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) { toast.error('Workflow name is required'); return; }
+    if (steps.length === 0) { toast.error('Add at least one step'); return; }
+    if (steps.some((s) => !s.template_name.trim())) { toast.error('All steps need a template name'); return; }
+
+    setSaving(true);
+    const url = '/api/workflows';
+    const method = isEditing ? 'PATCH' : 'POST';
+    const body = isEditing
+      ? { id: workflow!.id, name, trigger_type: triggerType, steps }
+      : { tenantId, name, trigger_type: triggerType, steps };
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    setSaving(false);
+    if (res.ok) {
+      toast.success(isEditing ? 'Workflow updated' : 'Workflow created');
+      onSaved();
+    } else {
+      toast.error('Failed to save workflow');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!workflow) return;
+    const res = await fetch(`/api/workflows?id=${workflow.id}`, { method: 'DELETE' });
+    if (res.ok) {
+      toast.success('Workflow deleted');
+      onSaved();
+    } else {
+      toast.error('Failed to delete');
+    }
+  };
+
+  return (
+    <Modal isOpen={true} onClose={onClose} size="lg">
+      <ModalHeader>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+          {isEditing ? 'Edit Workflow' : 'New Workflow'}
+        </h2>
+      </ModalHeader>
+      <ModalBody>
+        <div className="space-y-4">
+          {/* Name */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
+              Workflow Name
+            </label>
+            <Input
+              value={name}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+              placeholder="e.g., Event Follow-Up Sequence"
+            />
+          </div>
+
+          {/* Trigger Type */}
+          <div>
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
+              Trigger
+            </label>
+            <select
+              value={triggerType}
+              onChange={(e) => setTriggerType(e.target.value)}
+              className="w-full px-3 py-2.5 text-sm border border-[var(--border-default)] rounded-lg bg-[var(--surface-raised)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-subtle)]"
+            >
+              <option value="event_purchase">Event Purchase</option>
+              <option value="private_party_purchase">Private Party Purchase</option>
+              <option value="new_client">New Client</option>
+              <option value="repeat_client">Repeat Client</option>
+            </select>
+          </div>
+
+          {/* Steps */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-[var(--text-secondary)]">
+                Steps ({steps.length})
+              </label>
+              <button
+                onClick={addStep}
+                className="text-xs font-medium text-[var(--accent-primary)] hover:underline"
+              >
+                + Add Step
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {steps.map((step, idx) => (
+                <div
+                  key={idx}
+                  className="border border-[var(--border-default)] rounded-lg p-3 bg-[var(--surface-subtle)] space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-[var(--text-tertiary)] uppercase">
+                      Step {idx + 1}
+                    </span>
+                    {steps.length > 1 && (
+                      <button
+                        onClick={() => removeStep(idx)}
+                        className="text-xs text-error-600 hover:underline"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] text-[var(--text-tertiary)] mb-1">
+                        Template Name
+                      </label>
+                      <Input
+                        value={step.template_name}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          updateStep(idx, 'template_name', e.target.value)
+                        }
+                        placeholder="e.g., Welcome New Client"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-[var(--text-tertiary)] mb-1">
+                        Delay (hours)
+                      </label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={step.delay_hours}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          updateStep(idx, 'delay_hours', parseInt(e.target.value) || 0)
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] text-[var(--text-tertiary)] mb-1">
+                        Channel
+                      </label>
+                      <select
+                        value={step.channel}
+                        onChange={(e) => updateStep(idx, 'channel', e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-[var(--border-default)] rounded-lg bg-[var(--surface-raised)] text-[var(--text-primary)] focus:outline-none"
+                      >
+                        <option value="sms">SMS</option>
+                        <option value="email">Email</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-[var(--text-tertiary)] mb-1">
+                        Description
+                      </label>
+                      <Input
+                        value={step.description}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          updateStep(idx, 'description', e.target.value)
+                        }
+                        placeholder="e.g., Thank you message"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </ModalBody>
+      <ModalFooter>
+        {isEditing && (
+          <Button variant="danger" onClick={() => setConfirmDelete(true)}>Delete</Button>
+        )}
+        <div className="flex-1" />
+        <Button variant="secondary" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={handleSave} loading={saving}>
+          {isEditing ? 'Save Changes' : 'Create Workflow'}
+        </Button>
+      </ModalFooter>
+
+      {confirmDelete && (
+        <Modal isOpen={true} onClose={() => setConfirmDelete(false)} size="sm">
+          <ModalHeader>
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Delete Workflow</h2>
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Are you sure you want to delete &quot;{workflow?.name}&quot;? This will also remove all queued messages for this workflow.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            <Button variant="danger" onClick={handleDelete}>Delete</Button>
+          </ModalFooter>
+        </Modal>
+      )}
     </Modal>
   );
 }
