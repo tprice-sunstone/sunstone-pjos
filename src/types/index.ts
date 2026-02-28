@@ -271,6 +271,8 @@ export interface Client {
   email: string | null;
   phone: string | null;
   notes: string | null;
+  birthday: string | null;
+  last_visit_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -323,6 +325,8 @@ export interface ClientTag {
   tenant_id: string;
   name: string;
   color: string;
+  auto_apply: boolean;
+  auto_apply_rule: string | null;
   created_at: string;
 }
 

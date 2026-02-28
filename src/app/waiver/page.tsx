@@ -276,6 +276,15 @@ function WaiverPageInner() {
         }).catch(() => {}); // silent — don't fail the waiver flow
       }
 
+      // Fire-and-forget auto-tagging
+      if (clientId) {
+        fetch('/api/clients/auto-tag', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId, type: 'waiver' }),
+        }).catch(() => {});
+      }
+
       setStep('done');
     } catch (err: any) {
       setError(err?.message || 'Something went wrong');

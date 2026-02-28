@@ -1,0 +1,9 @@
+export { default as ClientsHeader } from './ClientsHeader';
+export { default as ClientSearch } from './ClientSearch';
+export { default as TagFilterChips } from './TagFilterChips';
+export { default as ClientCard } from './ClientCard';
+export { default as ClientList } from './ClientList';
+export { default as ClientProfile } from './ClientProfile';
+export { default as ClientFormModal } from './ClientFormModal';
+export { default as TagManagerModal } from './TagManagerModal';
+export { default as NeedsAttention } from './NeedsAttention';

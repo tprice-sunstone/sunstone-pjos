@@ -388,6 +388,16 @@ function EventModePageInner() {
 
       setTodaySales((s) => ({ count: s.count + 1, total: s.total + cart.total }));
       toast.success(`Sale completed — $${cart.total.toFixed(2)}`);
+
+      // Fire-and-forget auto-tagging
+      if (clientId) {
+        fetch('/api/clients/auto-tag', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId, type: 'sale', eventId, eventName: event?.name }),
+        }).catch(() => {});
+      }
+
       setCompletedSale(saleData); cart.reset(); setShowCart(false);
       setEmailSent(false); setSmsSent(false); setEmailError(''); setSmsError('');
       setJumpRingResolutions([]);

@@ -267,6 +267,15 @@ export default function StoreModePage() {
       setQueueRefresh((n) => n + 1);
       toast.success('Sale completed');
 
+      // Fire-and-forget auto-tagging
+      if (cart.client_id) {
+        fetch('/api/clients/auto-tag', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId: cart.client_id, type: 'sale' }),
+        }).catch(() => {});
+      }
+
       // Refresh inventory
       const { data: refreshed } = await supabase.from('inventory_items').select('*').eq('tenant_id', tenant.id).eq('is_active', true).order('type').order('name');
       if (refreshed) setInventory(refreshed as InventoryItem[]);

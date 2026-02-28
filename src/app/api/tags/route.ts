@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
 
 const DEFAULT_TAGS = [
-  { name: 'VIP', color: '#D97706' },
-  { name: 'Repeat Customer', color: '#059669' },
-  { name: 'Bridal Party', color: '#EC4899' },
-  { name: 'First Timer', color: '#2563EB' },
-  { name: 'Event Lead', color: '#7C3AED' },
+  { name: 'VIP', color: '#D97706', auto_apply: false, auto_apply_rule: null },
+  { name: 'Repeat Customer', color: '#059669', auto_apply: false, auto_apply_rule: null },
+  { name: 'Bridal Party', color: '#EC4899', auto_apply: false, auto_apply_rule: null },
+  { name: 'First Timer', color: '#2563EB', auto_apply: false, auto_apply_rule: null },
+  { name: 'Event Lead', color: '#7C3AED', auto_apply: false, auto_apply_rule: null },
+  // Auto-tags (seeded with auto_apply: true)
+  { name: 'New Client', color: '#6366F1', auto_apply: true, auto_apply_rule: 'new_client' },
+  { name: 'Repeat Client', color: '#059669', auto_apply: true, auto_apply_rule: 'repeat_client' },
 ];
 
 export async function GET(request: NextRequest) {
@@ -26,7 +29,13 @@ export async function GET(request: NextRequest) {
 
   if (!existing || existing.length === 0) {
     await supabase.from('client_tags').insert(
-      DEFAULT_TAGS.map((t) => ({ tenant_id: tenantId, name: t.name, color: t.color }))
+      DEFAULT_TAGS.map((t) => ({
+        tenant_id: tenantId,
+        name: t.name,
+        color: t.color,
+        auto_apply: t.auto_apply,
+        auto_apply_rule: t.auto_apply_rule,
+      }))
     );
   }
 
