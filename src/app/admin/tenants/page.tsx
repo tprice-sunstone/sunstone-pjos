@@ -17,6 +17,7 @@ interface Tenant {
   onboarding_completed: boolean;
   is_suspended: boolean;
   suspended_reason: string | null;
+  crm_enabled: boolean;
   sales_count: number;
   last_active: string | null;
   created_at: string;
@@ -276,6 +277,7 @@ export default function AdminTenantsPage() {
                                 suspended_reason: !t.is_suspended ? 'Suspended by platform admin' : undefined,
                               })
                             }
+                            onToggleCrm={() => updateTenant(t.id, { crm_enabled: !t.crm_enabled })}
                           />
                         ) : null}
                       </td>
@@ -301,12 +303,14 @@ function TenantDetailPanel({
   actionLoading,
   onUpdatePlan,
   onToggleSuspend,
+  onToggleCrm,
 }: {
   detail: TenantDetail;
   tenant: Tenant;
   actionLoading: boolean;
   onUpdatePlan: (tier: string) => void;
   onToggleSuspend: () => void;
+  onToggleCrm: () => void;
 }) {
   return (
     <div className="space-y-5">
@@ -379,10 +383,27 @@ function TenantDetailPanel({
           {tenant.is_suspended ? 'Unsuspend' : 'Suspend'}
         </button>
 
-        {/* TODO: View as tenant */}
-        <span className="text-xs text-[var(--text-tertiary)] ml-2">
-          View as tenant — coming soon
-        </span>
+        {/* CRM Features toggle */}
+        <div className="flex items-center gap-2 ml-2 border-l border-[var(--border-default)] pl-4">
+          <button
+            onClick={onToggleCrm}
+            disabled={actionLoading}
+            className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${
+              tenant.crm_enabled ? 'bg-[var(--accent-primary)]' : 'bg-[var(--surface-subtle)] border border-[var(--border-default)]'
+            }`}
+            title={tenant.crm_enabled ? 'Disable CRM features' : 'Enable CRM features'}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                tenant.crm_enabled ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+          <div>
+            <span className="text-sm font-medium text-[var(--text-primary)]">Enable Advanced CRM</span>
+            <p className="text-[11px] text-[var(--text-tertiary)] leading-tight">Workflows, broadcasts, smart suggestions, auto-tagging</p>
+          </div>
+        </div>
       </div>
     </div>
   );

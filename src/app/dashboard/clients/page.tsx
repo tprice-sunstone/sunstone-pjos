@@ -54,6 +54,8 @@ export default function ClientsPage() {
     return true;
   })();
 
+  const crmEnabled = tenant?.crm_enabled ?? false;
+
   // ── Fetch clients ─────────────────────────────────────────────────────────
   const fetchClients = useCallback(async () => {
     if (!tenant) return;
@@ -204,8 +206,8 @@ export default function ClientsPage() {
         )}
       </div>
 
-      {/* Needs Attention */}
-      {!isStarter && tenant && (
+      {/* Needs Attention — requires CRM enabled */}
+      {!isStarter && crmEnabled && tenant && (
         <NeedsAttention
           tenantId={tenant.id}
           onOpenProfile={(cid) => setProfileClientId(cid)}

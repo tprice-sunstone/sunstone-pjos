@@ -90,6 +90,10 @@ export async function PATCH(
       }
     }
 
+    if (body.crm_enabled !== undefined) {
+      update.crm_enabled = Boolean(body.crm_enabled);
+    }
+
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
     }

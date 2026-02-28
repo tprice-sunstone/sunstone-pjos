@@ -67,6 +67,7 @@ export interface Tenant {
   // Other
   min_monthly_transactions: number;
   is_suspended: boolean;
+  crm_enabled: boolean;
   // Timestamps
   created_at: string;
   updated_at: string;
