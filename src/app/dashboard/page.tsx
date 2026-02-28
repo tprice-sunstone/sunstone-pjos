@@ -26,6 +26,7 @@ export default function DashboardPage() {
   const [cards, setCards] = useState<DashboardCard[]>([]);
   const [cardsLoading, setCardsLoading] = useState(true);
   const [eventsThisWeek, setEventsThisWeek] = useState<number>(0);
+  const [refreshing, setRefreshing] = useState(false);
   // ── Fallback cards — shown if API fails or returns nothing ────────────
   const clientFallbackCards: DashboardCard[] = [
     {
@@ -69,6 +70,20 @@ export default function DashboardPage() {
       setCardsLoading(false);
     }
   }, []);
+
+  // ── Clear cache + refresh cards ───────────────────────────────────────
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetch('/api/dashboard/cards/cache', { method: 'DELETE' });
+      await fetchCards(true);
+    } catch {
+      // Fallback: just refetch with refresh flag
+      await fetchCards(true);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchCards]);
 
   // ── Fetch events-this-week count for subtitle ──────────────────────────
   useEffect(() => {
@@ -162,22 +177,57 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Open POS button */}
-        <button
-          onClick={() => router.push('/dashboard/pos')}
-          className="bg-accent-500 text-[var(--text-on-accent)] hover:bg-accent-600 transition-colors flex items-center gap-2 shrink-0"
-          style={{
-            fontSize: 12,
-            fontWeight: 600,
-            padding: '8px 16px',
-            borderRadius: 10,
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          <RegisterIcon />
-          Open POS
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Refresh cards */}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] disabled:opacity-50 transition-colors flex items-center justify-center"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 8,
+              border: 'none',
+              cursor: refreshing ? 'default' : 'pointer',
+              background: 'transparent',
+            }}
+            title="Refresh dashboard"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={refreshing ? 'animate-spin' : ''}
+            >
+              <path d="M21 2v6h-6" />
+              <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+              <path d="M3 22v-6h6" />
+              <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+            </svg>
+          </button>
+
+          {/* Open POS button */}
+          <button
+            onClick={() => router.push('/dashboard/pos')}
+            className="bg-accent-500 text-[var(--text-on-accent)] hover:bg-accent-600 transition-colors flex items-center gap-2"
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              padding: '8px 16px',
+              borderRadius: 10,
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <RegisterIcon />
+            Open POS
+          </button>
+        </div>
       </div>
 
       {/* ================================================================ */}
