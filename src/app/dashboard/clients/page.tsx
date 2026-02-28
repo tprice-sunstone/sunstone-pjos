@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/hooks/use-tenant';
 import { toast } from 'sonner';
@@ -25,6 +26,7 @@ type ClientTagMap = Record<string, string[]>;
 
 export default function ClientsPage() {
   const { tenant, can } = useTenant();
+  const router = useRouter();
   const supabase = createClient();
 
   // Core state
@@ -182,7 +184,9 @@ export default function ClientsPage() {
         filteredCount={filteredClients.length}
         isFiltered={selectedTagIds.length > 0}
         canEdit={can('clients:edit')}
+        crmEnabled={crmEnabled}
         onAddClient={() => setShowForm(true)}
+        onBroadcast={() => router.push('/dashboard/broadcasts')}
       />
 
       {/* Search + Tag Filters */}

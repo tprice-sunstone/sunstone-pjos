@@ -42,6 +42,7 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [showWaiverModal, setShowWaiverModal] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!tenant) return;
@@ -199,10 +200,30 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
             {/* Quick action buttons — 4 in a row */}
             <div className="grid grid-cols-4 gap-2">
               {[
-                { label: 'Text', icon: MessageSquareIcon },
-                { label: 'Email', icon: MailIcon },
+                {
+                  label: 'Text',
+                  icon: MessageSquareIcon,
+                  onClick: () => {
+                    if (client.phone) {
+                      window.open(`sms:${client.phone}`, '_blank');
+                    } else {
+                      toast.error('No phone number on file');
+                    }
+                  },
+                },
+                {
+                  label: 'Email',
+                  icon: MailIcon,
+                  onClick: () => {
+                    if (client.email) {
+                      window.open(`mailto:${client.email}`, '_blank');
+                    } else {
+                      toast.error('No email on file');
+                    }
+                  },
+                },
                 { label: 'Tag', icon: TagIcon, onClick: () => setShowTagDropdown(!showTagDropdown) },
-                { label: 'Waiver', icon: FileTextIcon },
+                { label: 'Waiver', icon: FileTextIcon, onClick: () => setShowWaiverModal(true) },
               ].map(({ label, icon: Icon, onClick }) => (
                 <button
                   key={label}
@@ -352,6 +373,64 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Waiver status modal */}
+            {showWaiverModal && (
+              <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)]">Waiver Status</h3>
+                  <button
+                    onClick={() => setShowWaiverModal(false)}
+                    className="p-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                {waivers.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-success-500" />
+                      <span className="text-xs text-[var(--text-primary)]">
+                        Signed on {format(new Date(waivers[0].signed_at), 'MMM d, yyyy')}
+                      </span>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleDownloadPDF(waivers[0])}
+                      disabled={downloadingId === waivers[0].id}
+                    >
+                      {downloadingId === waivers[0].id ? 'Generating...' : 'View Waiver PDF'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs text-[var(--text-tertiary)]">No signed waiver on file.</p>
+                    <button
+                      onClick={() => {
+                        const waiverUrl = `${window.location.origin}/waiver?tenant=${tenantId}`;
+                        if (client.phone) {
+                          window.open(`sms:${client.phone}?body=${encodeURIComponent(`Please sign our waiver: ${waiverUrl}`)}`, '_blank');
+                          toast.success('Opening SMS with waiver link');
+                        } else if (client.email) {
+                          window.open(`mailto:${client.email}?subject=${encodeURIComponent('Please sign our waiver')}&body=${encodeURIComponent(`Please sign our waiver: ${waiverUrl}`)}`, '_blank');
+                          toast.success('Opening email with waiver link');
+                        } else {
+                          toast.error('No phone or email on file');
+                        }
+                        setShowWaiverModal(false);
+                      }}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white"
+                      style={{ backgroundColor: 'var(--accent-primary)' }}
+                    >
+                      Send Waiver Link
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

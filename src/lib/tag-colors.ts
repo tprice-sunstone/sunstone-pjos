@@ -36,3 +36,9 @@ export function getTagColor(hex: string): { bg: string; text: string } {
   const b = parseInt(hex.slice(5, 7), 16);
   return { bg: `rgba(${r}, ${g}, ${b}, 0.15)`, text: hex };
 }
+
+/**
+ * Alias for getTagColor — returns display-ready { bg, text } for any stored hex color.
+ * Every tag gets the soft rgba background with darker text treatment.
+ */
+export const getTagDisplayColors = getTagColor;

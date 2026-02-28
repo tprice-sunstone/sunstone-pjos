@@ -7,7 +7,9 @@ interface ClientsHeaderProps {
   filteredCount: number;
   isFiltered: boolean;
   canEdit: boolean;
+  crmEnabled: boolean;
   onAddClient: () => void;
+  onBroadcast: () => void;
 }
 
 export default function ClientsHeader({
@@ -15,7 +17,9 @@ export default function ClientsHeader({
   filteredCount,
   isFiltered,
   canEdit,
+  crmEnabled,
   onAddClient,
+  onBroadcast,
 }: ClientsHeaderProps) {
   return (
     <div className="flex items-center justify-between">
@@ -25,11 +29,26 @@ export default function ClientsHeader({
           {isFiltered ? `${filteredCount} of ${clientCount} clients` : `${clientCount} clients`}
         </p>
       </div>
-      {canEdit && (
-        <Button variant="primary" onClick={onAddClient}>
-          + Add Client
-        </Button>
-      )}
+      <div className="flex items-center gap-2">
+        {crmEnabled && (
+          <button
+            onClick={onBroadcast}
+            className="px-3 py-1.5 text-[11px] font-semibold rounded-[10px] border transition-colors"
+            style={{
+              backgroundColor: 'var(--accent-muted)',
+              color: 'var(--accent-primary)',
+              borderColor: 'var(--accent-primary)',
+            }}
+          >
+            Broadcast
+          </button>
+        )}
+        {canEdit && (
+          <Button variant="primary" onClick={onAddClient}>
+            + Add Client
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

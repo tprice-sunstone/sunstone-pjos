@@ -28,8 +28,8 @@ export async function autoTagClient(
   if (!autoTags || autoTags.length === 0) {
     // Seed default auto-tags with luxury palette colors
     await supabase.from('client_tags').insert([
-      { tenant_id: tenantId, name: 'New Client', color: '#6B7F99', auto_apply: true, auto_apply_rule: 'new_client' },
-      { tenant_id: tenantId, name: 'Repeat Client', color: '#9C8B7A', auto_apply: true, auto_apply_rule: 'repeat_client' },
+      { tenant_id: tenantId, name: 'New Client', color: '#6B7F99', auto_apply: true, auto_apply_rule: 'first_purchase' },
+      { tenant_id: tenantId, name: 'Repeat Client', color: '#9C8B7A', auto_apply: true, auto_apply_rule: 'repeat_purchase' },
     ]);
     const { data: seeded } = await supabase
       .from('client_tags')
@@ -51,10 +51,10 @@ export async function autoTagClient(
   const tagsToApply: string[] = [];
 
   for (const tag of autoTags) {
-    if (tag.auto_apply_rule === 'new_client' && totalSales <= 1) {
+    if (tag.auto_apply_rule === 'first_purchase' && totalSales <= 1) {
       tagsToApply.push(tag.id);
     }
-    if (tag.auto_apply_rule === 'repeat_client' && totalSales >= 2) {
+    if (tag.auto_apply_rule === 'repeat_purchase' && totalSales >= 2) {
       tagsToApply.push(tag.id);
     }
   }
@@ -100,7 +100,7 @@ export async function autoTagClient(
 
   // If repeat client, remove "New Client" tag
   if (totalSales >= 2) {
-    const newClientTag = autoTags.find((t) => t.auto_apply_rule === 'new_client');
+    const newClientTag = autoTags.find((t) => t.auto_apply_rule === 'first_purchase');
     if (newClientTag) {
       await supabase
         .from('client_tag_assignments')
