@@ -15,8 +15,8 @@ import { useState } from 'react';
 import { useTenant } from '@/hooks/use-tenant';
 import { Button } from '@/components/ui/Button';
 
-// CHANGED: Removed 'receipt' from CheckoutStep
-type CheckoutStep = 'items' | 'tip' | 'payment' | 'confirmation';
+// Must match CheckoutStep in CheckoutFlow.tsx
+type CheckoutStep = 'items' | 'tip' | 'payment' | 'jump_ring' | 'confirmation';
 
 export default function CartPanel({ cart, step, setStep, tenant }: {
   cart: any;

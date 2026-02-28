@@ -143,10 +143,12 @@ function EventModePageInner() {
   const [emailError, setEmailError] = useState('');
   const [smsError, setSmsError] = useState('');
 
-  // Jump ring state
+  // Jump ring state (pre-sale: unresolved materials picker)
   const [showJumpRingPicker, setShowJumpRingPicker] = useState(false);
   const [jumpRingResolutions, setJumpRingResolutions] = useState<JumpRingResolution[]>([]);
   const [pendingJumpRingLowStockWarnings, setPendingJumpRingLowStockWarnings] = useState<string[]>([]);
+  // Post-sale: jump ring confirmation step
+  const [pendingJumpRingResolutions, setPendingJumpRingResolutions] = useState<JumpRingResolution[]>([]);
 
   // ── Task B: Queue integration state ──
   const [activeQueueEntry, setActiveQueueEntry] = useState<QueueEntry | null>(null);
@@ -358,7 +360,7 @@ function EventModePageInner() {
       });
       await supabase.from('sale_items').insert(saleItems);
 
-      // Inventory deduction + movements (chain inch-based deduction)
+      // Inventory deduction + movements (chain inch-based deduction — NOT jump rings)
       for (const item of cart.items as any[]) {
         if (!item.inventory_item_id) continue;
         const inv = inventory.find((i) => i.id === item.inventory_item_id); if (!inv) continue;
@@ -375,23 +377,7 @@ function EventModePageInner() {
         await supabase.from('inventory_items').update({ quantity_on_hand: inv.quantity_on_hand - deduct }).eq('id', item.inventory_item_id);
       }
 
-      // ── Jump Ring Deductions ──
-      for (const resolution of resolutions) {
-        if (!resolution.jump_ring_inventory_id) continue;
-        const jr = inventory.find((i) => i.id === resolution.jump_ring_inventory_id);
-        if (!jr) continue;
-
-        await supabase.from('inventory_movements').insert({
-          tenant_id: tenant.id, inventory_item_id: resolution.jump_ring_inventory_id, movement_type: 'sale',
-          quantity: -resolution.jump_rings_needed, reference_id: sale.id,
-          notes: `Auto-deducted for ${resolution.material_name} sale`, performed_by: user?.id,
-        });
-        await supabase.from('inventory_items')
-          .update({ quantity_on_hand: jr.quantity_on_hand - resolution.jump_rings_needed })
-          .eq('id', resolution.jump_ring_inventory_id);
-      }
-
-      // ── Task B: Mark queue entry as served ──
+      // ── Mark queue entry as served ──
       if (activeQueueEntry) {
         await supabase.from('queue_entries').update({
           status: 'served',
@@ -402,15 +388,51 @@ function EventModePageInner() {
 
       setTodaySales((s) => ({ count: s.count + 1, total: s.total + cart.total }));
       toast.success(`Sale completed — $${cart.total.toFixed(2)}`);
-      setCompletedSale(saleData); cart.reset(); setStep('confirmation'); setShowCart(false);
+      setCompletedSale(saleData); cart.reset(); setShowCart(false);
       setEmailSent(false); setSmsSent(false); setEmailError(''); setSmsError('');
       setJumpRingResolutions([]);
       setQueueRefresh((n) => n + 1);
+
+      // Post-sale: route to jump ring confirmation or straight to receipt
+      if (resolutions.length > 0) {
+        setPendingJumpRingResolutions(resolutions);
+        setStep('jump_ring');
+      } else {
+        setStep('confirmation');
+      }
 
       const { data: refreshed } = await supabase.from('inventory_items').select('*').eq('tenant_id', tenant.id).eq('is_active', true).order('type').order('name');
       if (refreshed) setInventory(refreshed as InventoryItem[]);
     } catch (err: any) { toast.error(err?.message || 'Sale failed'); }
     finally { setProcessing(false); }
+  };
+
+  // ── Post-sale jump ring deduction (called from JumpRingStep confirm) ──
+
+  const deductJumpRings = async (resolutions: JumpRingResolution[]) => {
+    if (!tenant || !completedSale) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      for (const resolution of resolutions) {
+        if (!resolution.jump_ring_inventory_id || resolution.jump_rings_needed <= 0) continue;
+        const jr = inventory.find((i) => i.id === resolution.jump_ring_inventory_id);
+        if (!jr) continue;
+
+        await supabase.from('inventory_movements').insert({
+          tenant_id: tenant.id, inventory_item_id: resolution.jump_ring_inventory_id, movement_type: 'sale',
+          quantity: -resolution.jump_rings_needed, reference_id: completedSale.saleId,
+          notes: `Deducted for ${resolution.material_name} sale`, performed_by: user?.id,
+        });
+        await supabase.from('inventory_items')
+          .update({ quantity_on_hand: Math.max(0, jr.quantity_on_hand - resolution.jump_rings_needed) })
+          .eq('id', resolution.jump_ring_inventory_id);
+      }
+      // Refresh inventory
+      const { data: refreshed } = await supabase.from('inventory_items').select('*').eq('tenant_id', tenant.id).eq('is_active', true).order('type').order('name');
+      if (refreshed) setInventory(refreshed as InventoryItem[]);
+    } catch (err: any) {
+      toast.error('Failed to deduct jump rings');
+    }
   };
 
   // ── Receipt sending ──
@@ -449,7 +471,7 @@ function EventModePageInner() {
   const startNewSale = () => {
     setStep('items'); setCompletedSale(null); setReceiptEmail(''); setReceiptPhone('');
     setEmailSent(false); setSmsSent(false); setEmailError(''); setSmsError('');
-    setJumpRingResolutions([]); setActiveQueueEntry(null);
+    setJumpRingResolutions([]); setPendingJumpRingResolutions([]); setActiveQueueEntry(null);
     setQueueRefresh((n) => n + 1);
   };
 
@@ -594,11 +616,29 @@ function EventModePageInner() {
               tipAmount={cart.tip_amount}
               total={cart.total}
               paymentMethod={cart.payment_method}
+              tenantName={tenant?.name || ''}
+              itemCount={cart.items.length}
               onSetTip={(amount) => cart.setTip(amount)}
               onSetPaymentMethod={(method) => cart.setPaymentMethod(method)}
               onCompleteSale={handleCompleteSale}
               processing={processing}
+              items={cart.items.map((i: any) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unit_price, lineTotal: i.line_total }))}
+              activeQueueEntry={activeQueueEntry}
               onContinueToPayment={() => setStep('payment')}
+              jumpRingData={pendingJumpRingResolutions.length > 0 ? {
+                saleTotal: completedSale?.total ?? 0,
+                paymentMethod: completedSale?.paymentMethod ?? '',
+                resolutions: pendingJumpRingResolutions,
+              } : null}
+              onJumpRingConfirm={(adjusted) => {
+                deductJumpRings(adjusted);
+                setPendingJumpRingResolutions([]);
+                setStep('confirmation');
+              }}
+              onJumpRingSkip={() => {
+                setPendingJumpRingResolutions([]);
+                setStep('confirmation');
+              }}
               completedSale={completedSale}
               receiptConfig={receiptConfig}
               receiptEmail={receiptEmail}
@@ -618,15 +658,15 @@ function EventModePageInner() {
           </div>
         </div>
 
-        {/* Desktop Cart Sidebar */}
-        {step !== 'confirmation' && (
+        {/* Desktop Cart Sidebar — hidden during checkout */}
+        {step === 'items' && (
           <div className="hidden md:flex w-80 lg:w-[380px] bg-[var(--surface-raised)] border-l border-[var(--border-default)] flex-col shrink-0">
             <CartPanel cart={cart} step={step} setStep={setStep} tenant={tenant} />
           </div>
         )}
 
-        {/* Mobile Cart Sheet */}
-        {showCart && step !== 'confirmation' && (
+        {/* Mobile Cart Sheet — hidden during checkout */}
+        {showCart && step === 'items' && (
           <div className="md:hidden fixed inset-0 z-40 flex flex-col">
             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowCart(false)} />
             <div className="relative mt-auto bg-[var(--surface-raised)] rounded-t-2xl max-h-[85vh] flex flex-col shadow-xl">
@@ -642,8 +682,8 @@ function EventModePageInner() {
         )}
       </div>
 
-      {/* Mobile Floating Cart Button */}
-      {cart.items.length > 0 && !showCart && step !== 'confirmation' && (
+      {/* Mobile Floating Cart Button — hidden during checkout */}
+      {cart.items.length > 0 && !showCart && step === 'items' && (
         <div className="md:hidden fixed bottom-4 left-4 right-4 z-30">
           <button onClick={() => setShowCart(true)} className="w-full flex items-center justify-between px-5 py-4 rounded-2xl shadow-lg transition-all active:scale-[0.98]" style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}>
             <span className="flex items-center gap-2"><span className="bg-white/20 rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold">{cart.items.length}</span><span className="font-semibold">View Cart</span></span>

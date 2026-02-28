@@ -407,10 +407,14 @@ export default function StoreModePage() {
               tipAmount={cart.tip_amount}
               total={cart.total}
               paymentMethod={cart.payment_method}
+              tenantName={tenant.name}
+              itemCount={cart.items.length}
               onSetTip={(amount) => cart.setTip(amount)}
               onSetPaymentMethod={(method) => cart.setPaymentMethod(method)}
               onCompleteSale={completeSale}
               processing={processing}
+              items={cart.items.map((i: any) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unit_price, lineTotal: i.line_total }))}
+              activeQueueEntry={activeQueueEntry}
               onContinueToPayment={() => setStep('payment')}
               completedSale={completedSale}
               receiptConfig={receiptConfig}
@@ -439,13 +443,15 @@ export default function StoreModePage() {
           </div>
         </div>
 
-        {/* Desktop Cart Sidebar */}
-        <div className="hidden md:flex w-80 lg:w-[380px] bg-[var(--surface-raised)] border-l border-[var(--border-default)] flex-col shrink-0">
-          <CartPanel cart={cart} step={step} setStep={setStep} tenant={tenant} />
-        </div>
+        {/* Desktop Cart Sidebar — hidden during checkout */}
+        {step === 'items' && (
+          <div className="hidden md:flex w-80 lg:w-[380px] bg-[var(--surface-raised)] border-l border-[var(--border-default)] flex-col shrink-0">
+            <CartPanel cart={cart} step={step} setStep={setStep} tenant={tenant} />
+          </div>
+        )}
 
-        {/* Mobile Cart Sheet */}
-        {showCart && (
+        {/* Mobile Cart Sheet — hidden during checkout */}
+        {showCart && step === 'items' && (
           <div className="md:hidden fixed inset-0 z-40 flex flex-col">
             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowCart(false)} />
             <div className="relative mt-auto bg-[var(--surface-raised)] rounded-t-2xl max-h-[85vh] flex flex-col shadow-xl">
@@ -465,8 +471,8 @@ export default function StoreModePage() {
         )}
       </div>
 
-      {/* Mobile Floating Cart Button */}
-      {cart.items.length > 0 && !showCart && (
+      {/* Mobile Floating Cart Button — hidden during checkout */}
+      {cart.items.length > 0 && !showCart && step === 'items' && (
         <div className="md:hidden fixed bottom-4 left-4 right-4 z-30">
           <button onClick={() => setShowCart(true)}
             className="w-full flex items-center justify-between px-5 py-4 rounded-2xl shadow-lg transition-all active:scale-[0.98]"

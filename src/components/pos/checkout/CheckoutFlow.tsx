@@ -1,10 +1,10 @@
 // ============================================================================
-// CheckoutFlow — Checkout Step Orchestrator
+// CheckoutFlow — Full-Screen Checkout Overlay
 // src/components/pos/checkout/CheckoutFlow.tsx
 // ============================================================================
-// Renders the active checkout step (tip → payment → confirmation).
-// Shared by Store Mode and Event Mode POS. State lives in the parent page;
-// this component is purely presentational + step routing.
+// Renders a fixed full-screen overlay for the active checkout step.
+// Steps: tip → payment → jump_ring (Event Mode only) → confirmation.
+// Returns null when step is 'items'. State lives in the parent page.
 // ============================================================================
 
 'use client';
@@ -12,10 +12,17 @@
 import { TipScreen } from './TipScreen';
 import { PaymentScreen } from './PaymentScreen';
 import { ReceiptScreen } from './ReceiptScreen';
+import { JumpRingStep } from './JumpRingStep';
 import type { CompletedSaleData } from './ReceiptScreen';
-import type { PaymentMethod } from '@/types';
+import type { PaymentMethod, JumpRingResolution } from '@/types';
 
-export type CheckoutStep = 'items' | 'tip' | 'payment' | 'confirmation';
+export type CheckoutStep = 'items' | 'tip' | 'payment' | 'jump_ring' | 'confirmation';
+
+export interface JumpRingStepData {
+  saleTotal: number;
+  paymentMethod: string;
+  resolutions: JumpRingResolution[];
+}
 
 interface CheckoutFlowProps {
   step: CheckoutStep;
@@ -25,14 +32,22 @@ interface CheckoutFlowProps {
   tipAmount: number;
   total: number;
   paymentMethod: PaymentMethod | null;
-  // Tip
+  // Tip screen
+  tenantName: string;
+  itemCount: number;
   onSetTip: (amount: number) => void;
-  // Payment
+  // Payment screen
   onSetPaymentMethod: (method: PaymentMethod) => void;
   onCompleteSale: () => void;
   processing: boolean;
+  items: Array<{ name: string; quantity: number; unitPrice: number; lineTotal: number }>;
+  activeQueueEntry?: { name: string } | null;
   // Step navigation
   onContinueToPayment: () => void;
+  // Jump ring step (Event Mode only)
+  jumpRingData?: JumpRingStepData | null;
+  onJumpRingConfirm?: (resolutions: JumpRingResolution[]) => void;
+  onJumpRingSkip?: () => void;
   // Confirmation / Receipt
   completedSale: CompletedSaleData | null;
   receiptConfig: { email: boolean; sms: boolean };
@@ -58,11 +73,18 @@ export function CheckoutFlow({
   tipAmount,
   total,
   paymentMethod,
+  tenantName,
+  itemCount,
   onSetTip,
   onSetPaymentMethod,
   onCompleteSale,
   processing,
+  items,
+  activeQueueEntry,
   onContinueToPayment,
+  jumpRingData,
+  onJumpRingConfirm,
+  onJumpRingSkip,
   completedSale,
   receiptConfig,
   receiptEmail,
@@ -79,31 +101,50 @@ export function CheckoutFlow({
   smsError,
   onNewSale,
 }: CheckoutFlowProps) {
+  // Don't render anything when on the items step
+  if (step === 'items') return null;
+
+  let content: React.ReactNode = null;
+
   if (step === 'tip') {
-    return (
+    content = (
       <TipScreen
-        subtotalWithTax={subtotal + taxAmount}
+        tenantName={tenantName}
+        itemCount={itemCount}
+        subtotal={subtotal}
+        taxAmount={taxAmount}
         tipAmount={tipAmount}
         onSetTip={onSetTip}
         onContinue={onContinueToPayment}
       />
     );
-  }
-
-  if (step === 'payment') {
-    return (
+  } else if (step === 'payment') {
+    content = (
       <PaymentScreen
         selectedMethod={paymentMethod}
         onSelectMethod={onSetPaymentMethod}
         onCompleteSale={onCompleteSale}
         processing={processing}
         total={total}
+        items={items}
+        subtotal={subtotal}
+        taxAmount={taxAmount}
+        tipAmount={tipAmount}
+        activeQueueEntry={activeQueueEntry}
       />
     );
-  }
-
-  if (step === 'confirmation' && completedSale) {
-    return (
+  } else if (step === 'jump_ring' && jumpRingData && onJumpRingConfirm && onJumpRingSkip) {
+    content = (
+      <JumpRingStep
+        saleTotal={jumpRingData.saleTotal}
+        paymentMethod={jumpRingData.paymentMethod}
+        resolutions={jumpRingData.resolutions}
+        onConfirm={onJumpRingConfirm}
+        onSkip={onJumpRingSkip}
+      />
+    );
+  } else if (step === 'confirmation' && completedSale) {
+    content = (
       <ReceiptScreen
         sale={completedSale}
         receiptConfig={receiptConfig}
@@ -124,5 +165,10 @@ export function CheckoutFlow({
     );
   }
 
-  return null;
+  // Full-screen overlay
+  return (
+    <div className="fixed inset-0 z-50 bg-[var(--surface-base)] overflow-y-auto">
+      {content}
+    </div>
+  );
 }

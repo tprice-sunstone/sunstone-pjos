@@ -50,11 +50,10 @@ interface ReceiptScreenProps {
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
-  card_present: 'Card',
-  card_not_present: 'Card (Online)',
+  card_present: 'Tap to Pay',
+  card_not_present: 'Card Reader',
   cash: 'Cash',
   venmo: 'Venmo',
-  other: 'Other',
 };
 
 export function ReceiptScreen({
@@ -161,9 +160,9 @@ export function ReceiptScreen({
             {/* Email */}
             {receiptConfig.email && (
               <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-3 space-y-2">
-                <div className="flex items-center gap-2">
+                <div className="relative">
                   <svg
-                    className="w-4 h-4 text-[var(--text-tertiary)] shrink-0"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)]"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -176,7 +175,7 @@ export function ReceiptScreen({
                     />
                   </svg>
                   <input
-                    className="flex-1 h-10 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
+                    className="w-full h-10 pl-10 pr-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
                     type="email"
                     value={receiptEmail}
                     onChange={(e) => onSetReceiptEmail(e.target.value)}
@@ -220,9 +219,9 @@ export function ReceiptScreen({
             {/* SMS */}
             {receiptConfig.sms && (
               <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-3 space-y-2">
-                <div className="flex items-center gap-2">
+                <div className="relative">
                   <svg
-                    className="w-4 h-4 text-[var(--text-tertiary)] shrink-0"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)]"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -235,7 +234,7 @@ export function ReceiptScreen({
                     />
                   </svg>
                   <input
-                    className="flex-1 h-10 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
+                    className="w-full h-10 pl-10 pr-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
                     type="tel"
                     value={receiptPhone}
                     onChange={(e) => onSetReceiptPhone(e.target.value)}
