@@ -5,3 +5,5 @@ export { ProductTypeRow } from './ProductTypeRow';
 export { InchAdjuster } from './InchAdjuster';
 export { AddOnsSection } from './AddOnsSection';
 export { QueueBadge } from './QueueBadge';
+export { CheckoutFlow } from './checkout';
+export type { CompletedSaleData, CheckoutStep } from './checkout';

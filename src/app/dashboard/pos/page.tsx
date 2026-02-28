@@ -21,37 +21,14 @@ import { Button } from '@/components/ui/Button';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
-import { ProductSelector, QueueBadge } from '@/components/pos';
+import { ProductSelector, QueueBadge, CheckoutFlow } from '@/components/pos';
+import type { CompletedSaleData, CheckoutStep } from '@/components/pos';
 import type {
   InventoryItem,
   TaxProfile,
-  PaymentMethod,
   ProductType,
   ChainProductPrice,
 } from '@/types';
-
-interface CompletedSaleData {
-  saleId: string;
-  saleDate: string;
-  items: { name: string; quantity: number; unit_price: number; line_total: number }[];
-  subtotal: number;
-  taxAmount: number;
-  taxRate: number;
-  tipAmount: number;
-  total: number;
-  paymentMethod: string;
-}
-
-const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
-  { value: 'card_present', label: 'Card' },
-  { value: 'cash', label: 'Cash' },
-  { value: 'venmo', label: 'Venmo' },
-  { value: 'other', label: 'Other' },
-];
-
-const TIP_PRESETS = [0, 3, 5, 10, 15, 20];
-
-type CheckoutStep = 'items' | 'tip' | 'payment' | 'confirmation';
 
 // SVG icon for back button (still used in header)
 const BackArrow = () => (
@@ -269,19 +246,18 @@ export default function StoreModePage() {
       }
 
       // Save completed sale data for confirmation screen
-      const paymentLabels: Record<string, string> = { card_present: 'Card', cash: 'Cash', venmo: 'Venmo', other: 'Other' };
       const saleData: CompletedSaleData = {
         saleId: sale.id,
         saleDate: new Date().toISOString(),
         items: cart.items.map((item: any) => ({
-          name: item.name, quantity: item.quantity, unit_price: item.unit_price, line_total: item.line_total,
+          name: item.name, quantity: item.quantity, unitPrice: item.unit_price, lineTotal: item.line_total,
         })),
         subtotal: cart.subtotal,
         taxAmount: cart.tax_amount,
         taxRate: taxProfile ? Number(taxProfile.rate) : 0,
         tipAmount: cart.tip_amount,
         total: cart.total,
-        paymentMethod: paymentLabels[cart.payment_method || ''] || cart.payment_method || 'Unknown',
+        paymentMethod: cart.payment_method || 'Unknown',
       };
 
       setTodaySales((p) => ({ count: p.count + 1, total: p.total + Number(sale.total) }));
@@ -314,8 +290,6 @@ export default function StoreModePage() {
   // ── QR data ────────────────────────────────────────────────────────────
 
   const qrUrl = generateQRData(tenant.slug);
-
-  const pageTitle = 'text-[24px] font-bold text-[var(--text-primary)] tracking-tight leading-tight';
 
   return (
     <div className="fixed inset-0 bg-[var(--surface-base)] flex flex-col">
@@ -425,145 +399,41 @@ export default function StoreModePage() {
               />
             )}
 
-            {/* ═══ TIP / PAYMENT / RECEIPT STEPS ═══ */}
-            {step === 'tip' && (
-              <div className="max-w-sm mx-auto py-8 space-y-6">
-                <h2 className={pageTitle + ' text-center'}>Add a Tip</h2>
-                <p className="text-[var(--text-tertiary)] text-center text-sm">Subtotal: <span className=" font-medium">${(cart.subtotal + cart.tax_amount).toFixed(2)}</span></p>
-                <div className="grid grid-cols-3 gap-3">
-                  {TIP_PRESETS.map((amount) => (
-                    <button key={amount} onClick={() => cart.setTip(amount)}
-                      className={`py-5 rounded-2xl text-xl font-bold transition-all min-h-[56px] ${
-                        cart.tip_amount === amount
-                          ? 'bg-[var(--text-primary)] text-[var(--surface-base)] shadow-md' : 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'
-                      }`}>{amount === 0 ? 'None' : `$${amount}`}</button>
-                  ))}
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)] mb-2">Custom tip</label>
-                  <input type="number" step="0.01" min="0" className="w-full h-14 px-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] text-center text-xl  focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] transition-all"
-                    placeholder="$0.00" value={cart.tip_amount || ''} onChange={(e) => cart.setTip(Number(e.target.value) || 0)} />
-                </div>
-                <button onClick={() => setStep('payment')} className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm"
-                  style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}>Continue to Payment</button>
-              </div>
-            )}
-
-            {step === 'payment' && (
-              <div className="max-w-sm mx-auto py-8 space-y-6">
-                <h2 className={pageTitle + ' text-center'}>Select Payment</h2>
-                <div className="grid grid-cols-2 gap-3">
-                  {PAYMENT_METHODS.map((pm) => (
-                    <button key={pm.value} onClick={() => cart.setPaymentMethod(pm.value)}
-                      className={`py-7 rounded-2xl text-center transition-all min-h-[80px] ${
-                        cart.payment_method === pm.value
-                          ? 'bg-[var(--text-primary)] text-[var(--surface-base)] shadow-md' : 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'
-                      }`}>
-                      <div className="text-lg font-bold">{pm.label}</div>
-                    </button>
-                  ))}
-                </div>
-                {cart.payment_method && (
-                  <button onClick={completeSale} disabled={processing} className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm disabled:opacity-60"
-                    style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}>{processing ? 'Processing...' : `Complete Sale — $${cart.total.toFixed(2)}`}</button>
-                )}
-              </div>
-            )}
-
-            {/* ═══ CONFIRMATION STEP ═══ */}
-            {step === 'confirmation' && completedSale && (
-              <div className="max-w-md mx-auto py-8 space-y-6">
-                {/* Success header */}
-                <div className="text-center space-y-3">
-                  <div className="mx-auto w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-primary) 12%, white)' }}>
-                    <svg className="w-7 h-7" style={{ color: 'var(--accent-primary)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  </div>
-                  <h2 className={pageTitle}>Sale Complete</h2>
-                  <div className="text-[36px] font-bold text-[var(--text-primary)]  tracking-tight leading-none">
-                    ${completedSale.total.toFixed(2)}
-                  </div>
-                  <p className="text-sm text-[var(--text-tertiary)]">{completedSale.paymentMethod} — {completedSale.items.length} item{completedSale.items.length !== 1 ? 's' : ''}</p>
-                </div>
-
-                {/* Receipt sending */}
-                {(receiptConfig.email || receiptConfig.sms) && (
-                  <div className="space-y-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)]">Send Receipt</p>
-
-                    {/* Email receipt */}
-                    {receiptConfig.email && (
-                      <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-3 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <svg className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                          </svg>
-                          <input
-                            className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
-                            type="email" value={receiptEmail} onChange={(e) => setReceiptEmail(e.target.value)}
-                            placeholder="customer@email.com"
-                          />
-                        </div>
-                        {emailSent ? (
-                          <div className="flex items-center gap-1.5 text-success-600 text-sm">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                            Sent
-                          </div>
-                        ) : (
-                          <Button variant="secondary" size="sm" onClick={sendEmailReceipt} disabled={!receiptEmail || sendingEmail} className="w-full min-h-[44px]">
-                            {sendingEmail ? 'Sending...' : 'Send Email Receipt'}
-                          </Button>
-                        )}
-                        {emailError && <p className="text-xs text-error-500">{emailError}</p>}
-                      </div>
-                    )}
-
-                    {/* SMS receipt */}
-                    {receiptConfig.sms && (
-                      <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-3 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <svg className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
-                          </svg>
-                          <input
-                            className="flex-1 h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--border-strong)] focus:ring-[3px] focus:ring-[rgba(0,0,0,0.04)] text-sm transition-all"
-                            type="tel" value={receiptPhone} onChange={(e) => setReceiptPhone(e.target.value)}
-                            placeholder="+1 (555) 000-0000"
-                          />
-                        </div>
-                        {smsSent ? (
-                          <div className="flex items-center gap-1.5 text-success-600 text-sm">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                            Sent
-                          </div>
-                        ) : (
-                          <Button variant="secondary" size="sm" onClick={sendSMSReceipt} disabled={!receiptPhone || sendingSMS} className="w-full min-h-[44px]">
-                            {sendingSMS ? 'Sending...' : 'Send Text Receipt'}
-                          </Button>
-                        )}
-                        {smsError && <p className="text-xs text-error-500">{smsError}</p>}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* New Sale button */}
-                <button
-                  onClick={() => {
-                    setStep('items'); setCompletedSale(null);
-                    setReceiptEmail(''); setReceiptPhone('');
-                    setEmailSent(false); setSmsSent(false);
-                    setEmailError(''); setSmsError('');
-                    setQueueRefresh((n) => n + 1);
-                  }}
-                  className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm"
-                  style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
-                >
-                  New Sale
-                </button>
-              </div>
-            )}
+            {/* ═══ CHECKOUT FLOW (Tip → Payment → Confirmation) ═══ */}
+            <CheckoutFlow
+              step={step}
+              subtotal={cart.subtotal}
+              taxAmount={cart.tax_amount}
+              tipAmount={cart.tip_amount}
+              total={cart.total}
+              paymentMethod={cart.payment_method}
+              onSetTip={(amount) => cart.setTip(amount)}
+              onSetPaymentMethod={(method) => cart.setPaymentMethod(method)}
+              onCompleteSale={completeSale}
+              processing={processing}
+              onContinueToPayment={() => setStep('payment')}
+              completedSale={completedSale}
+              receiptConfig={receiptConfig}
+              receiptEmail={receiptEmail}
+              onSetReceiptEmail={setReceiptEmail}
+              onSendEmail={sendEmailReceipt}
+              sendingEmail={sendingEmail}
+              emailSent={emailSent}
+              emailError={emailError}
+              receiptPhone={receiptPhone}
+              onSetReceiptPhone={setReceiptPhone}
+              onSendSMS={sendSMSReceipt}
+              sendingSMS={sendingSMS}
+              smsSent={smsSent}
+              smsError={smsError}
+              onNewSale={() => {
+                setStep('items'); setCompletedSale(null);
+                setReceiptEmail(''); setReceiptPhone('');
+                setEmailSent(false); setSmsSent(false);
+                setEmailError(''); setSmsError('');
+                setQueueRefresh((n) => n + 1);
+              }}
+            />
 
 
           </div>
