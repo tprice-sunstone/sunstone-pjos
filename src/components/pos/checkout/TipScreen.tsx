@@ -1,9 +1,9 @@
 // ============================================================================
-// TipScreen — Customer-Facing Percentage Tip Selection
+// TipScreen — Customer-Facing Tip Selection
 // src/components/pos/checkout/TipScreen.tsx
 // ============================================================================
 // Full-screen, customer-facing tip screen. Handed to the customer.
-// Percentage-based presets with calculated dollar amounts.
+// Flat dollar presets with custom input option.
 // No back/cancel buttons. Theme-safe tokens only.
 // ============================================================================
 
@@ -11,7 +11,7 @@
 
 import { useState } from 'react';
 
-const TIP_PERCENTAGES = [0, 10, 15, 20, 25] as const;
+const TIP_PRESETS = [0, 3, 5, 10, 15, 20];
 
 interface TipScreenProps {
   tenantName: string;
@@ -32,21 +32,21 @@ export function TipScreen({
   onSetTip,
   onContinue,
 }: TipScreenProps) {
-  const [selectedPercent, setSelectedPercent] = useState<number | null>(
-    tipAmount === 0 ? 0 : null
+  const [selectedPreset, setSelectedPreset] = useState<number | null>(
+    tipAmount === 0 ? 0 : TIP_PRESETS.includes(tipAmount) ? tipAmount : null
   );
   const [showCustom, setShowCustom] = useState(false);
   const [customValue, setCustomValue] = useState('');
 
-  const handlePresetSelect = (pct: number) => {
-    setSelectedPercent(pct);
+  const handlePresetSelect = (amount: number) => {
+    setSelectedPreset(amount);
     setShowCustom(false);
     setCustomValue('');
-    onSetTip(pct === 0 ? 0 : Math.round(subtotal * (pct / 100) * 100) / 100);
+    onSetTip(amount);
   };
 
   const handleCustomSelect = () => {
-    setSelectedPercent(null);
+    setSelectedPreset(null);
     setShowCustom(true);
   };
 
@@ -76,29 +76,23 @@ export function TipScreen({
           {itemCount} item{itemCount !== 1 ? 's' : ''} &mdash; ${subtotal.toFixed(2)}
         </p>
 
-        {/* Percentage tip grid — 2x3 */}
+        {/* Flat dollar tip grid — 2x3 + Custom */}
         <div className="grid grid-cols-3 gap-3">
-          {TIP_PERCENTAGES.map((pct) => {
-            const dollarAmount = pct === 0 ? 0 : Math.round(subtotal * (pct / 100) * 100) / 100;
-            const isSelected = selectedPercent === pct && !showCustom;
+          {TIP_PRESETS.map((amount) => {
+            const isSelected = selectedPreset === amount && !showCustom;
             return (
               <button
-                key={pct}
-                onClick={() => handlePresetSelect(pct)}
-                className={`py-4 rounded-2xl text-center transition-all min-h-[60px] flex flex-col items-center justify-center gap-0.5 ${
+                key={amount}
+                onClick={() => handlePresetSelect(amount)}
+                className={`py-4 rounded-2xl text-center transition-all min-h-[60px] flex flex-col items-center justify-center ${
                   isSelected
                     ? 'bg-[var(--text-primary)] text-[var(--surface-base)] shadow-md'
                     : 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'
                 }`}
               >
                 <span className="text-xl font-bold">
-                  {pct === 0 ? 'No Tip' : `${pct}%`}
+                  {amount === 0 ? 'None' : `$${amount}`}
                 </span>
-                {pct > 0 && (
-                  <span className={`text-xs ${isSelected ? 'opacity-70' : 'text-[var(--text-tertiary)]'}`}>
-                    ${dollarAmount.toFixed(2)}
-                  </span>
-                )}
               </button>
             );
           })}
@@ -106,7 +100,7 @@ export function TipScreen({
           {/* Custom button */}
           <button
             onClick={handleCustomSelect}
-            className={`py-4 rounded-2xl text-center transition-all min-h-[60px] flex flex-col items-center justify-center gap-0.5 ${
+            className={`py-4 rounded-2xl text-center transition-all min-h-[60px] flex flex-col items-center justify-center ${
               showCustom
                 ? 'bg-[var(--text-primary)] text-[var(--surface-base)] shadow-md'
                 : 'bg-[var(--surface-raised)] border border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:shadow-sm'
