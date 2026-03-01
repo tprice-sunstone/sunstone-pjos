@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
+import { isInPalette, nearestPaletteColor } from '@/lib/tag-colors';
 
 const DEFAULT_TAGS = [
   // Auto-applied tags (system handles automatically)
@@ -114,6 +115,15 @@ export async function GET(request: NextRequest) {
     .order('name');
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Migrate non-palette colors to nearest palette match (fire-and-forget)
+  for (const tag of tags || []) {
+    if (tag.color && !isInPalette(tag.color)) {
+      const newColor = nearestPaletteColor(tag.color);
+      supabase.from('client_tags').update({ color: newColor }).eq('id', tag.id).then(() => {});
+      tag.color = newColor; // Return corrected color immediately
+    }
+  }
 
   const result = (tags || []).map((tag: any) => ({
     id: tag.id,

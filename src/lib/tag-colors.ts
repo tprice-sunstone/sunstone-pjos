@@ -24,6 +24,18 @@ export const TAG_PALETTE: TagColor[] = [
 ];
 
 /**
+ * Parse a hex color to RGB components.
+ */
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const clean = hex.replace('#', '');
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16),
+  };
+}
+
+/**
  * Get the tag color entry for a given hex color.
  * Falls back to computing an rgba bg from the hex with 15% opacity.
  */
@@ -31,9 +43,7 @@ export function getTagColor(hex: string): { bg: string; text: string } {
   const match = TAG_PALETTE.find((p) => p.text.toLowerCase() === hex.toLowerCase());
   if (match) return { bg: match.bg, text: match.text };
   // Compute rgba from hex
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  const { r, g, b } = hexToRgb(hex);
   return { bg: `rgba(${r}, ${g}, ${b}, 0.15)`, text: hex };
 }
 
@@ -42,3 +52,31 @@ export function getTagColor(hex: string): { bg: string; text: string } {
  * Every tag gets the soft rgba background with darker text treatment.
  */
 export const getTagDisplayColors = getTagColor;
+
+/**
+ * Check if a hex color is in the approved palette.
+ */
+export function isInPalette(hex: string): boolean {
+  return TAG_PALETTE.some((p) => p.text.toLowerCase() === hex.toLowerCase());
+}
+
+/**
+ * Find the nearest palette color to a given hex using Euclidean RGB distance.
+ * Used to migrate old/non-palette tag colors to the approved set.
+ */
+export function nearestPaletteColor(hex: string): string {
+  const target = hexToRgb(hex);
+  let bestHex = TAG_PALETTE[0].text;
+  let bestDist = Infinity;
+
+  for (const p of TAG_PALETTE) {
+    const c = hexToRgb(p.text);
+    const dist = (target.r - c.r) ** 2 + (target.g - c.g) ** 2 + (target.b - c.b) ** 2;
+    if (dist < bestDist) {
+      bestDist = dist;
+      bestHex = p.text;
+    }
+  }
+
+  return bestHex;
+}
