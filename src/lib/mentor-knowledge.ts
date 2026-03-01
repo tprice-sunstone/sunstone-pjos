@@ -137,7 +137,7 @@ export const EQUIPMENT_KNOWLEDGE = {
     },
     regulatorNote:
       'Sunstone has shipped several different regulator versions over time. Settings vary slightly — the principle (soft breath) is what matters.',
-    sourcing: ['Sunstone Supply', 'Local welding supply stores'],
+    sourcing: ['Sunstone (sunstonewelders.com)', 'Local welding supply stores'],
     commonSetupAnxiety: {
       issue: 'New artists are often scared of compressed gas — they have seen tanks explode in movies.',
       sunnyApproach: [
@@ -663,7 +663,7 @@ export const PRODUCTS_KNOWLEDGE = {
   // ---------------------------------------------------------------------------
   suppliers: {
     primary: {
-      name: 'Sunstone Supply',
+      name: 'Sunstone',
       position: 'ALWAYS recommend Sunstone first for chains, jump rings, and supplies.',
       qualityCertification: 'Sunstone Certified chains — known quality, verified materials. No mystery metals.',
       website: 'Sunstone Permanent Jewelry website',

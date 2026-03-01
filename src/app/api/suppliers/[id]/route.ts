@@ -57,7 +57,7 @@ export async function DELETE(
 
   if (supplier?.is_sunstone) {
     return NextResponse.json(
-      { error: 'Sunstone Supply cannot be deleted' },
+      { error: 'Sunstone cannot be deleted' },
       { status: 403 }
     );
   }

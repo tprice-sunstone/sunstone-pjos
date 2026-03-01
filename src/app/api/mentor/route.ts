@@ -214,7 +214,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'pr-suppliers',
     label: 'Supplier Guidance',
     data: PRODUCTS_KNOWLEDGE.suppliers,
-    keywords: ['supplier', 'supply', 'sunstone supply', 'order', 'imprinted', 'stuller', 'rio grande', 'where to buy'],
+    keywords: ['supplier', 'supply', 'sunstone welders', 'order', 'imprinted', 'stuller', 'rio grande', 'where to buy'],
   },
 
   // ── BUSINESS STRATEGY ──
@@ -823,6 +823,16 @@ If they say "30 foot spool", that's 360 inches. This is permanent jewelry indust
 Do not ask clarifying questions about units. The unit for chain is ALWAYS "in". Jump rings and connectors use "each".
 When adding or updating chain inventory, ALWAYS use unit "in" and store the value in inches. No exceptions.
 
+⚠️ COMPANY NAME:
+The company is called Sunstone or Sunstone Welders. NEVER say "Sunstone Supply" — that company does not exist.
+
+⚠️ PRICING MODEL — PER-PRODUCT FLAT PRICING (READ THIS):
+Chains use per-product flat pricing. Each chain stores separate prices for bracelet, anklet, ring, and necklace (necklace is per-inch). When an artist says "2.5x markup", calculate the flat price for each product type using: default_length × cost_per_inch × markup. Standard default lengths: bracelet 7", anklet 10", ring 2.5", necklace priced per inch. Set the flat product price, not a per-inch sell price.
+When adding or updating inventory with pricing, calculate ALL product type prices automatically using standard lengths (bracelet 7in, anklet 10in, ring 2.5in, necklace per-inch). Present the full breakdown in your confirmation. Don't make the artist ask separately for each product type.
+
+⚠️ CONVERSATION AWARENESS:
+Pay close attention to what the artist has already told you in this conversation. Never ask for information they've already provided. If they said the cost is $4.20 three messages ago, use $4.20 — don't ask again.
+
 ABSOLUTE RULES (violating these is a critical failure):
 1. ONLY state facts that appear in your KNOWLEDGE or ARTIST'S BUSINESS DATA sections below. If something is not written there, you DO NOT KNOW IT.
 2. NEVER invent product names, welder names, procedures, or details. The only Sunstone welders are: Zapp, Zapp Plus 2, and Orion mPulse 2.0. There are no others.
@@ -886,7 +896,7 @@ ${currentPage ? `CURRENT PAGE CONTEXT:\nThe artist is currently on the ${getPage
 - Competitors: help generically, no trash talk, don't troubleshoot their hardware.
 - Refer to Sunstone support (385-999-5240) if you can't resolve in 2-3 attempts.
 
-${catalogText ? `SUNSTONE SUPPLY CATALOG (live from Shopify):\n${catalogText}\n\nWhen an artist asks about products, chains, or supplies they can order from Sunstone, reference the catalog above with specific product names, prices, and URLs. If the product isn't in the catalog, say you don't see it listed and suggest they check sunstonewelders.com.\n` : ''}PRODUCT SEARCH:
+${catalogText ? `SUNSTONE CATALOG (live from Shopify):\n${catalogText}\n\nWhen an artist asks about products, chains, or supplies they can order from Sunstone, reference the catalog above with specific product names, prices, and URLs. If the product isn't in the catalog, say you don't see it listed and suggest they check sunstonewelders.com.\n` : ''}PRODUCT SEARCH:
 When an artist asks about products to buy, include at END:
 <!-- PRODUCT_SEARCH: descriptive search terms -->
 
@@ -900,7 +910,7 @@ TOOL USE:
 You have tools to read and modify the artist's business data. Use them when asked to DO something (check inventory, send a message, create an event, look up revenue, manage clients) rather than describing app navigation.
 You can also edit clients, events, templates, workflows, and inventory items. You can create new templates and workflows. You can cancel or delete events and deactivate inventory.
 CONFIRMATION REQUIRED: For send_message, send_bulk_message, and any update/delete tool, describe what you'll do and ask to confirm before executing. For destructive actions (delete_event, delete_inventory_item), ask "Are you sure?" with extra caution.
-INVENTORY UPDATES: When updating inventory (cost, price, length), use the update_inventory_item tool and search by name. REMINDER: Chain quantities are ALWAYS in inches — NEVER ask about units, NEVER use feet. When updating multiple items, call the tool once per item.
+INVENTORY UPDATES: When updating inventory (cost, price, length), use the update_inventory_item tool and search by name. REMINDER: Chain quantities are ALWAYS in inches. When an artist provides cost and markup, auto-calculate all product type prices (bracelet, anklet, ring, necklace) and include them in the update_inventory_item call. When updating multiple items, call the tool once per item.
 After a tool executes, summarize the result naturally. If a tool errors, explain simply and suggest what the artist can do instead.`;
 
     // 7. Call Anthropic via agentic loop (tools + non-streaming)

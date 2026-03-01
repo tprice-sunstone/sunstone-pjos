@@ -752,10 +752,10 @@ async function generateCards(
       type: 'sunstone_product',
       priority: 50,
       data: {
-        title: 'Explore Sunstone Supply',
+        title: 'Explore Sunstone',
         body: 'Premium chains, charms, and welders for your permanent jewelry business.',
         actionLabel: 'Shop Now',
-        actionRoute: 'https://sunstonesupply.com',
+        actionRoute: 'https://sunstonewelders.com',
         badge: 'From Sunstone',
       },
     });
@@ -838,7 +838,7 @@ async function generateSunnyTake(
 
   // Append catalog summary if available (active promotions, featured products)
   if (catalogSummary) {
-    userMessage += `\n\nSunstone Supply catalog highlights:\n${catalogSummary}`;
+    userMessage += `\n\nSunstone catalog highlights:\n${catalogSummary}`;
   }
 
   try {
@@ -996,7 +996,7 @@ function formatShopifySpotlight(
   // Truncate description to ~120 chars for the card body
   const body = product.description
     ? product.description.replace(/<[^>]*>/g, '').slice(0, 120).trim() + (product.description.length > 120 ? '...' : '')
-    : 'A top pick from Sunstone Supply.';
+    : 'A top pick from Sunstone.';
 
   return {
     title: product.title,

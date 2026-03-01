@@ -3,7 +3,7 @@
 // ============================================================================
 // New file: src/components/settings/SuppliersSection.tsx
 //
-// Manages suppliers with CRUD. Sunstone Supply is pre-seeded and cannot be
+// Manages suppliers with CRUD. Sunstone is pre-seeded and cannot be
 // deleted. Simple list with edit/delete actions.
 // ============================================================================
 
@@ -242,7 +242,7 @@ export default function SuppliersSection({ tenantId }: SuppliersSectionProps) {
                     Edit
                   </button>
                   {s.is_sunstone ? (
-                    <span className="text-[var(--text-tertiary)] px-2 py-1" title="Sunstone Supply cannot be deleted">
+                    <span className="text-[var(--text-tertiary)] px-2 py-1" title="Sunstone cannot be deleted">
                       <svg className="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
                     </span>
                   ) : (

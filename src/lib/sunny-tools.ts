@@ -49,6 +49,12 @@ export const SUNNY_TOOL_DEFINITIONS = [
         unit: { type: 'string', enum: ['ft', 'each', 'in'], description: 'Unit of measurement' },
         cost: { type: 'number', description: 'Cost per unit (optional)' },
         sell_price: { type: 'number', description: 'Sell price per piece (optional)' },
+        supplier: { type: 'string', description: 'Supplier/vendor name' },
+        markup: { type: 'number', description: 'Markup multiplier (e.g. 2.5). Auto-calculates product prices from cost × markup × default lengths.' },
+        bracelet_price: { type: 'number', description: 'Override flat bracelet price' },
+        anklet_price: { type: 'number', description: 'Override flat anklet price' },
+        ring_price: { type: 'number', description: 'Override flat ring price' },
+        necklace_price_per_inch: { type: 'number', description: 'Override necklace per-inch price' },
       },
       required: ['name', 'type', 'quantity_on_hand', 'unit'],
     },
@@ -289,11 +295,17 @@ export const SUNNY_TOOL_DEFINITIONS = [
         updates: {
           type: 'object',
           properties: {
+            name: { type: 'string', description: 'Rename the item' },
             cost_per_inch: { type: 'number', description: 'New cost per inch (mapped to cost_per_unit)' },
             sell_price: { type: 'number', description: 'New sell price' },
             current_length_inches: { type: 'number', description: 'Set total inches (replaces, does not add — mapped to quantity_on_hand)' },
             material: { type: 'string', description: 'Update material type' },
+            supplier: { type: 'string', description: 'Supplier/vendor name' },
             is_active: { type: 'boolean', description: 'Activate or deactivate' },
+            bracelet_price: { type: 'number', description: 'Flat sell price for bracelets (default 7 inches)' },
+            anklet_price: { type: 'number', description: 'Flat sell price for anklets (default 10 inches)' },
+            ring_price: { type: 'number', description: 'Flat sell price for rings (default 2.5 inches)' },
+            necklace_price_per_inch: { type: 'number', description: 'Sell price per inch for necklaces' },
           },
         },
       },
@@ -666,24 +678,87 @@ export async function executeSunnyTool(
 
       // ── 2. add_inventory ──
       case 'add_inventory': {
+        const insertPayload: Record<string, any> = {
+          tenant_id: tenantId,
+          name: input.name,
+          type: input.type,
+          material: input.material || null,
+          quantity_on_hand: input.quantity_on_hand,
+          unit: input.unit,
+          cost_per_unit: input.cost || 0,
+          sell_price: input.sell_price || 0,
+          supplier: input.supplier || null,
+          is_active: true,
+        };
+
+        // Set pricing_mode for chains when prices or markup provided
+        const hasChainPricing = input.markup || input.bracelet_price || input.anklet_price || input.ring_price || input.necklace_price_per_inch;
+        if (input.type === 'chain' && hasChainPricing) {
+          insertPayload.pricing_mode = 'per_product';
+        }
+
         const { data, error } = await serviceClient
           .from('inventory_items')
-          .insert({
-            tenant_id: tenantId,
-            name: input.name,
-            type: input.type,
-            material: input.material || null,
-            quantity_on_hand: input.quantity_on_hand,
-            unit: input.unit,
-            cost_per_unit: input.cost || 0,
-            sell_price: input.sell_price || 0,
-            is_active: true,
-          })
+          .insert(insertPayload)
           .select('id, name, type')
           .single();
 
         if (error) return { result: { error: error.message }, isError: true };
-        return { result: { success: true, item: data } };
+
+        // Calculate and upsert chain product prices
+        const chainPriceResult: Record<string, number> = {};
+        if (input.type === 'chain' && hasChainPricing && data) {
+          const cost = input.cost || 0;
+          const markup = input.markup || 1;
+
+          // Calculate prices from markup (overridden by explicit prices)
+          let braceletPrice = input.bracelet_price ?? (cost && input.markup ? 7 * cost * markup : undefined);
+          let ankletPrice = input.anklet_price ?? (cost && input.markup ? 10 * cost * markup : undefined);
+          let ringPrice = input.ring_price ?? (cost && input.markup ? 2.5 * cost * markup : undefined);
+          let necklacePerInch = input.necklace_price_per_inch ?? (cost && input.markup ? cost * markup : undefined);
+
+          // Fetch product types for this tenant
+          const { data: productTypes } = await serviceClient
+            .from('product_types')
+            .select('id, name')
+            .eq('tenant_id', tenantId);
+
+          if (productTypes && productTypes.length > 0) {
+            const priceMap: { name: string; label: string; price: number | undefined; defaultInches: number | null }[] = [
+              { name: 'bracelet', label: 'bracelet_price', price: braceletPrice, defaultInches: 7 },
+              { name: 'anklet', label: 'anklet_price', price: ankletPrice, defaultInches: 10 },
+              { name: 'ring', label: 'ring_price', price: ringPrice, defaultInches: 2.5 },
+              { name: 'necklace', label: 'necklace_price_per_inch', price: necklacePerInch, defaultInches: null },
+            ];
+
+            for (const pm of priceMap) {
+              if (pm.price === undefined) continue;
+              const pt = productTypes.find((p: any) => p.name.toLowerCase() === pm.name);
+              if (!pt) continue;
+
+              await serviceClient
+                .from('chain_product_prices')
+                .upsert({
+                  inventory_item_id: data.id,
+                  product_type_id: pt.id,
+                  tenant_id: tenantId,
+                  sell_price: pm.price,
+                  default_inches: pm.defaultInches,
+                  is_active: true,
+                }, { onConflict: 'inventory_item_id,product_type_id' });
+
+              chainPriceResult[pm.label] = pm.price;
+            }
+          }
+        }
+
+        return {
+          result: {
+            success: true,
+            item: data,
+            ...(Object.keys(chainPriceResult).length > 0 ? { chain_product_prices: chainPriceResult } : {}),
+          },
+        };
       }
 
       // ── 3. update_price ──
@@ -1446,21 +1521,68 @@ export async function executeSunnyTool(
         const item = matches[0];
         const dbUpdates: Record<string, any> = {};
 
+        if (input.updates.name !== undefined) dbUpdates.name = input.updates.name;
         if (input.updates.cost_per_inch !== undefined) dbUpdates.cost_per_unit = input.updates.cost_per_inch;
         if (input.updates.sell_price !== undefined) dbUpdates.sell_price = input.updates.sell_price;
         if (input.updates.current_length_inches !== undefined) dbUpdates.quantity_on_hand = input.updates.current_length_inches;
         if (input.updates.material !== undefined) dbUpdates.material = input.updates.material;
+        if (input.updates.supplier !== undefined) dbUpdates.supplier = input.updates.supplier;
         if (input.updates.is_active !== undefined) dbUpdates.is_active = input.updates.is_active;
 
-        if (Object.keys(dbUpdates).length === 0) return { result: { error: 'No valid updates provided' }, isError: true };
+        const hasPriceUpdates = input.updates.bracelet_price !== undefined ||
+          input.updates.anklet_price !== undefined ||
+          input.updates.ring_price !== undefined ||
+          input.updates.necklace_price_per_inch !== undefined;
 
-        const { error: updateErr } = await serviceClient
-          .from('inventory_items')
-          .update(dbUpdates)
-          .eq('id', item.id)
-          .eq('tenant_id', tenantId);
+        if (Object.keys(dbUpdates).length === 0 && !hasPriceUpdates) return { result: { error: 'No valid updates provided' }, isError: true };
 
-        if (updateErr) return { result: { error: updateErr.message }, isError: true };
+        if (Object.keys(dbUpdates).length > 0) {
+          const { error: updateErr } = await serviceClient
+            .from('inventory_items')
+            .update(dbUpdates)
+            .eq('id', item.id)
+            .eq('tenant_id', tenantId);
+
+          if (updateErr) return { result: { error: updateErr.message }, isError: true };
+        }
+
+        // Upsert chain product prices if any price fields provided
+        const priceUpdates: Record<string, number> = {};
+        if (hasPriceUpdates) {
+          // Fetch product types for this tenant
+          const { data: productTypes } = await serviceClient
+            .from('product_types')
+            .select('id, name')
+            .eq('tenant_id', tenantId);
+
+          if (productTypes && productTypes.length > 0) {
+            const priceMap: { name: string; field: string; price: number | undefined; defaultInches: number | null }[] = [
+              { name: 'bracelet', field: 'bracelet_price', price: input.updates.bracelet_price, defaultInches: 7 },
+              { name: 'anklet', field: 'anklet_price', price: input.updates.anklet_price, defaultInches: 10 },
+              { name: 'ring', field: 'ring_price', price: input.updates.ring_price, defaultInches: 2.5 },
+              { name: 'necklace', field: 'necklace_price_per_inch', price: input.updates.necklace_price_per_inch, defaultInches: null },
+            ];
+
+            for (const pm of priceMap) {
+              if (pm.price === undefined) continue;
+              const pt = productTypes.find((p: any) => p.name.toLowerCase() === pm.name);
+              if (!pt) continue;
+
+              await serviceClient
+                .from('chain_product_prices')
+                .upsert({
+                  inventory_item_id: item.id,
+                  product_type_id: pt.id,
+                  tenant_id: tenantId,
+                  sell_price: pm.price,
+                  default_inches: pm.defaultInches,
+                  is_active: true,
+                }, { onConflict: 'inventory_item_id,product_type_id' });
+
+              priceUpdates[pm.field] = pm.price;
+            }
+          }
+        }
 
         return {
           result: {
@@ -1468,6 +1590,7 @@ export async function executeSunnyTool(
             item_name: item.name,
             item_id: item.id,
             updates_applied: input.updates,
+            ...(Object.keys(priceUpdates).length > 0 ? { chain_product_prices_updated: priceUpdates } : {}),
           },
         };
       }
