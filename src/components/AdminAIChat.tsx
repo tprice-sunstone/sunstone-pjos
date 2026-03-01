@@ -14,17 +14,18 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  toolStatus?: string;
 }
 
 const SUGGESTED_PROMPTS = [
-  'How is the platform doing this month?',
-  "What are artists asking Sunny that she can't answer?",
-  'Which tenants are most active?',
+  'What knowledge gaps should I address?',
+  'Which tenants need attention?',
+  'Approve the top knowledge gap',
   'Give me a revenue report for this week',
+  'How is the platform doing this month?',
   'What products are selling best?',
   'Any issues I should know about?',
-  'Summarize event performance across tenants',
-  'What knowledge gaps should I prioritize?',
+  'Search for a specific tenant',
 ];
 
 function renderMarkdown(text: string): string {
@@ -125,6 +126,25 @@ function TypingIndicator() {
   );
 }
 
+function ToolStatusIndicator({ status }: { status: string }) {
+  return (
+    <div className="flex items-start gap-2 px-4">
+      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: '#1A1A24' }}>
+        <AtlasIconSmall className="w-3.5 h-3.5" style={{ color: '#FF7A00' }} />
+      </div>
+      <div className="rounded-2xl rounded-tl-sm px-4 py-3" style={{ backgroundColor: '#1A1A24', border: '1px solid #222230' }}>
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: '#FF7A00' }} />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ backgroundColor: '#FF7A00' }} />
+          </span>
+          <span className="text-xs" style={{ color: '#9B9590' }}>{status}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ============================================================================
 // Main Component — now controlled via props
 // ============================================================================
@@ -185,10 +205,15 @@ export default function AdminAIChat({ isOpen, onClose }: { isOpen: boolean; onCl
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
+                if (data.toolStatus) {
+                  setMessages((prev) =>
+                    prev.map((m) => m.id === assistantMsg.id ? { ...m, toolStatus: data.toolStatus } : m)
+                  );
+                }
                 if (data.text) {
                   fullText += data.text;
                   setMessages((prev) =>
-                    prev.map((m) => m.id === assistantMsg.id ? { ...m, content: fullText } : m)
+                    prev.map((m) => m.id === assistantMsg.id ? { ...m, content: fullText, toolStatus: undefined } : m)
                   );
                 }
               } catch {}
@@ -326,7 +351,11 @@ export default function AdminAIChat({ isOpen, onClose }: { isOpen: boolean; onCl
             ))
           )}
 
-          {isStreaming && messages[messages.length - 1]?.content === '' && <TypingIndicator />}
+          {isStreaming && messages[messages.length - 1]?.content === '' && (
+            messages[messages.length - 1]?.toolStatus
+              ? <ToolStatusIndicator status={messages[messages.length - 1].toolStatus!} />
+              : <TypingIndicator />
+          )}
           <div ref={messagesEndRef} />
         </div>
 

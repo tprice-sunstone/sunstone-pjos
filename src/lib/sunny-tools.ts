@@ -1,0 +1,1168 @@
+// ============================================================================
+// Sunny Tools — src/lib/sunny-tools.ts
+// ============================================================================
+// 19 agentic tools for Sunny (business mentor AI).
+// Each tool receives { serviceClient, tenantId, userId } context.
+// ============================================================================
+
+import { renderTemplate } from '@/lib/templates';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface SunnyToolContext {
+  serviceClient: any;
+  tenantId: string;
+  userId: string;
+}
+
+// ============================================================================
+// Tool Definitions (Anthropic tool schema)
+// ============================================================================
+
+export const SUNNY_TOOL_DEFINITIONS = [
+  // 1. check_inventory
+  {
+    name: 'check_inventory',
+    description: 'Check the artist\'s current inventory items. Can filter by search query or product type.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search term to filter by name (optional)' },
+        type: { type: 'string', enum: ['chain', 'jump_ring', 'charm', 'connector'], description: 'Filter by product type (optional)' },
+      },
+      required: [],
+    },
+  },
+  // 2. add_inventory
+  {
+    name: 'add_inventory',
+    description: 'Add a new inventory item to the artist\'s stock.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Item name (e.g. "Chloe")' },
+        type: { type: 'string', enum: ['chain', 'jump_ring', 'charm', 'connector'], description: 'Product type' },
+        material: { type: 'string', description: 'Material (e.g. "14K Gold Fill", "Sterling Silver")' },
+        quantity_on_hand: { type: 'number', description: 'Starting quantity' },
+        unit: { type: 'string', enum: ['ft', 'each', 'in'], description: 'Unit of measurement' },
+        cost: { type: 'number', description: 'Cost per unit (optional)' },
+        sell_price: { type: 'number', description: 'Sell price per piece (optional)' },
+      },
+      required: ['name', 'type', 'quantity_on_hand', 'unit'],
+    },
+  },
+  // 3. update_price
+  {
+    name: 'update_price',
+    description: 'Update the sell price of an inventory item.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        item_id: { type: 'string', description: 'Inventory item UUID' },
+        sell_price: { type: 'number', description: 'New sell price' },
+      },
+      required: ['item_id', 'sell_price'],
+    },
+  },
+  // 4. search_clients
+  {
+    name: 'search_clients',
+    description: 'Search the artist\'s client list by name, email, or phone.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search term (name, email, or phone)' },
+        limit: { type: 'number', description: 'Max results to return (default 10)' },
+      },
+      required: ['query'],
+    },
+  },
+  // 5. get_client_details
+  {
+    name: 'get_client_details',
+    description: 'Get full details for a specific client including purchase history, tags, and notes.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_id: { type: 'string', description: 'Client UUID' },
+      },
+      required: ['client_id'],
+    },
+  },
+  // 6. tag_client
+  {
+    name: 'tag_client',
+    description: 'Add a tag to a client. Creates the tag if it doesn\'t exist.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_id: { type: 'string', description: 'Client UUID' },
+        tag_name: { type: 'string', description: 'Tag name (e.g. "VIP", "Girls Night")' },
+        color: { type: 'string', description: 'Hex color for new tag (optional, default #7A8B8C)' },
+      },
+      required: ['client_id', 'tag_name'],
+    },
+  },
+  // 7. add_client_note
+  {
+    name: 'add_client_note',
+    description: 'Add a note to a client\'s profile.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_id: { type: 'string', description: 'Client UUID' },
+        note: { type: 'string', description: 'Note text' },
+      },
+      required: ['client_id', 'note'],
+    },
+  },
+  // 8. send_message (CONFIRMATION REQUIRED)
+  {
+    name: 'send_message',
+    description: 'Send an SMS or email to a specific client. REQUIRES CONFIRMATION: first call without confirmed=true to get a preview, then call again with confirmed=true after user approval.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_id: { type: 'string', description: 'Client UUID' },
+        channel: { type: 'string', enum: ['sms', 'email'], description: 'Message channel' },
+        body: { type: 'string', description: 'Message body. Supports {{client_name}}, {{client_first_name}}, {{business_name}} variables.' },
+        subject: { type: 'string', description: 'Email subject (required for email)' },
+        confirmed: { type: 'boolean', description: 'Set to true after user confirms the preview' },
+      },
+      required: ['client_id', 'channel', 'body'],
+    },
+  },
+  // 9. send_bulk_message (CONFIRMATION REQUIRED)
+  {
+    name: 'send_bulk_message',
+    description: 'Send a message to all clients with a specific tag. REQUIRES CONFIRMATION: first call without confirmed=true to get a preview, then call again with confirmed=true after user approval.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        tag_name: { type: 'string', description: 'Tag name to target (e.g. "VIP")' },
+        channel: { type: 'string', enum: ['sms', 'email'], description: 'Message channel' },
+        body: { type: 'string', description: 'Message body. Supports template variables.' },
+        subject: { type: 'string', description: 'Email subject (required for email)' },
+        confirmed: { type: 'boolean', description: 'Set to true after user confirms the preview' },
+      },
+      required: ['tag_name', 'channel', 'body'],
+    },
+  },
+  // 10. enroll_in_workflow
+  {
+    name: 'enroll_in_workflow',
+    description: 'Enroll a client in an automated workflow (e.g. follow-up sequence).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_id: { type: 'string', description: 'Client UUID' },
+        workflow_id: { type: 'string', description: 'Workflow template UUID' },
+      },
+      required: ['client_id', 'workflow_id'],
+    },
+  },
+  // 11. create_event
+  {
+    name: 'create_event',
+    description: 'Create a new event for the artist.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Event name' },
+        start_time: { type: 'string', description: 'ISO 8601 start time' },
+        end_time: { type: 'string', description: 'ISO 8601 end time (optional)' },
+        location: { type: 'string', description: 'Event location (optional)' },
+        max_capacity: { type: 'number', description: 'Maximum capacity (optional)' },
+        notes: { type: 'string', description: 'Event notes (optional)' },
+      },
+      required: ['name', 'start_time'],
+    },
+  },
+  // 12. get_event_performance
+  {
+    name: 'get_event_performance',
+    description: 'Get performance data for a specific event (sales, revenue, queue stats).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        event_id: { type: 'string', description: 'Event UUID' },
+      },
+      required: ['event_id'],
+    },
+  },
+  // 13. list_events
+  {
+    name: 'list_events',
+    description: 'List the artist\'s events. Can filter to upcoming only.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        upcoming: { type: 'boolean', description: 'Only show future events (default false)' },
+        limit: { type: 'number', description: 'Max events to return (default 10)' },
+      },
+      required: [],
+    },
+  },
+  // 14. get_revenue_report
+  {
+    name: 'get_revenue_report',
+    description: 'Get a revenue report for a specific period.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['today', 'week', 'month', 'year'], description: 'Report period' },
+      },
+      required: ['period'],
+    },
+  },
+  // 15. get_top_products
+  {
+    name: 'get_top_products',
+    description: 'Get the top selling products by quantity or revenue.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['week', 'month', 'year', 'all'], description: 'Time period (default all)' },
+        limit: { type: 'number', description: 'Number of products (default 10)' },
+      },
+      required: [],
+    },
+  },
+  // 16. get_client_stats
+  {
+    name: 'get_client_stats',
+    description: 'Get overall client statistics (total, new this month, top by spend).',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  // 17. update_settings
+  {
+    name: 'update_settings',
+    description: 'Update business settings for the artist.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        business_name: { type: 'string', description: 'New business name' },
+        phone: { type: 'string', description: 'Business phone number' },
+        tax_rate: { type: 'number', description: 'Default tax rate (as percentage, e.g. 8.5)' },
+        theme_id: { type: 'string', description: 'Theme identifier' },
+      },
+      required: [],
+    },
+  },
+  // 18. get_settings
+  {
+    name: 'get_settings',
+    description: 'Get the artist\'s current business settings.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  // 19. create_tax_profile
+  {
+    name: 'create_tax_profile',
+    description: 'Create a new tax profile for the artist.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Tax profile name (e.g. "Utah Sales Tax")' },
+        rate: { type: 'number', description: 'Tax rate as percentage (e.g. 8.5)' },
+        is_default: { type: 'boolean', description: 'Set as default tax profile' },
+      },
+      required: ['name', 'rate'],
+    },
+  },
+];
+
+// ============================================================================
+// Tool Status Labels
+// ============================================================================
+
+export function getSunnyToolStatusLabel(name: string): string {
+  const labels: Record<string, string> = {
+    check_inventory: 'Checking inventory...',
+    add_inventory: 'Adding to inventory...',
+    update_price: 'Updating price...',
+    search_clients: 'Searching clients...',
+    get_client_details: 'Looking up client...',
+    tag_client: 'Tagging client...',
+    add_client_note: 'Adding note...',
+    send_message: 'Preparing message...',
+    send_bulk_message: 'Preparing bulk message...',
+    enroll_in_workflow: 'Enrolling in workflow...',
+    create_event: 'Creating event...',
+    get_event_performance: 'Analyzing event...',
+    list_events: 'Fetching events...',
+    get_revenue_report: 'Generating report...',
+    get_top_products: 'Finding top products...',
+    get_client_stats: 'Gathering client stats...',
+    update_settings: 'Updating settings...',
+    get_settings: 'Fetching settings...',
+    create_tax_profile: 'Creating tax profile...',
+  };
+  return labels[name] || 'Working...';
+}
+
+// ============================================================================
+// SMS via Twilio
+// ============================================================================
+
+async function sendSMS(to: string, body: string) {
+  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+    console.log(`[Sunny SMS Skipped] Would send to ${to}: ${body.slice(0, 50)}`);
+    return;
+  }
+  const twilio = require('twilio');
+  const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  await client.messages.create({
+    body,
+    from: process.env.TWILIO_PHONE_NUMBER,
+    to,
+  });
+}
+
+// ============================================================================
+// Email via Resend
+// ============================================================================
+
+async function sendEmail(to: string, subject: string, body: string) {
+  if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL) {
+    console.log(`[Sunny Email Skipped] Would send to ${to}: ${subject}`);
+    return;
+  }
+  const { Resend } = await import('resend');
+  const resend = new Resend(process.env.RESEND_API_KEY);
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #374151;">
+  ${body.split('\n').map((line) => `<p style="margin: 0 0 12px;">${line}</p>`).join('')}
+</body></html>`;
+
+  const { error } = await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL,
+    to,
+    subject,
+    html,
+  });
+  if (error) throw new Error(error.message || 'Resend error');
+}
+
+// ============================================================================
+// Tool Executor Dispatcher
+// ============================================================================
+
+export async function executeSunnyTool(
+  name: string,
+  input: any,
+  ctx: SunnyToolContext
+): Promise<{ result: any; isError?: boolean }> {
+  const { serviceClient, tenantId, userId } = ctx;
+
+  try {
+    switch (name) {
+      // ── 1. check_inventory ──
+      case 'check_inventory': {
+        let query = serviceClient
+          .from('inventory_items')
+          .select('id, name, type, material, quantity_on_hand, sell_price, cost_per_unit, unit, reorder_threshold, is_active')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .order('type')
+          .order('name');
+
+        if (input.type) query = query.eq('type', input.type);
+        if (input.query) query = query.ilike('name', `%${input.query}%`);
+
+        const { data, error } = await query.limit(50);
+        if (error) return { result: { error: error.message }, isError: true };
+
+        const items = (data || []).map((i: any) => ({
+          id: i.id,
+          name: i.name,
+          type: i.type,
+          material: i.material,
+          quantity: Number(i.quantity_on_hand),
+          unit: i.unit,
+          sell_price: Number(i.sell_price) || 0,
+          cost: Number(i.cost_per_unit) || 0,
+          low_stock: i.reorder_threshold ? Number(i.quantity_on_hand) <= Number(i.reorder_threshold) : false,
+        }));
+
+        return { result: { items, total: items.length } };
+      }
+
+      // ── 2. add_inventory ──
+      case 'add_inventory': {
+        const { data, error } = await serviceClient
+          .from('inventory_items')
+          .insert({
+            tenant_id: tenantId,
+            name: input.name,
+            type: input.type,
+            material: input.material || null,
+            quantity_on_hand: input.quantity_on_hand,
+            unit: input.unit,
+            cost_per_unit: input.cost || 0,
+            sell_price: input.sell_price || 0,
+            is_active: true,
+          })
+          .select('id, name, type')
+          .single();
+
+        if (error) return { result: { error: error.message }, isError: true };
+        return { result: { success: true, item: data } };
+      }
+
+      // ── 3. update_price ──
+      case 'update_price': {
+        const { error } = await serviceClient
+          .from('inventory_items')
+          .update({ sell_price: input.sell_price })
+          .eq('id', input.item_id)
+          .eq('tenant_id', tenantId);
+
+        if (error) return { result: { error: error.message }, isError: true };
+        return { result: { success: true, item_id: input.item_id, new_price: input.sell_price } };
+      }
+
+      // ── 4. search_clients ──
+      case 'search_clients': {
+        const limit = input.limit || 10;
+        const q = input.query;
+
+        const { data, error } = await serviceClient
+          .from('clients')
+          .select('id, first_name, last_name, email, phone, created_at')
+          .eq('tenant_id', tenantId)
+          .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%`)
+          .order('created_at', { ascending: false })
+          .limit(limit);
+
+        if (error) return { result: { error: error.message }, isError: true };
+
+        const clients = (data || []).map((c: any) => ({
+          id: c.id,
+          name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unnamed',
+          email: c.email,
+          phone: c.phone,
+          since: c.created_at,
+        }));
+
+        return { result: { clients, total: clients.length } };
+      }
+
+      // ── 5. get_client_details ──
+      case 'get_client_details': {
+        const [clientRes, salesRes, tagsRes, notesRes] = await Promise.all([
+          serviceClient
+            .from('clients')
+            .select('id, first_name, last_name, email, phone, created_at')
+            .eq('id', input.client_id)
+            .eq('tenant_id', tenantId)
+            .single(),
+          serviceClient
+            .from('sales')
+            .select('id, total, created_at, status')
+            .eq('tenant_id', tenantId)
+            .eq('status', 'completed')
+            .limit(20)
+            .order('created_at', { ascending: false }),
+          serviceClient
+            .from('client_tag_assignments')
+            .select('client_tags(name, color)')
+            .eq('client_id', input.client_id),
+          serviceClient
+            .from('client_notes')
+            .select('body, created_at')
+            .eq('client_id', input.client_id)
+            .eq('tenant_id', tenantId)
+            .order('created_at', { ascending: false })
+            .limit(5),
+        ]);
+
+        if (clientRes.error) return { result: { error: 'Client not found' }, isError: true };
+
+        const client = clientRes.data;
+        const tags = (tagsRes.data || []).map((t: any) => t.client_tags?.name).filter(Boolean);
+        const notes = (notesRes.data || []).map((n: any) => ({ body: n.body, date: n.created_at }));
+        const totalSpend = (salesRes.data || []).reduce((sum: number, s: any) => sum + Number(s.total), 0);
+
+        return {
+          result: {
+            id: client.id,
+            name: `${client.first_name || ''} ${client.last_name || ''}`.trim(),
+            email: client.email,
+            phone: client.phone,
+            member_since: client.created_at,
+            tags,
+            recent_notes: notes,
+            purchase_count: (salesRes.data || []).length,
+            total_spend: totalSpend,
+          },
+        };
+      }
+
+      // ── 6. tag_client ──
+      case 'tag_client': {
+        // Find or create tag
+        let { data: tag } = await serviceClient
+          .from('client_tags')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('name', input.tag_name)
+          .single();
+
+        if (!tag) {
+          const { data: newTag, error } = await serviceClient
+            .from('client_tags')
+            .insert({
+              tenant_id: tenantId,
+              name: input.tag_name.trim(),
+              color: input.color || '#7A8B8C',
+            })
+            .select('id')
+            .single();
+          if (error) return { result: { error: error.message }, isError: true };
+          tag = newTag;
+        }
+
+        // Assign tag to client
+        const { error: assignError } = await serviceClient
+          .from('client_tag_assignments')
+          .upsert({
+            client_id: input.client_id,
+            tag_id: tag.id,
+          }, { onConflict: 'client_id,tag_id' });
+
+        if (assignError) return { result: { error: assignError.message }, isError: true };
+        return { result: { success: true, tag_name: input.tag_name, client_id: input.client_id } };
+      }
+
+      // ── 7. add_client_note ──
+      case 'add_client_note': {
+        const { error } = await serviceClient
+          .from('client_notes')
+          .insert({
+            tenant_id: tenantId,
+            client_id: input.client_id,
+            created_by: userId,
+            body: input.note,
+          });
+
+        if (error) return { result: { error: error.message }, isError: true };
+        return { result: { success: true, client_id: input.client_id } };
+      }
+
+      // ── 8. send_message (CONFIRMATION REQUIRED) ──
+      case 'send_message': {
+        // Fetch client + tenant for variables
+        const [cRes, tRes] = await Promise.all([
+          serviceClient.from('clients').select('first_name, last_name, email, phone').eq('id', input.client_id).eq('tenant_id', tenantId).single(),
+          serviceClient.from('tenants').select('name, phone').eq('id', tenantId).single(),
+        ]);
+
+        if (cRes.error || !cRes.data) return { result: { error: 'Client not found' }, isError: true };
+
+        const client = cRes.data;
+        const tenant = tRes.data;
+        const clientName = `${client.first_name || ''} ${client.last_name || ''}`.trim();
+
+        const variables: Record<string, string> = {
+          client_name: clientName,
+          client_first_name: client.first_name || '',
+          business_name: tenant?.name || '',
+          business_phone: tenant?.phone || '',
+        };
+
+        const resolvedBody = renderTemplate(input.body, variables);
+        const resolvedSubject = input.subject ? renderTemplate(input.subject, variables) : '';
+
+        // If not confirmed, return preview
+        if (!input.confirmed) {
+          return {
+            result: {
+              pending_confirmation: true,
+              preview: {
+                to: clientName,
+                to_contact: input.channel === 'sms' ? client.phone : client.email,
+                channel: input.channel,
+                body: resolvedBody,
+                subject: resolvedSubject || undefined,
+              },
+            },
+          };
+        }
+
+        // Confirmed — send it
+        if (input.channel === 'sms') {
+          if (!client.phone) return { result: { error: 'Client has no phone number' }, isError: true };
+          await sendSMS(client.phone, resolvedBody);
+        } else {
+          if (!client.email) return { result: { error: 'Client has no email address' }, isError: true };
+          await sendEmail(client.email, resolvedSubject || `Message from ${tenant?.name || 'your artist'}`, resolvedBody);
+        }
+
+        // Log to message_log
+        await serviceClient.from('message_log').insert({
+          tenant_id: tenantId,
+          client_id: input.client_id,
+          direction: 'outbound',
+          channel: input.channel,
+          recipient_email: input.channel === 'email' ? client.email : null,
+          recipient_phone: input.channel === 'sms' ? client.phone : null,
+          subject: input.channel === 'email' ? (resolvedSubject || `Message from ${tenant?.name}`) : null,
+          body: resolvedBody,
+          source: 'sunny_ai',
+          status: 'sent',
+        });
+
+        return { result: { success: true, sent_to: clientName, channel: input.channel } };
+      }
+
+      // ── 9. send_bulk_message (CONFIRMATION REQUIRED) ──
+      case 'send_bulk_message': {
+        // Find tag
+        const { data: tag } = await serviceClient
+          .from('client_tags')
+          .select('id, name')
+          .eq('tenant_id', tenantId)
+          .eq('name', input.tag_name)
+          .single();
+
+        if (!tag) return { result: { error: `Tag "${input.tag_name}" not found` }, isError: true };
+
+        // Get assigned clients
+        const { data: assignments } = await serviceClient
+          .from('client_tag_assignments')
+          .select('client_id, clients(id, first_name, last_name, email, phone)')
+          .eq('tag_id', tag.id);
+
+        const clients = (assignments || [])
+          .map((a: any) => a.clients)
+          .filter(Boolean);
+
+        if (clients.length === 0) return { result: { error: `No clients have the "${input.tag_name}" tag` }, isError: true };
+
+        // Get tenant info
+        const { data: tenant } = await serviceClient
+          .from('tenants')
+          .select('name, phone')
+          .eq('id', tenantId)
+          .single();
+
+        // If not confirmed, return preview
+        if (!input.confirmed) {
+          const eligible = clients.filter((c: any) =>
+            input.channel === 'sms' ? c.phone : c.email
+          );
+          return {
+            result: {
+              pending_confirmation: true,
+              preview: {
+                tag: input.tag_name,
+                total_clients: clients.length,
+                eligible_clients: eligible.length,
+                channel: input.channel,
+                body: input.body,
+                subject: input.subject || undefined,
+                sample_names: eligible.slice(0, 5).map((c: any) =>
+                  `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unnamed'
+                ),
+              },
+            },
+          };
+        }
+
+        // Confirmed — send to all eligible clients
+        let sent = 0;
+        let failed = 0;
+        for (const client of clients) {
+          const clientName = `${client.first_name || ''} ${client.last_name || ''}`.trim();
+          const variables: Record<string, string> = {
+            client_name: clientName,
+            client_first_name: client.first_name || '',
+            business_name: tenant?.name || '',
+            business_phone: tenant?.phone || '',
+          };
+          const resolvedBody = renderTemplate(input.body, variables);
+          const resolvedSubject = input.subject ? renderTemplate(input.subject, variables) : '';
+
+          try {
+            if (input.channel === 'sms' && client.phone) {
+              await sendSMS(client.phone, resolvedBody);
+              sent++;
+            } else if (input.channel === 'email' && client.email) {
+              await sendEmail(client.email, resolvedSubject || `Message from ${tenant?.name || 'your artist'}`, resolvedBody);
+              sent++;
+            } else {
+              failed++;
+              continue;
+            }
+
+            // Log
+            await serviceClient.from('message_log').insert({
+              tenant_id: tenantId,
+              client_id: client.id,
+              direction: 'outbound',
+              channel: input.channel,
+              recipient_email: input.channel === 'email' ? client.email : null,
+              recipient_phone: input.channel === 'sms' ? client.phone : null,
+              subject: input.channel === 'email' ? (resolvedSubject || `Message from ${tenant?.name}`) : null,
+              body: resolvedBody,
+              source: 'sunny_ai',
+              status: 'sent',
+            });
+          } catch {
+            failed++;
+          }
+        }
+
+        return { result: { success: true, sent, failed, tag: input.tag_name } };
+      }
+
+      // ── 10. enroll_in_workflow ──
+      case 'enroll_in_workflow': {
+        // Validate workflow
+        const { data: workflow } = await serviceClient
+          .from('workflow_templates')
+          .select('id, name, is_active')
+          .eq('id', input.workflow_id)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (!workflow) return { result: { error: 'Workflow not found' }, isError: true };
+        if (!workflow.is_active) return { result: { error: 'Workflow is not active' }, isError: true };
+
+        // Check duplicate
+        const { data: steps } = await serviceClient
+          .from('workflow_steps')
+          .select('id, step_order, delay_hours, channel, template_name, description')
+          .eq('workflow_id', input.workflow_id)
+          .order('step_order');
+
+        if (!steps || steps.length === 0) return { result: { error: 'Workflow has no steps' }, isError: true };
+
+        const stepIds = new Set(steps.map((s: any) => s.id));
+        const { data: existing } = await serviceClient
+          .from('workflow_queue')
+          .select('id, workflow_step_id')
+          .eq('client_id', input.client_id)
+          .eq('tenant_id', tenantId)
+          .in('status', ['pending', 'ready']);
+
+        if ((existing || []).some((e: any) => stepIds.has(e.workflow_step_id))) {
+          return { result: { error: 'Client is already enrolled in this workflow' }, isError: true };
+        }
+
+        // Get client + tenant + templates for variable resolution
+        const [cRes, tRes, templatesRes] = await Promise.all([
+          serviceClient.from('clients').select('first_name, last_name').eq('id', input.client_id).single(),
+          serviceClient.from('tenants').select('name, phone').eq('id', tenantId).single(),
+          serviceClient.from('message_templates').select('name, body').eq('tenant_id', tenantId),
+        ]);
+
+        const clientName = cRes.data ? `${cRes.data.first_name || ''} ${cRes.data.last_name || ''}`.trim() || 'there' : 'there';
+        const variables: Record<string, string> = {
+          client_name: clientName,
+          business_name: tRes.data?.name || 'our studio',
+          business_phone: tRes.data?.phone || '',
+        };
+
+        const templateMap: Record<string, string> = {};
+        for (const t of templatesRes.data || []) templateMap[t.name] = t.body;
+
+        const now = new Date();
+        const queueRows = steps.map((step: any) => {
+          const scheduledFor = new Date(now.getTime() + step.delay_hours * 60 * 60 * 1000);
+          let messageBody = templateMap[step.template_name] || step.template_name;
+          messageBody = renderTemplate(messageBody, variables);
+          return {
+            tenant_id: tenantId,
+            client_id: input.client_id,
+            workflow_step_id: step.id,
+            template_name: step.template_name,
+            channel: step.channel,
+            scheduled_for: scheduledFor.toISOString(),
+            status: 'pending',
+            message_body: messageBody,
+            description: step.description,
+          };
+        });
+
+        const { error: insertError } = await serviceClient.from('workflow_queue').insert(queueRows);
+        if (insertError) return { result: { error: insertError.message }, isError: true };
+
+        // Log note
+        await serviceClient.from('client_notes').insert({
+          tenant_id: tenantId,
+          client_id: input.client_id,
+          created_by: userId,
+          body: `Enrolled in ${workflow.name} (via Sunny)`,
+        });
+
+        return { result: { success: true, workflow: workflow.name, steps_created: steps.length } };
+      }
+
+      // ── 11. create_event ──
+      case 'create_event': {
+        const { data, error } = await serviceClient
+          .from('events')
+          .insert({
+            tenant_id: tenantId,
+            name: input.name,
+            start_time: input.start_time,
+            end_time: input.end_time || null,
+            location: input.location || null,
+            max_capacity: input.max_capacity || null,
+            notes: input.notes || null,
+            is_active: true,
+            created_by: userId,
+          })
+          .select('id, name, start_time, location')
+          .single();
+
+        if (error) return { result: { error: error.message }, isError: true };
+        return { result: { success: true, event: data } };
+      }
+
+      // ── 12. get_event_performance ──
+      case 'get_event_performance': {
+        const [eventRes, salesRes, queueRes] = await Promise.all([
+          serviceClient
+            .from('events')
+            .select('id, name, location, start_time, end_time, booth_fee, max_capacity')
+            .eq('id', input.event_id)
+            .eq('tenant_id', tenantId)
+            .single(),
+          serviceClient
+            .from('sales')
+            .select('id, subtotal, tax_amount, tip_amount, total, payment_method, created_at')
+            .eq('event_id', input.event_id)
+            .eq('tenant_id', tenantId)
+            .eq('status', 'completed'),
+          serviceClient
+            .from('queue_entries')
+            .select('id, status')
+            .eq('event_id', input.event_id)
+            .eq('tenant_id', tenantId),
+        ]);
+
+        if (eventRes.error) return { result: { error: 'Event not found' }, isError: true };
+
+        const event = eventRes.data;
+        const sales = salesRes.data || [];
+        const queue = queueRes.data || [];
+
+        const revenue = sales.reduce((s: number, sale: any) => s + Number(sale.total), 0);
+        const tips = sales.reduce((s: number, sale: any) => s + Number(sale.tip_amount), 0);
+        const boothFee = Number(event.booth_fee) || 0;
+
+        return {
+          result: {
+            event: { name: event.name, location: event.location, date: event.start_time },
+            sales_count: sales.length,
+            revenue,
+            tips,
+            booth_fee: boothFee,
+            net_profit: revenue - boothFee,
+            queue_total: queue.length,
+            queue_served: queue.filter((q: any) => q.status === 'served').length,
+            queue_no_show: queue.filter((q: any) => q.status === 'no_show').length,
+          },
+        };
+      }
+
+      // ── 13. list_events ──
+      case 'list_events': {
+        const limit = input.limit || 10;
+        let query = serviceClient
+          .from('events')
+          .select('id, name, location, start_time, end_time, booth_fee, is_active, max_capacity')
+          .eq('tenant_id', tenantId)
+          .order('start_time', { ascending: false })
+          .limit(limit);
+
+        if (input.upcoming) {
+          query = query.gte('start_time', new Date().toISOString());
+          query = query.order('start_time', { ascending: true });
+        }
+
+        const { data, error } = await query;
+        if (error) return { result: { error: error.message }, isError: true };
+
+        return {
+          result: {
+            events: (data || []).map((e: any) => ({
+              id: e.id,
+              name: e.name,
+              location: e.location,
+              start_time: e.start_time,
+              end_time: e.end_time,
+              booth_fee: Number(e.booth_fee) || 0,
+              is_active: e.is_active,
+            })),
+          },
+        };
+      }
+
+      // ── 14. get_revenue_report ──
+      case 'get_revenue_report': {
+        const now = new Date();
+        let startDate: Date;
+
+        switch (input.period) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case 'week':
+            startDate = new Date(now);
+            startDate.setDate(now.getDate() - now.getDay());
+            startDate.setHours(0, 0, 0, 0);
+            break;
+          case 'month':
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            break;
+          case 'year':
+            startDate = new Date(now.getFullYear(), 0, 1);
+            break;
+          default:
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        }
+
+        const { data: sales, error } = await serviceClient
+          .from('sales')
+          .select('id, subtotal, tax_amount, tip_amount, total, payment_method, created_at')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'completed')
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: false });
+
+        if (error) return { result: { error: error.message }, isError: true };
+
+        const allSales = sales || [];
+        const revenue = allSales.reduce((s: number, sale: any) => s + Number(sale.subtotal), 0);
+        const tax = allSales.reduce((s: number, sale: any) => s + Number(sale.tax_amount), 0);
+        const tips = allSales.reduce((s: number, sale: any) => s + Number(sale.tip_amount), 0);
+        const total = allSales.reduce((s: number, sale: any) => s + Number(sale.total), 0);
+
+        const paymentBreakdown: Record<string, number> = {};
+        allSales.forEach((s: any) => {
+          paymentBreakdown[s.payment_method] = (paymentBreakdown[s.payment_method] || 0) + 1;
+        });
+
+        return {
+          result: {
+            period: input.period,
+            start_date: startDate.toISOString(),
+            sales_count: allSales.length,
+            revenue,
+            tax,
+            tips,
+            total,
+            payment_breakdown: paymentBreakdown,
+          },
+        };
+      }
+
+      // ── 15. get_top_products ──
+      case 'get_top_products': {
+        const limit = input.limit || 10;
+        const now = new Date();
+        let startDate: Date | null = null;
+
+        if (input.period && input.period !== 'all') {
+          switch (input.period) {
+            case 'week':
+              startDate = new Date(now);
+              startDate.setDate(now.getDate() - 7);
+              break;
+            case 'month':
+              startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+              break;
+            case 'year':
+              startDate = new Date(now.getFullYear(), 0, 1);
+              break;
+          }
+        }
+
+        // Get sale IDs for this tenant in period
+        let salesQuery = serviceClient
+          .from('sales')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'completed');
+
+        if (startDate) salesQuery = salesQuery.gte('created_at', startDate.toISOString());
+
+        const { data: salesData } = await salesQuery;
+        const saleIds = (salesData || []).map((s: any) => s.id);
+
+        if (saleIds.length === 0) return { result: { products: [], message: 'No sales in this period' } };
+
+        const { data: items } = await serviceClient
+          .from('sale_items')
+          .select('name, quantity, line_total')
+          .in('sale_id', saleIds)
+          .limit(500);
+
+        const productCounts: Record<string, { quantity: number; revenue: number }> = {};
+        (items || []).forEach((item: any) => {
+          if (!productCounts[item.name]) productCounts[item.name] = { quantity: 0, revenue: 0 };
+          productCounts[item.name].quantity += Number(item.quantity);
+          productCounts[item.name].revenue += Number(item.line_total);
+        });
+
+        const products = Object.entries(productCounts)
+          .sort((a, b) => b[1].quantity - a[1].quantity)
+          .slice(0, limit)
+          .map(([name, data]) => ({ name, ...data }));
+
+        return { result: { products } };
+      }
+
+      // ── 16. get_client_stats ──
+      case 'get_client_stats': {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const [totalRes, newRes] = await Promise.all([
+          serviceClient
+            .from('clients')
+            .select('id', { count: 'exact', head: true })
+            .eq('tenant_id', tenantId),
+          serviceClient
+            .from('clients')
+            .select('id', { count: 'exact', head: true })
+            .eq('tenant_id', tenantId)
+            .gte('created_at', startOfMonth.toISOString()),
+        ]);
+
+        return {
+          result: {
+            total_clients: totalRes.count || 0,
+            new_this_month: newRes.count || 0,
+          },
+        };
+      }
+
+      // ── 17. update_settings ──
+      case 'update_settings': {
+        const updates: Record<string, any> = {};
+        if (input.business_name) updates.name = input.business_name;
+        if (input.phone) updates.phone = input.phone;
+        if (input.theme_id) updates.theme_id = input.theme_id;
+
+        if (Object.keys(updates).length > 0) {
+          const { error } = await serviceClient
+            .from('tenants')
+            .update(updates)
+            .eq('id', tenantId);
+
+          if (error) return { result: { error: error.message }, isError: true };
+        }
+
+        // Handle tax_rate separately — update default tax profile
+        if (input.tax_rate !== undefined) {
+          const { data: defaultProfile } = await serviceClient
+            .from('tax_profiles')
+            .select('id')
+            .eq('tenant_id', tenantId)
+            .eq('is_default', true)
+            .single();
+
+          if (defaultProfile) {
+            await serviceClient
+              .from('tax_profiles')
+              .update({ rate: input.tax_rate })
+              .eq('id', defaultProfile.id);
+          } else {
+            await serviceClient
+              .from('tax_profiles')
+              .insert({
+                tenant_id: tenantId,
+                name: 'Default Tax',
+                rate: input.tax_rate,
+                is_default: true,
+              });
+          }
+        }
+
+        return { result: { success: true, updated: { ...updates, tax_rate: input.tax_rate } } };
+      }
+
+      // ── 18. get_settings ──
+      case 'get_settings': {
+        const [tenantRes, taxRes] = await Promise.all([
+          serviceClient
+            .from('tenants')
+            .select('name, phone, subscription_tier, theme_id, fee_handling, created_at')
+            .eq('id', tenantId)
+            .single(),
+          serviceClient
+            .from('tax_profiles')
+            .select('name, rate, is_default')
+            .eq('tenant_id', tenantId)
+            .order('is_default', { ascending: false }),
+        ]);
+
+        if (tenantRes.error) return { result: { error: tenantRes.error.message }, isError: true };
+
+        return {
+          result: {
+            business_name: tenantRes.data.name,
+            phone: tenantRes.data.phone,
+            tier: tenantRes.data.subscription_tier,
+            theme: tenantRes.data.theme_id,
+            fee_handling: tenantRes.data.fee_handling,
+            member_since: tenantRes.data.created_at,
+            tax_profiles: (taxRes.data || []).map((t: any) => ({
+              name: t.name,
+              rate: Number(t.rate),
+              is_default: t.is_default,
+            })),
+          },
+        };
+      }
+
+      // ── 19. create_tax_profile ──
+      case 'create_tax_profile': {
+        // If setting as default, unset existing default first
+        if (input.is_default) {
+          await serviceClient
+            .from('tax_profiles')
+            .update({ is_default: false })
+            .eq('tenant_id', tenantId)
+            .eq('is_default', true);
+        }
+
+        const { data, error } = await serviceClient
+          .from('tax_profiles')
+          .insert({
+            tenant_id: tenantId,
+            name: input.name,
+            rate: input.rate,
+            is_default: input.is_default || false,
+          })
+          .select('id, name, rate, is_default')
+          .single();
+
+        if (error) return { result: { error: error.message }, isError: true };
+        return { result: { success: true, tax_profile: data } };
+      }
+
+      default:
+        return { result: { error: `Unknown tool: ${name}` }, isError: true };
+    }
+  } catch (err: any) {
+    console.error(`[SunnyTool:${name}] Error:`, err);
+    return { result: { error: err.message || 'Tool execution failed' }, isError: true };
+  }
+}

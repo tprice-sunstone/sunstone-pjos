@@ -24,6 +24,8 @@ import {
   PJ_UNIVERSITY_AND_SUNNY_ROLE,
   PJOS_PLATFORM_GUIDE,
 } from '@/lib/mentor-knowledge';
+import { runAgenticLoop, buildAgenticSSEStream } from '@/lib/agentic-loop';
+import { SUNNY_TOOL_DEFINITIONS, executeSunnyTool, getSunnyToolStatusLabel } from '@/lib/sunny-tools';
 
 // ============================================================================
 // Subsection registry — ~43 small chunks with keyword maps
@@ -882,116 +884,74 @@ KNOWLEDGE GAP:
 If you cannot answer from knowledge, include at END:
 <!-- KNOWLEDGE_GAP: {"category": "unknown_answer", "topic": "welding", "summary": "brief"} -->
 Categories: unknown_answer, correction, product_gap, technique_question, other
-Topics: welding, equipment, business, products, marketing, troubleshooting, client_experience, other`;
+Topics: welding, equipment, business, products, marketing, troubleshooting, client_experience, other
 
-    // 7. Call Anthropic — stream
-    const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
+TOOL USE:
+You have tools to read and modify the artist's business data. Use them when asked to DO something (check inventory, send a message, create an event, look up revenue, manage clients) rather than describing app navigation.
+CONFIRMATION REQUIRED: For send_message and send_bulk_message, describe what you'll send and ask to confirm before calling with confirmed: true.
+After a tool executes, summarize the result naturally. If a tool errors, explain simply.`;
+
+    // 7. Call Anthropic via agentic loop (tools + non-streaming)
+    const toolCtx = { serviceClient, tenantId, userId: user.id };
+
+    let agenticResult;
+    try {
+      agenticResult = await runAgenticLoop({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 512,
-        stream: true,
-        system: systemPrompt,
+        maxTokens: 1024,
+        systemPrompt,
         messages: messages.slice(-10),
-      }),
-    });
-
-    if (!anthropicResponse.ok) {
-      const errorText = await anthropicResponse.text();
-      console.error('[Mentor] Anthropic API error:', errorText);
+        tools: SUNNY_TOOL_DEFINITIONS,
+        executeTool: (name, input) => executeSunnyTool(name, input, toolCtx),
+        maxIterations: 5,
+        getToolStatusLabel: getSunnyToolStatusLabel,
+      });
+    } catch (err) {
+      console.error('[Mentor] Agentic loop error:', err);
       return NextResponse.json({ error: 'AI service error' }, { status: 502 });
     }
 
-    // 8. Stream
-    let fullResponseText = '';
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
+    const { fullResponseText, toolStatusEvents } = agenticResult;
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = anthropicResponse.body?.getReader();
-        if (!reader) { controller.close(); return; }
+    // 8. Post-response: increment question counter for Starter
+    if (questionLimit !== Infinity) {
+      try {
+        await serviceClient.rpc('increment_sunny_questions', { p_tenant_id: tenantId });
+      } catch {
+        const currentUsed = tenantData?.sunny_questions_used || 0;
+        await serviceClient
+          .from('tenants')
+          .update({ sunny_questions_used: currentUsed + 1 })
+          .eq('id', tenantId);
+      }
+    }
 
-        let buffer = '';
+    // 9. Post-response: gap detection
+    try {
+      const gapMatch = fullResponseText.match(/<!--\s*KNOWLEDGE_GAP:\s*(\{[^}]+\})\s*-->/);
+      if (gapMatch) {
+        const gapData = JSON.parse(gapMatch[1]);
+        const cleanResponse = fullResponseText
+          .replace(/<!--\s*KNOWLEDGE_GAP:.*?-->/g, '')
+          .replace(/<!--\s*PRODUCT_SEARCH:.*?-->/g, '')
+          .trim();
 
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+        await serviceClient.from('mentor_knowledge_gaps').insert({
+          tenant_id: tenantId,
+          user_id: user.id,
+          user_message: latestUserMsg,
+          sunny_response: cleanResponse,
+          category: gapData.category || 'other',
+          topic: gapData.topic || 'other',
+          status: 'pending',
+        });
+      }
+    } catch (gapError) {
+      console.error('[Mentor] Gap detection error:', gapError);
+    }
 
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6).trim();
-                if (data === '[DONE]') continue;
-
-                try {
-                  const parsed = JSON.parse(data);
-                  if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
-                    const text = parsed.delta.text;
-                    fullResponseText += text;
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`));
-                  }
-                  if (parsed.type === 'message_stop') {
-                    controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
-                  }
-                } catch {}
-              }
-            }
-          }
-        } catch (error) {
-          console.error('[Mentor] Stream error:', error);
-        } finally {
-          controller.close();
-
-          // 8b. Post-stream: increment question counter for Starter
-          if (questionLimit !== Infinity) {
-            try {
-              await serviceClient.rpc('increment_sunny_questions', { p_tenant_id: tenantId });
-            } catch {
-              // Fallback: direct update if RPC doesn't exist yet
-              const currentUsed = tenantData?.sunny_questions_used || 0;
-              await serviceClient
-                .from('tenants')
-                .update({ sunny_questions_used: currentUsed + 1 })
-                .eq('id', tenantId);
-            }
-          }
-          
-          // 9. Post-stream: gap detection
-          try {
-            const gapMatch = fullResponseText.match(/<!--\s*KNOWLEDGE_GAP:\s*(\{[^}]+\})\s*-->/);
-            if (gapMatch) {
-              const gapData = JSON.parse(gapMatch[1]);
-              const cleanResponse = fullResponseText
-                .replace(/<!--\s*KNOWLEDGE_GAP:.*?-->/g, '')
-                .replace(/<!--\s*PRODUCT_SEARCH:.*?-->/g, '')
-                .trim();
-
-              await serviceClient.from('mentor_knowledge_gaps').insert({
-                tenant_id: tenantId,
-                user_id: user.id,
-                user_message: latestUserMsg,
-                sunny_response: cleanResponse,
-                category: gapData.category || 'other',
-                topic: gapData.topic || 'other',
-                status: 'pending',
-              });
-            }
-          } catch (gapError) {
-            console.error('[Mentor] Gap detection error:', gapError);
-          }
-        }
-      },
-    });
+    // 10. Build simulated SSE stream
+    const stream = buildAgenticSSEStream(fullResponseText, toolStatusEvents);
 
     return new Response(stream, {
       headers: {

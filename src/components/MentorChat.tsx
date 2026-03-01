@@ -25,6 +25,7 @@ interface ChatMessage {
   content: string;
   products?: Product[];
   isStreaming?: boolean;
+  toolStatus?: string;
 }
 
 interface Product {
@@ -44,12 +45,12 @@ interface Product {
 // ============================================================================
 
 const SUGGESTED_PROMPTS = [
-  'How do I set up my welder?',
-  'What settings for gold fill on Zapp Plus?',
-  'My welds keep breaking — help!',
+  'Check my inventory levels',
+  'Show me my revenue this month',
+  'How did my last event perform?',
   'How should I price my services?',
   'Help me plan for my first event',
-  'What chains should I carry?',
+  'What settings for gold fill on Zapp Plus?',
 ];
 
 // ============================================================================
@@ -218,12 +219,21 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
 
             try {
               const parsed = JSON.parse(data);
+              if (parsed.toolStatus) {
+                setMessages(prev =>
+                  prev.map(m =>
+                    m.id === assistantMsg.id
+                      ? { ...m, toolStatus: parsed.toolStatus }
+                      : m
+                  )
+                );
+              }
               if (parsed.text) {
                 fullText += parsed.text;
                 setMessages(prev =>
                   prev.map(m =>
                     m.id === assistantMsg.id
-                      ? { ...m, content: fullText, isStreaming: true }
+                      ? { ...m, content: fullText, isStreaming: true, toolStatus: undefined }
                       : m
                   )
                 );
@@ -378,7 +388,9 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
                 <MessageBubble key={msg.id} message={msg} />
               ))}
               {isLoading && messages[messages.length - 1]?.content === '' && (
-                <TypingIndicator />
+                messages[messages.length - 1]?.toolStatus
+                  ? <ToolStatusIndicator status={messages[messages.length - 1].toolStatus!} />
+                  : <TypingIndicator />
               )}
             </>
           )}
@@ -515,6 +527,22 @@ function TypingIndicator() {
           <span className="w-2 h-2 rounded-full bg-text-tertiary animate-bounce" style={{ animationDelay: '0ms' }} />
           <span className="w-2 h-2 rounded-full bg-text-tertiary animate-bounce" style={{ animationDelay: '150ms' }} />
           <span className="w-2 h-2 rounded-full bg-text-tertiary animate-bounce" style={{ animationDelay: '300ms' }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ToolStatusIndicator({ status }: { status: string }) {
+  return (
+    <div className="flex justify-start">
+      <div className="bg-surface-raised rounded-2xl rounded-bl-md px-4 py-3 border border-border-default">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent-500" />
+          </span>
+          <span className="text-xs text-text-secondary">{status}</span>
         </div>
       </div>
     </div>

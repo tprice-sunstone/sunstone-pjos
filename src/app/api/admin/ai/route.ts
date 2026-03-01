@@ -9,6 +9,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPlatformAdmin, AdminAuthError } from '@/lib/admin/verify-platform-admin';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { runAgenticLoop, buildAgenticSSEStream } from '@/lib/agentic-loop';
+import { ATLAS_TOOL_DEFINITIONS, executeAtlasTool, getAtlasToolStatusLabel } from '@/lib/atlas-tools';
 
 // ============================================================================
 // Comprehensive Platform Data Fetcher
@@ -508,81 +510,40 @@ TRIAL SYSTEM:
 - New accounts get a 60-day Pro trial
 - Trial expiry date stored on tenant
 - After expiry, account downgrades to Starter (free) tier
-- Trial tenants approaching expiry are flagged in admin "Needs Attention"`;
+- Trial tenants approaching expiry are flagged in admin "Needs Attention"
+
+TOOL USE:
+You have tools to take real actions on the platform: search tenants, view details, send messages, manage subscriptions, handle knowledge gaps, and more. Use them when asked to DO something rather than just describing the data you already have.
+CONFIRMATION REQUIRED: For message_tenant, broadcast_to_tenants, and update_tenant, describe what you'll do and ask to confirm before calling with confirmed: true.
+After a tool executes, summarize the result naturally. If a tool errors, explain simply.`;
 
     // Trim conversation
     const conversationMessages = messages.slice(-20);
 
-    // Call Anthropic API with streaming
-    const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        stream: true,
-        system: systemPrompt,
-        messages: conversationMessages,
-      }),
-    });
+    // Call Anthropic via agentic loop (tools + non-streaming)
+    const toolCtx = { serviceClient };
 
-    if (!anthropicResponse.ok) {
-      const errText = await anthropicResponse.text();
-      console.error('Anthropic API error:', errText);
+    let agenticResult;
+    try {
+      agenticResult = await runAgenticLoop({
+        model: 'claude-sonnet-4-20250514',
+        maxTokens: 4096,
+        systemPrompt,
+        messages: conversationMessages,
+        tools: ATLAS_TOOL_DEFINITIONS,
+        executeTool: (name, input) => executeAtlasTool(name, input, toolCtx),
+        maxIterations: 5,
+        getToolStatusLabel: getAtlasToolStatusLabel,
+      });
+    } catch (err) {
+      console.error('Admin AI agentic loop error:', err);
       return NextResponse.json({ error: 'Failed to get AI response' }, { status: 502 });
     }
 
-    // Stream response
-    const encoder = new TextEncoder();
-    const readable = new ReadableStream({
-      async start(controller) {
-        const reader = anthropicResponse.body?.getReader();
-        if (!reader) { controller.close(); return; }
+    const { fullResponseText, toolStatusEvents } = agenticResult;
 
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6).trim();
-                if (data === '[DONE]') continue;
-
-                try {
-                  const parsed = JSON.parse(data);
-                  if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
-                    controller.enqueue(
-                      encoder.encode(`data: ${JSON.stringify({ text: parsed.delta.text })}\n\n`)
-                    );
-                  }
-                  if (parsed.type === 'message_stop') {
-                    controller.enqueue(
-                      encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`)
-                    );
-                  }
-                } catch {}
-              }
-            }
-          }
-        } catch (err) {
-          console.error('Stream error:', err);
-        } finally {
-          controller.close();
-        }
-      },
-    });
+    // Build simulated SSE stream
+    const readable = buildAgenticSSEStream(fullResponseText, toolStatusEvents);
 
     return new Response(readable, {
       headers: {
