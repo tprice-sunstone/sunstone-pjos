@@ -134,7 +134,7 @@ export default function SignupPage() {
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              placeholder="First name"
+              placeholder="First and Last"
               required
               autoFocus
             />

@@ -78,13 +78,14 @@ export async function POST(request: NextRequest) {
       // Non-fatal — use-tenant hook will auto-repair
     }
 
-    // 3. Store first_name in auth user metadata
+    // 3. Store name in auth user metadata (full name + parsed first name)
     if (firstName) {
+      const parsedFirst = firstName.trim().split(/\s+/)[0] || firstName.trim();
       const { error: metaError } = await supabase.auth.admin.updateUserById(userId, {
-        user_metadata: { first_name: firstName },
+        user_metadata: { full_name: firstName.trim(), first_name: parsedFirst },
       });
       if (metaError) {
-        console.warn('Failed to set first_name metadata:', metaError.message);
+        console.warn('Failed to set name metadata:', metaError.message);
       }
     }
 
