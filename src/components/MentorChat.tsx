@@ -18,6 +18,16 @@ import UpgradePrompt from '@/components/ui/UpgradePrompt';
 // Hardcoded dark theme list — everything else is light
 const DARK_THEMES = ['midnight-gold', 'deep-plum', 'forest-gold', 'deep-ocean'];
 
+// Compute contrast text color based on background luminance
+function getContrastTextColor(bgHex: string): string {
+  const hex = bgHex.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.55 ? '#1A1A1A' : '#FFFFFF';
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -129,6 +139,13 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
   const questionLimit = getSunnyQuestionLimit(effectiveTier);
   const isMetered = effectiveTier === 'starter' && questionLimit !== Infinity;
   const isDark = DARK_THEMES.includes(tenant?.theme_id || '');
+  const [userBubbleTextColor, setUserBubbleTextColor] = useState('#FFFFFF');
+
+  // Compute user bubble text color from accent luminance
+  useEffect(() => {
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-500').trim();
+    if (accent) setUserBubbleTextColor(getContrastTextColor(accent));
+  }, [tenant?.theme_id]);
 
   // Initialize questions used from tenant data
   useEffect(() => {
@@ -424,7 +441,7 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
           ) : (
             <>
               {messages.map(msg => (
-                <MessageBubble key={msg.id} message={msg} isDark={isDark} />
+                <MessageBubble key={msg.id} message={msg} isDark={isDark} userBubbleTextColor={userBubbleTextColor} />
               ))}
               {isLoading && messages[messages.length - 1]?.content === '' && (
                 messages[messages.length - 1]?.toolStatus
@@ -518,7 +535,7 @@ function EmptyState({ onSelectPrompt }: { onSelectPrompt: (text: string) => void
 // Message bubble
 // ============================================================================
 
-function MessageBubble({ message, isDark }: { message: ChatMessage; isDark: boolean }) {
+function MessageBubble({ message, isDark, userBubbleTextColor }: { message: ChatMessage; isDark: boolean; userBubbleTextColor: string }) {
   const isUser = message.role === 'user';
 
   // HARDCODED inline styles — no CSS variables, no Tailwind color classes
@@ -543,8 +560,8 @@ function MessageBubble({ message, isDark }: { message: ChatMessage; isDark: bool
       <div className="flex flex-col max-w-[85%] gap-1.5">
         {isUser ? (
           <div
-            className="bg-accent-500 text-white px-3.5 py-2.5 text-sm"
-            style={{ borderRadius: '16px 16px 4px 16px' }}
+            className="bg-accent-500 px-3.5 py-2.5 text-sm"
+            style={{ borderRadius: '16px 16px 4px 16px', color: userBubbleTextColor }}
           >
             <p style={{ fontSize: '0.875rem', lineHeight: '1.625', whiteSpace: 'pre-wrap' }}>
               {message.content}
