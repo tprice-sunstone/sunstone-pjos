@@ -115,7 +115,7 @@ function drawFooter(doc: jsPDF, accent: RGB): void {
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...LIGHT);
   doc.text(`Page ${pageNum} of ${totalPages}`, ML, FOOTER_Y);
-  doc.text('Powered by Sunstone PJOS', PW - MR, FOOTER_Y, { align: 'right' });
+  doc.text('Powered by Sunstone Studio', PW - MR, FOOTER_Y, { align: 'right' });
 }
 
 /** Fetch image URL to base64 data URL. Returns null on failure. */

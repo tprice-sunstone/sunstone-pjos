@@ -249,8 +249,8 @@ function PhoneTopBar({ onSunnyOpen }: { onSunnyOpen: () => void }) {
     <div className="md:hidden flex items-center justify-between px-4 h-14 bg-[var(--surface-base)] border-b border-border-default shrink-0 safe-area-top">
       <div className="flex items-center gap-2.5 min-w-0">
         <TenantLogo size="sm" />
-        <div className="text-sm font-semibold text-text-primary truncate">
-          {tenant?.name || 'Sunstone'}
+        <div className="text-sm font-bold text-text-primary truncate">
+          {tenant?.name || 'Loading...'}
         </div>
       </div>
       <SunnyPill onClick={onSunnyOpen} />
@@ -544,8 +544,8 @@ function DesktopSidebar() {
         <div className="flex items-center gap-2.5">
           <TenantLogo size="md" />
           <div className="min-w-0">
-            <div className="text-sm font-bold text-text-primary truncate">Sunstone</div>
-            <div className="text-xs text-text-tertiary truncate">{tenant?.name || 'Loading...'}</div>
+            <div className="text-text-primary truncate" style={{ fontSize: 16, fontWeight: 700 }}>{tenant?.name || 'Loading...'}</div>
+            <div className="text-text-tertiary truncate" style={{ fontSize: 10, fontWeight: 400 }}>Powered by Sunstone</div>
           </div>
         </div>
       </div>

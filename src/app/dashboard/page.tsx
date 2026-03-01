@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [cardsLoading, setCardsLoading] = useState(true);
   const [eventsThisWeek, setEventsThisWeek] = useState<number>(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [userName, setUserName] = useState<string>('');
   // ── Fallback cards — shown if API fails or returns nothing ────────────
   const clientFallbackCards: DashboardCard[] = [
     {
@@ -85,6 +86,16 @@ export default function DashboardPage() {
     }
   }, [fetchCards]);
 
+  // ── Load user's first name from auth metadata ──────────────────────────
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      const meta = user?.user_metadata;
+      const first = meta?.first_name || (meta?.full_name || '').split(/\s+/)[0] || '';
+      setUserName(first);
+    });
+  }, []);
+
   // ── Fetch events-this-week count for subtitle ──────────────────────────
   useEffect(() => {
     if (!tenant?.id) return;
@@ -140,8 +151,8 @@ export default function DashboardPage() {
   const greeting =
     hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
-  // Use tenant name as display name (first word as first name feel)
-  const displayName = tenant.name.split(' ')[0] || tenant.name;
+  // Use user's first name for the greeting, fall back to empty
+  const displayName = userName;
 
   // Date context subtitle
   const dateStr = format(now, 'EEEE, MMM d');
@@ -167,7 +178,7 @@ export default function DashboardPage() {
               margin: 0,
             }}
           >
-            {greeting}, {displayName}
+            {greeting}{displayName ? `, ${displayName}` : ''}
           </h1>
           <p
             className="text-text-secondary"

@@ -226,7 +226,7 @@ function OnboardingFlow() {
   // Welcome screen animation sequence
   useEffect(() => {
     if (step === 0) {
-      const nameLen = (firstName || 'there').length + 'Welcome to Sunstone, .'.length;
+      const nameLen = (firstName || 'there').length + 'Welcome to Sunstone Studio, .'.length;
       const t1 = setTimeout(() => setWelcomeReady(true), 100);
       const t2 = setTimeout(() => setLineReady(true), nameLen * 30 + 400);
       const t3 = setTimeout(() => setSubtitleReady(true), nameLen * 30 + 1000);
@@ -458,7 +458,7 @@ function OnboardingFlow() {
               <div className="space-y-3 relative">
                 {welcomeReady && (
                   <h1 className="font-display text-4xl md:text-5xl font-bold text-text-primary">
-                    <LetterReveal text={`Welcome to Sunstone, ${firstName || 'there'}.`} />
+                    <LetterReveal text={`Welcome to Sunstone Studio, ${firstName || 'there'}.`} />
                   </h1>
                 )}
 

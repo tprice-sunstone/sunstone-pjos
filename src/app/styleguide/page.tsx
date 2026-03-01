@@ -809,7 +809,7 @@ export default function StyleguidePage() {
         {/* Footer */}
         <footer className="pt-8 border-t border-[var(--border-default)]">
           <p className="text-sm text-text-tertiary text-center">
-            Sunstone PJOS Design System · Built with Next.js, Tailwind CSS &amp;
+            Sunstone Studio Design System · Built with Next.js, Tailwind CSS &amp;
             CSS custom properties
           </p>
         </footer>

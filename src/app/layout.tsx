@@ -3,8 +3,8 @@ import { Toaster } from 'sonner';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Sunstone PJOS',
-  description: 'The operating system for permanent jewelry artists and booth-based businesses.',
+  title: 'Sunstone Studio',
+  description: 'The all-in-one platform for permanent jewelry artists and booth-based businesses.',
   icons: { icon: '/favicon.ico' },
 };
 

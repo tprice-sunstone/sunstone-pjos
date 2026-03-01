@@ -812,7 +812,7 @@ export const BUSINESS_STRATEGY_KNOWLEDGE = {
     tipping: {
       stance:
         'Enable tipping in your POS. PJ qualifies as a beauty service — customers who tip their hair stylist or nail tech will likely tip you too.',
-      note: 'Tipping culture is regional. The PJOS app has tipping enabled by default.',
+      note: 'Tipping culture is regional. Sunstone Studio has tipping enabled by default.',
     },
   },
 
@@ -923,7 +923,7 @@ export const BUSINESS_STRATEGY_KNOWLEDGE = {
   scheduling: {
     bookingApps: ['Vagaro', 'Mangomint', 'Fresha', 'Salon Biz', 'Acuity Scheduling'],
     queueManagement: ['Waitly', 'Waitwhile', 'Qminder'],
-    note: 'The Sunstone PJOS app includes built-in queue management with SMS notifications — artists using PJOS may not need a separate queue app.',
+    note: 'Sunstone Studio includes built-in queue management with SMS notifications — you may not need a separate queue app.',
   },
 
   // ---------------------------------------------------------------------------
@@ -931,7 +931,7 @@ export const BUSINESS_STRATEGY_KNOWLEDGE = {
   // ---------------------------------------------------------------------------
   waiverManagement: {
     thirdPartyApps: ['Smart Waiver', 'JotForm', 'WaiverForever', 'WaiverFile'],
-    pjosBuiltIn: 'The Sunstone PJOS app includes a built-in digital waiver system with signature capture.',
+    pjosBuiltIn: 'Sunstone Studio includes a built-in digital waiver system with signature capture.',
     keyWaiverElements: [
       'Understanding of the welding process (safe and painless)',
       'Acknowledgment of risks (rare allergic reactions, potential burns, stretching/breaking)',
@@ -1525,7 +1525,7 @@ export const PJOS_PLATFORM_GUIDE = {
   // 9.1 Getting Started / Onboarding
   // ---------------------------------------------------------------------------
   gettingStarted: {
-    overview: 'When you first sign up for PJOS, you go through a guided onboarding experience powered by Sunny. It walks you through naming your business, loading your starter kit inventory, setting prices, and picking a theme — all in one smooth flow.',
+    overview: 'When you first sign up for Sunstone Studio, you go through a guided onboarding experience powered by Sunny. It walks you through naming your business, loading your starter kit inventory, setting prices, and picking a theme — all in one smooth flow.',
     onboardingFlow: {
       steps: [
         '0. Welcome screen — greets you by first name with a letter-by-letter animation.',
@@ -1581,7 +1581,7 @@ export const PJOS_PLATFORM_GUIDE = {
   // 9.1b Sunny Tips (Per-Page Tutorials)
   // ---------------------------------------------------------------------------
   sunnyTips: {
-    overview: 'On each main page of PJOS, owners see a floating "Sunny\'s Tips" pill in the bottom right. Tapping it opens a guided walkthrough with 2-3 tips specific to that page. Once you tap "Got it" on the last tip, the pill disappears permanently for that page.',
+    overview: 'On each main page of Sunstone Studio, owners see a floating "Sunny\'s Tips" pill in the bottom right. Tapping it opens a guided walkthrough with 2-3 tips specific to that page. Once you tap "Got it" on the last tip, the pill disappears permanently for that page.',
     pages: {
       events: 'Tips about creating events, going live, QR codes.',
       inventory: 'Tips about adding items, stock levels, chain pricing.',
@@ -1612,7 +1612,7 @@ export const PJOS_PLATFORM_GUIDE = {
   // 9.2 Events
   // ---------------------------------------------------------------------------
   events: {
-    overview: 'Events are how you organize your pop-ups, private parties, and bridal events in PJOS. Each event gets its own sales tracking, queue, and QR code.',
+    overview: 'Events are how you organize your pop-ups, private parties, and bridal events in Sunstone Studio. Each event gets its own sales tracking, queue, and QR code.',
     creatingAnEvent: [
       '1. Go to Events in the sidebar.',
       '2. Click the "+ New Event" button in the top right.',
@@ -1764,7 +1764,7 @@ export const PJOS_PLATFORM_GUIDE = {
   // 9.8 Digital Waivers
   // ---------------------------------------------------------------------------
   digitalWaivers: {
-    overview: 'PJOS has a built-in digital waiver system. Customers fill out and sign the waiver on their phone before you even start their service.',
+    overview: 'Sunstone Studio has a built-in digital waiver system. Customers fill out and sign the waiver on their phone before you even start their service.',
     howItWorks: [
       '1. Customer scans your event QR code (or you share the waiver link directly).',
       '2. They fill out their info: name, email, phone.',
@@ -1799,7 +1799,7 @@ export const PJOS_PLATFORM_GUIDE = {
   // 9.10 Settings
   // ---------------------------------------------------------------------------
   settingsGuide: {
-    overview: 'Settings is where you configure everything about your PJOS account. It has three tabs: General, Subscription, and Team.',
+    overview: 'Settings is where you configure everything about your Sunstone Studio account. It has three tabs: General, Subscription, and Team.',
     generalTab: {
       businessInfo: 'Update your business name, type, phone, and website.',
       branding: 'Upload your logo (shows on waivers and receipts) and pick your accent color. There are 8 beautiful presets or enter any hex color.',
@@ -1819,7 +1819,7 @@ export const PJOS_PLATFORM_GUIDE = {
   // 9.11 Subscription & Billing
   // ---------------------------------------------------------------------------
   subscriptionAndBilling: {
-    overview: 'PJOS has three subscription tiers designed to grow with your business.',
+    overview: 'Sunstone Studio has three subscription tiers designed to grow with your business.',
     tiers: {
       starter: {
         price: 'Free',
@@ -1840,7 +1840,7 @@ export const PJOS_PLATFORM_GUIDE = {
         bestFor: 'High-volume artists or teams who want zero fees and unlimited team access.',
       },
     },
-    trial: 'New accounts get a 14-day Pro trial to explore all features. After the trial, you keep your data and can upgrade or continue on the free Starter plan.',
+    trial: 'New accounts get a 60-day Pro trial to explore all features. After the trial, you keep your data and can upgrade or continue on the free Starter plan.',
     upgrading: 'Go to Settings → Subscription tab to see your current plan and upgrade. Payment is handled through Stripe.',
     whatHappensAfterTrial: 'If your trial expires without upgrading, you move to the Starter plan. You keep all your data, events, inventory, and clients — you just lose access to Pro features like full reports, CRM, and unlimited Sunny questions.',
     feeExplainer: 'The platform fee is a small percentage added to each sale. On Starter it is 3%, on Pro it is 1.5%, and on Business it is 0%. You can choose to pass this fee to your customer or absorb it yourself in Settings.',
@@ -1850,7 +1850,7 @@ export const PJOS_PLATFORM_GUIDE = {
   // 9.12 Team Management
   // ---------------------------------------------------------------------------
   teamManagement: {
-    overview: 'If you have staff or helpers, you can invite them to your PJOS account with different roles and permissions.',
+    overview: 'If you have staff or helpers, you can invite them to your Sunstone Studio account with different roles and permissions.',
     invitingMembers: [
       '1. Go to Settings → Team tab.',
       '2. Click "Invite Team Member."',
@@ -1875,7 +1875,7 @@ export const PJOS_PLATFORM_GUIDE = {
   // 9.13 Ask Sunny
   // ---------------------------------------------------------------------------
   askSunny: {
-    overview: 'Sunny is your AI mentor built right into PJOS. She knows permanent jewelry techniques, Sunstone products, business strategy, and how the app works.',
+    overview: 'Sunny is your AI mentor built right into Sunstone Studio. She knows permanent jewelry techniques, Sunstone products, business strategy, and how the app works.',
     howToAccess: 'Look for the chat icon in the bottom-right corner of any dashboard page. Click it to open Sunny.',
     whatSunnyHelps: [
       'Welding technique and settings — "What joule setting for 24g gold filled?"',

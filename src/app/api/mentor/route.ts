@@ -343,13 +343,13 @@ const SUBSECTIONS: Subsection[] = [
   // ── PJOS PLATFORM GUIDE ──
   {
     id: 'app-getting-started',
-    label: 'Getting Started with PJOS',
+    label: 'Getting Started with Sunstone Studio',
     data: PJOS_PLATFORM_GUIDE.gettingStarted,
     keywords: ['get started', 'getting started', 'set up', 'setup', 'onboard', 'new account', 'just signed up', 'first time', 'how to start', 'where do i begin', 'new to the app', 'create account', 'profile', 'business profile', 'upload logo', 'brand color', 'accent color', 'theme', 'pick a theme', 'change theme', 'skip setup'],
   },
   {
     id: 'app-events',
-    label: 'Creating & Managing Events in PJOS',
+    label: 'Creating & Managing Events',
     data: PJOS_PLATFORM_GUIDE.events,
     keywords: ['create event', 'new event', 'add event', 'set up event', 'event setup', 'go live', 'event mode', 'start event', 'qr code', 'edit event', 'event tab', 'upcoming event', 'past event', 'event p&l', 'booth fee', 'how do i make an event'],
     priority: 1,
@@ -369,53 +369,53 @@ const SUBSECTIONS: Subsection[] = [
   },
   {
     id: 'app-inventory',
-    label: 'Managing Inventory in PJOS',
+    label: 'Managing Inventory',
     data: PJOS_PLATFORM_GUIDE.inventory,
     keywords: ['add inventory', 'add item', 'add chain', 'add jump ring', 'chain list', 'my chains', 'inventory page', 'stock level', 'restock', 'reorder', 'low stock', 'deactivate', 'product type', 'material setup', 'chain pricing', 'buy by inch', 'sell by piece', 'how to add', 'movement history', 'sku'],
     priority: 1,
   },
   {
     id: 'app-clients',
-    label: 'Client List & CRM in PJOS',
+    label: 'Client List & CRM',
     data: PJOS_PLATFORM_GUIDE.clients,
     keywords: ['client list', 'clients', 'customer list', 'crm', 'customer database', 'waiver history', 'add client', 'customer info', 'find client', 'client page', 'copy waiver link', 'waiver link'],
   },
   {
     id: 'app-queue',
-    label: 'Queue Management in PJOS',
+    label: 'Queue Management',
     data: PJOS_PLATFORM_GUIDE.queueManagement,
     keywords: ['queue', 'line', 'wait list', 'waitlist', 'check in', 'checkin', 'check-in', 'next customer', 'notify', 'notify next', 'get people checked in', 'how people check in', 'waiting', 'no show', 'served', 'who is next', 'sms', 'text notification', 'customer line'],
     priority: 1,
   },
   {
     id: 'app-waivers',
-    label: 'Digital Waivers in PJOS',
+    label: 'Digital Waivers',
     data: PJOS_PLATFORM_GUIDE.digitalWaivers,
     keywords: ['waiver', 'digital waiver', 'sign waiver', 'signature', 'waiver link', 'send waiver', 'waiver pdf', 'download waiver', 'consent form', 'liability form', 'waiver before event', 'pre-event waiver', 'customize waiver'],
   },
   {
     id: 'app-reports',
-    label: 'Business Reports in PJOS',
+    label: 'Business Reports',
     data: PJOS_PLATFORM_GUIDE.businessReports,
     keywords: ['report', 'reports', 'sales numbers', 'how much did i make', 'revenue', 'profit', 'p&l', 'profit and loss', 'csv', 'export', 'analytics', 'dashboard numbers', 'business data', 'where are my numbers', 'how is my business doing', 'sales report', 'event report'],
     priority: 1,
   },
   {
     id: 'app-settings',
-    label: 'Settings & Configuration in PJOS',
+    label: 'Settings & Configuration',
     data: PJOS_PLATFORM_GUIDE.settingsGuide,
     keywords: ['settings', 'configure', 'setup', 'tax profile', 'tax rate', 'payment processor', 'connect square', 'connect stripe', 'business info', 'logo', 'waiver text', 'product types', 'materials', 'suppliers', 'fee handling', 'change settings', 'update settings'],
   },
   {
     id: 'app-subscription',
-    label: 'Subscription & Billing in PJOS',
+    label: 'Subscription & Billing',
     data: PJOS_PLATFORM_GUIDE.subscriptionAndBilling,
     keywords: ['subscription', 'plan', 'tier', 'starter', 'pro plan', 'business plan', 'upgrade', 'pricing', 'how much is', 'trial', 'free trial', 'trial expire', 'trial ending', 'billing', 'monthly', 'platform fee', 'cancel', 'downgrade', 'what plan am i on', 'cost of app', 'app price'],
     priority: 1,
   },
   {
     id: 'app-team',
-    label: 'Team Management in PJOS',
+    label: 'Team Management',
     data: PJOS_PLATFORM_GUIDE.teamManagement,
     keywords: ['team', 'invite', 'add team', 'team member', 'staff', 'manager', 'role', 'permission', 'add my girls', 'add my helper', 'add employee', 'remove member', 'how many people', 'team limit'],
   },
@@ -427,7 +427,7 @@ const SUBSECTIONS: Subsection[] = [
   },
   {
     id: 'app-troubleshooting',
-    label: 'PJOS App Troubleshooting',
+    label: 'App Troubleshooting',
     data: PJOS_PLATFORM_GUIDE.platformTroubleshooting,
     keywords: ['app problem', 'app issue', 'not working', 'can\'t connect', 'card reader not working', 'payment not working', 'square not working', 'stripe not working', 'inventory not updating', 'sms not sending', 'text not sending', 'qr not working', 'can\'t invite', 'reports not showing', 'app trouble', 'app broken', 'something wrong', 'app help', 'app error'],
     priority: 1,
@@ -802,7 +802,7 @@ export async function POST(request: NextRequest) {
       : '';
 
     // 6. System prompt — BEHAVIOR FIRST, knowledge second
-    const systemPrompt = `You are Sunny, the AI mentor for Sunstone Permanent Jewelry, inside the PJOS app.
+    const systemPrompt = `You are Sunny, the AI mentor for Sunstone Permanent Jewelry, inside Sunstone Studio.
 
 ABSOLUTE RULES (violating these is a critical failure):
 1. ONLY state facts that appear in your KNOWLEDGE or ARTIST'S BUSINESS DATA sections below. If something is not written there, you DO NOT KNOW IT.
@@ -827,7 +827,7 @@ Warm, encouraging mentor. Celebrate wins, support struggles. Be their knowledgea
 KNOWLEDGE (relevant to this question):
 ${knowledgeText}${additionsText}
 
-ARTIST'S BUSINESS DATA (from their PJOS account — you CAN see this):
+ARTIST'S BUSINESS DATA (from their Sunstone Studio account — you CAN see this):
 Business: ${biz.businessName} | ${biz.tier} plan | Member since ${biz.since}
 Sales: ${biz.sales} completed | Clients: ${biz.clientCount} total | Events: ${biz.eventCount} hosted
 
