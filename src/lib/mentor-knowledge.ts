@@ -1733,6 +1733,29 @@ export const PJOS_PLATFORM_GUIDE = {
   },
 
   // ---------------------------------------------------------------------------
+  // 9.6b CRM Value Proposition
+  // ---------------------------------------------------------------------------
+  crmValue: {
+    whatItDoes: 'CRM turns your client list into a relationship engine. Instead of hoping customers come back, you stay top of mind automatically.',
+    realBenefits: [
+      'Automated follow-ups mean you never forget a client. After every weld, your aftercare text goes out automatically — you look professional without lifting a finger.',
+      'Birthday messages, event invitations, and re-engagement texts go out on their own. Clients feel remembered and valued, which is what brings them back.',
+      'Tag your clients (VIP, Girls Night, Repeat Client) and send targeted campaigns. Instead of blasting everyone, you reach the right people with the right message.',
+      'Workflow automation handles the boring stuff — the thank-you text, the aftercare reminder, the review request, the party invite — all timed perfectly so you can focus on welding.',
+      'Every message, purchase, waiver, and interaction is logged on the client profile. When Sarah walks up to your booth six months later, you know exactly what she got last time.',
+      'Private party invitations practically sell themselves when you can text everyone who loved their last piece and say "bring 5 friends, host gets a free bracelet."',
+    ],
+    whyItMatters: 'Most permanent jewelry artists lose 80% of their clients after the first visit — not because the client didn\'t love it, but because no one followed up. CRM changes that. It turns one-time customers into repeat clients, repeat clients into referral sources, and referral sources into private party hosts. That\'s how a side hustle becomes a real business.',
+    howArtistsActuallyUseIt: [
+      'After a market: automated sequence thanks everyone, sends aftercare, asks for an Instagram tag, then a week later asks for a review and mentions private parties',
+      'Before an event: send a campaign to all local clients saying "We will be at Spring Market this Saturday — come add to your collection"',
+      'Birthday month: automatic birthday text makes the client feel special and gives you a reason to reconnect',
+      'Slow season: send a "miss you" text to clients who haven\'t visited in 90+ days — simple, personal, effective',
+      'Private parties: one text to your Girls Night tagged clients fills your party calendar',
+    ],
+  },
+
+  // ---------------------------------------------------------------------------
   // 9.7 Queue Management
   // ---------------------------------------------------------------------------
   queueManagement: {

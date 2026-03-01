@@ -358,13 +358,26 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
                   },
                 },
                 { label: 'Tag', icon: TagIcon, onClick: () => setShowTagDropdown(!showTagDropdown) },
-                { label: 'Workflow', icon: ZapIconAction, onClick: openWorkflowModal },
+                {
+                  label: 'Workflow',
+                  icon: tenant?.crm_enabled ? ZapIconAction : LockIcon,
+                  onClick: () => {
+                    if (tenant?.crm_enabled) {
+                      openWorkflowModal();
+                    } else {
+                      toast('Available with CRM add-on', { description: 'Contact Sunstone to enable CRM features.' });
+                    }
+                  },
+                  disabled: !tenant?.crm_enabled,
+                },
                 { label: 'Waiver', icon: FileTextIcon, onClick: () => setShowWaiverModal(true) },
-              ].map(({ label, icon: Icon, onClick }) => (
+              ].map(({ label, icon: Icon, onClick, disabled }: any) => (
                 <button
                   key={label}
                   onClick={onClick}
-                  className="flex flex-col items-center justify-center gap-1 py-2 border border-[var(--border-default)] rounded-xl hover:bg-[var(--surface-subtle)] transition-colors"
+                  className={`flex flex-col items-center justify-center gap-1 py-2 border border-[var(--border-default)] rounded-xl transition-colors ${
+                    disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[var(--surface-subtle)]'
+                  }`}
                   style={{ minHeight: 44 }}
                 >
                   <Icon className="w-4 h-4 text-[var(--text-secondary)]" />
@@ -743,6 +756,14 @@ function TagIcon({ className }: { className?: string }) {
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
+    </svg>
+  );
+}
+
+function LockIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
     </svg>
   );
 }
