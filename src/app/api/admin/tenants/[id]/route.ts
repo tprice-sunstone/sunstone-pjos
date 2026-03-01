@@ -35,18 +35,31 @@ export async function GET(
       serviceClient.from('inventory_items').select('id', { count: 'exact', head: true }).eq('tenant_id', id),
       serviceClient.from('clients').select('id', { count: 'exact', head: true }).eq('tenant_id', id),
       serviceClient.from('sales').select('id, total, platform_fee_amount, created_at').eq('tenant_id', id).eq('status', 'completed').order('created_at', { ascending: false }).limit(10),
-      serviceClient.from('tenant_members').select('user_id, role').eq('tenant_id', id),
+      serviceClient.from('tenant_members').select('user_id, role, display_name, invited_email, accepted_at').eq('tenant_id', id),
     ]);
+
+    // Calculate total revenue
+    const totalRevenue = (sales.data || []).reduce((sum, s) => sum + Number(s.total), 0);
+
+    // Resolve member emails
+    const membersList = (members.data || []).map((m: any) => ({
+      ...m,
+      is_owner: m.user_id === tenant.owner_id,
+      email: m.invited_email || null,
+    }));
 
     return NextResponse.json({
       tenant,
-      owner: owner ? { id: owner.id, email: owner.email, created_at: owner.created_at } : null,
+      owner: owner ? { id: owner.id, email: owner.email, phone: owner.phone || null, created_at: owner.created_at } : null,
       counts: {
         events: events.count || 0,
         inventory_items: inventory.count || 0,
         clients: clients.count || 0,
         members: (members.data || []).length,
+        totalRevenue,
+        salesCount: (sales.data || []).length,
       },
+      members: membersList,
       recent_sales: sales.data || [],
     });
   } catch (err) {

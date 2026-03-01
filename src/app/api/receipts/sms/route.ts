@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 interface ReceiptSmsBody {
   to: string;
   tenantName: string;
+  tenantId?: string;
+  clientId?: string;
   total: number;
   itemCount: number;
   paymentMethod: string;
@@ -57,6 +59,24 @@ export async function POST(request: NextRequest) {
       from: process.env.TWILIO_PHONE_NUMBER,
       to: body.to,
     });
+
+    // Log to message_log (fire-and-forget)
+    if (body.tenantId) {
+      import('@/lib/supabase/server').then(({ createServiceRoleClient }) =>
+        createServiceRoleClient().then(svc =>
+          svc.from('message_log').insert({
+            tenant_id: body.tenantId,
+            client_id: body.clientId || null,
+            direction: 'outbound',
+            channel: 'sms',
+            recipient_phone: body.to,
+            body: smsBody,
+            source: 'receipt',
+            status: 'sent',
+          })
+        )
+      ).catch(() => {});
+    }
 
     return NextResponse.json({ sent: true, sid: message.sid });
   } catch (err: any) {

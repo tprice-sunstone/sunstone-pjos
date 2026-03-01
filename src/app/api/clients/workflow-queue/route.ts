@@ -113,6 +113,22 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Log to message_log (fire-and-forget)
+  if (sent) {
+    supabase.from('message_log').insert({
+      tenant_id: item.tenant_id,
+      client_id: item.client_id,
+      direction: 'outbound',
+      channel: item.channel,
+      recipient_email: item.channel === 'email' ? item.client?.email : null,
+      recipient_phone: item.channel === 'sms' ? item.client?.phone : null,
+      body: item.message_body,
+      template_name: item.template_name,
+      source: 'workflow',
+      status: 'sent',
+    }).then(null, () => {});
+  }
+
   // Mark as sent
   await supabase
     .from('workflow_queue')

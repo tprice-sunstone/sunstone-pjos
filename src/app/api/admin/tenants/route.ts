@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const { data: tenants, error: tenantsError } = await serviceClient
       .from('tenants')
       .select(`
-        id, name, slug, owner_id, subscription_tier,
+        id, name, slug, owner_id, subscription_tier, subscription_status, trial_ends_at,
         square_merchant_id, stripe_account_id, stripe_onboarding_complete,
         onboarding_completed, is_suspended, suspended_at, suspended_reason,
         crm_enabled, brand_color, logo_url, created_at, updated_at

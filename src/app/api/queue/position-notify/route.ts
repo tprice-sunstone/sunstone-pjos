@@ -90,6 +90,17 @@ export async function POST(request: NextRequest) {
       to: entry.phone,
     });
 
+    // Log to message_log (fire-and-forget)
+    supabaseAdmin.from('message_log').insert({
+      tenant_id: tenantId,
+      direction: 'outbound',
+      channel: 'sms',
+      recipient_phone: entry.phone,
+      body: message,
+      source: 'queue_position',
+      status: 'sent',
+    }).then(null, () => {});
+
     return NextResponse.json({
       sent: true,
       sid: result.sid,

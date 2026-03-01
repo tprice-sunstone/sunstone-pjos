@@ -5,6 +5,8 @@ interface ReceiptEmailBody {
   to: string;
   tenantName: string;
   tenantAccentColor?: string;
+  tenantId?: string;
+  clientId?: string;
   eventName?: string;
   tagline?: string;
   footer?: string;
@@ -179,6 +181,25 @@ export async function POST(request: NextRequest) {
         { sent: false, error: error.message || 'Failed to send email' },
         { status: 500 }
       );
+    }
+
+    // Log to message_log (fire-and-forget)
+    if (body.tenantId) {
+      import('@/lib/supabase/server').then(({ createServiceRoleClient }) =>
+        createServiceRoleClient().then(svc =>
+          svc.from('message_log').insert({
+            tenant_id: body.tenantId,
+            client_id: body.clientId || null,
+            direction: 'outbound',
+            channel: 'email',
+            recipient_email: body.to,
+            subject: `Your receipt from ${body.tenantName}`,
+            body: `Receipt: ${body.items.length} item(s), $${body.total.toFixed(2)}`,
+            source: 'receipt',
+            status: 'sent',
+          })
+        )
+      ).catch(() => {});
     }
 
     return NextResponse.json({ sent: true, id: data?.id });

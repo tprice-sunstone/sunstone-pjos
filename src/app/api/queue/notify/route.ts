@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phone, name, tenantName, smsConsent } = body;
+    const { phone, name, tenantName, tenantId, smsConsent } = body;
 
     if (!phone) {
       return NextResponse.json({ error: 'Phone number required' }, { status: 400 });
@@ -29,6 +29,23 @@ export async function POST(request: NextRequest) {
       from: process.env.TWILIO_PHONE_NUMBER,
       to: phone,
     });
+
+    // Log to message_log (fire-and-forget)
+    if (tenantId) {
+      import('@/lib/supabase/server').then(({ createServiceRoleClient }) =>
+        createServiceRoleClient().then(svc =>
+          svc.from('message_log').insert({
+            tenant_id: tenantId,
+            direction: 'outbound',
+            channel: 'sms',
+            recipient_phone: phone,
+            body: `Hi ${name}! You're next at the ${tenantName || 'Sunstone'} booth. Please head over now!`,
+            source: 'queue_notify',
+            status: 'sent',
+          })
+        )
+      ).catch(() => {});
+    }
 
     return NextResponse.json({ sent: true, sid: message.sid });
   } catch (error: any) {

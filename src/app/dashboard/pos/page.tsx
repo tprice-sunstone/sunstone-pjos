@@ -177,7 +177,8 @@ export default function StoreModePage() {
     setSendingEmail(true); setEmailError('');
     try {
       const res = await fetch('/api/receipts/email', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: receiptEmail, tenantName: tenant.name, tenantAccentColor: tenant.brand_color || undefined,
+        body: JSON.stringify({ to: receiptEmail, tenantName: tenant.name, tenantId: tenant.id, clientId: cart.client_id || undefined,
+          tenantAccentColor: tenant.brand_color || undefined,
           tagline: tenant.receipt_tagline || undefined, footer: tenant.receipt_footer || undefined,
           saleDate: completedSale.saleDate, items: completedSale.items,
           subtotal: completedSale.subtotal, taxAmount: completedSale.taxAmount, taxRate: completedSale.taxRate,
@@ -195,6 +196,7 @@ export default function StoreModePage() {
     try {
       const res = await fetch('/api/receipts/sms', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: receiptPhone.replace(/[^\d+]/g, ''), tenantName: tenant.name,
+          tenantId: tenant.id, clientId: cart.client_id || undefined,
           total: completedSale.total, itemCount: completedSale.items.reduce((s: number, i: any) => s + i.quantity, 0),
           paymentMethod: completedSale.paymentMethod, footer: tenant.receipt_footer || undefined }) });
       const data = await res.json();
@@ -276,6 +278,8 @@ export default function StoreModePage() {
           body: JSON.stringify({
             to: receiptEmail,
             tenantName: tenant.name,
+            tenantId: tenant.id,
+            clientId: cart.client_id || undefined,
             tenantAccentColor: tenant.brand_color || undefined,
             tagline: tenant.receipt_tagline || undefined,
             footer: tenant.receipt_footer || undefined,
@@ -303,6 +307,8 @@ export default function StoreModePage() {
           body: JSON.stringify({
             to: receiptPhone.replace(/[^\d+]/g, ''),
             tenantName: tenant.name,
+            tenantId: tenant.id,
+            clientId: cart.client_id || undefined,
             total: saleData.total,
             itemCount: saleData.items.reduce((s: number, i: any) => s + i.quantity, 0),
             paymentMethod: saleData.paymentMethod,

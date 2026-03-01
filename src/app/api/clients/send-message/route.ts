@@ -48,6 +48,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid channel' }, { status: 400 });
     }
 
+    // Log to message_log (fire-and-forget)
+    supabase.from('message_log').insert({
+      tenant_id: tenantId,
+      client_id: clientId,
+      direction: 'outbound',
+      channel,
+      recipient_email: channel === 'email' ? client.email : null,
+      recipient_phone: channel === 'sms' ? client.phone : null,
+      subject: channel === 'email' ? (resolvedSubject || 'Message from ' + tenant.name) : null,
+      body: resolvedMessage,
+      source: 'manual',
+      status: 'sent',
+    }).then(null, () => {});
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to send message' }, { status: 500 });

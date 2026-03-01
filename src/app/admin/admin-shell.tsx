@@ -1,27 +1,78 @@
 // ============================================================================
-// Admin Shell v3 — src/app/admin/admin-shell.tsx
+// Admin Shell v4 — src/app/admin/admin-shell.tsx
 // ============================================================================
-// v2: Added "Sunny's Learning" nav item with pending gap badge count
-// v3: Added Atlas AI chat (floating "Ask Atlas" button + panel)
+// v4: Obsidian + Sunstone Fire fixed theme, bottom tab nav (mobile),
+//     updated desktop sidebar, Atlas pill in header (not floating)
 // ============================================================================
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import AdminAIChat from '@/components/AdminAIChat';
 
+// ============================================================================
+// Obsidian Theme — fixed CSS custom properties (never changes)
+// ============================================================================
+
+const OBSIDIAN_VARS: Record<string, string> = {
+  '--surface-default': '#18181F',
+  '--surface-base': '#0F0F12',
+  '--surface-raised': '#1F1F28',
+  '--surface-overlay': '#1F1F28',
+  '--surface-subtle': '#1A1A24',
+  '--surface-sidebar': '#18181F',
+  '--accent-primary': '#FF7A00',
+  '--accent-hover': '#E86E00',
+  '--accent-muted': 'rgba(255, 122, 0, 0.12)',
+  '--accent-50': 'rgba(255, 122, 0, 0.08)',
+  '--accent-100': 'rgba(255, 122, 0, 0.15)',
+  '--accent-200': 'rgba(255, 122, 0, 0.25)',
+  '--accent-400': '#FF9A40',
+  '--accent-500': '#FF7A00',
+  '--accent-600': '#E86E00',
+  '--accent-700': '#CC6000',
+  '--text-primary': '#E8E4DF',
+  '--text-secondary': '#9B9590',
+  '--text-tertiary': '#6B6560',
+  '--text-on-accent': '#FFFFFF',
+  '--border-default': '#2A2A35',
+  '--border-subtle': '#222230',
+  '--border-strong': '#3A3A48',
+  '--shadow-card': '0 4px 12px rgba(0,0,0,0.3)',
+  '--nav-active-bg': 'rgba(255, 122, 0, 0.12)',
+  '--nav-active-text': '#FF7A00',
+  '--nav-active-border': '#FF7A00',
+  '--font-display': 'Georgia',
+};
+
+// ============================================================================
+// Nav Items (5 tabs matching the spec)
+// ============================================================================
+
 const navItems = [
   { href: '/admin', label: 'Overview', icon: OverviewIcon, exact: true },
   { href: '/admin/tenants', label: 'Tenants', icon: TenantsIcon },
-  { href: '/admin/users', label: 'Users', icon: UsersIcon },
   { href: '/admin/revenue', label: 'Revenue', icon: RevenueIcon },
   { href: '/admin/spotlight', label: 'Spotlight', icon: SpotlightIcon },
-  { href: '/admin/mentor', label: "Sunny's Learning", icon: SunnyIcon, badge: true },
+  { href: '/admin/mentor', label: 'Learning', icon: SunnyIcon, badge: true },
 ];
+
+// Bottom tab layout: Tenants, Revenue, [Overview center], Spotlight, Learning
+const bottomTabs = [
+  { href: '/admin/tenants', label: 'Tenants', icon: TenantsIcon },
+  { href: '/admin/revenue', label: 'Revenue', icon: RevenueIcon },
+  // Overview is rendered separately as center button
+  { href: '/admin/spotlight', label: 'Spotlight', icon: SpotlightIcon },
+  { href: '/admin/mentor', label: 'Learning', icon: SunnyIcon, badge: true },
+];
+
+// ============================================================================
+// Shell
+// ============================================================================
 
 export function AdminShell({
   userEmail,
@@ -30,45 +81,62 @@ export function AdminShell({
   userEmail: string;
   children: React.ReactNode;
 }) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAtlasOpen, setIsAtlasOpen] = useState(false);
+  const openAtlas = useCallback(() => setIsAtlasOpen(true), []);
+  const closeAtlas = useCallback(() => setIsAtlasOpen(false), []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--surface-subtle)]">
+    <div
+      className="flex h-screen overflow-hidden"
+      style={{ ...OBSIDIAN_VARS, backgroundColor: '#0F0F12' } as React.CSSProperties}
+    >
       {/* Desktop Sidebar */}
       <DesktopSidebar userEmail={userEmail} />
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <MobileHeader onToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Mobile header with Atlas pill */}
+        <MobileHeader onAtlasOpen={openAtlas} />
 
-        {/* Mobile slide-out nav */}
-        {mobileMenuOpen && (
-          <>
-            <div
-              className="lg:hidden fixed inset-0 bg-black/30 z-40"
-              onClick={() => setMobileMenuOpen(false)}
-            />
-            <div className="lg:hidden fixed left-0 top-0 bottom-0 w-72 bg-[var(--surface-base)] z-50 p-4">
-              <MobileSidebarContent
-                userEmail={userEmail}
-                onClose={() => setMobileMenuOpen(false)}
-              />
-            </div>
-          </>
-        )}
+        {/* Desktop header with Atlas pill */}
+        <div className="hidden lg:flex items-center justify-end px-8 py-2 shrink-0">
+          <AtlasPill onClick={openAtlas} />
+        </div>
 
         <main className="flex-1 overflow-y-auto">
           <div className="p-4 lg:p-8 max-w-7xl mx-auto pb-24 lg:pb-8">
             {children}
           </div>
         </main>
+
+        {/* Mobile bottom nav */}
+        <PhoneBottomNav />
       </div>
 
-      {/* ============================================================ */}
-      {/* Atlas AI Chat — floating button + panel on every admin page  */}
-      {/* ============================================================ */}
-      <AdminAIChat />
+      {/* Atlas AI Chat — controlled externally */}
+      <AdminAIChat isOpen={isAtlasOpen} onClose={closeAtlas} />
     </div>
+  );
+}
+
+// ============================================================================
+// Atlas Pill — header button
+// ============================================================================
+
+function AtlasPill({ onClick, compact }: { onClick: () => void; compact?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2 px-3 h-9 rounded-full transition-colors text-sm font-medium"
+      style={{
+        backgroundColor: 'rgba(255, 122, 0, 0.15)',
+        color: '#FF7A00',
+      }}
+      aria-label="Open Atlas AI"
+    >
+      <AtlasIconSmall className="w-4 h-4" />
+      <span>{compact ? 'Atlas' : 'Ask Atlas'}</span>
+    </button>
   );
 }
 
@@ -98,7 +166,7 @@ function usePendingGapCount() {
 }
 
 // ============================================================================
-// Desktop Sidebar
+// Desktop Sidebar — Obsidian styled
 // ============================================================================
 
 function DesktopSidebar({ userEmail }: { userEmail: string }) {
@@ -114,16 +182,22 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
   };
 
   return (
-    <aside className="hidden lg:flex w-64 bg-[var(--surface-base)] flex-col shrink-0">
+    <aside
+      className="hidden lg:flex w-64 flex-col shrink-0"
+      style={{ backgroundColor: '#18181F', borderRight: '1px solid #2A2A35' }}
+    >
       {/* Brand */}
-      <div className="px-5 py-5 border-b border-[var(--border-default)]">
+      <div className="px-5 py-5" style={{ borderBottom: '1px solid #2A2A35' }}>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center shrink-0 shadow-sm">
-            <span className="text-[var(--text-on-accent)] font-bold text-sm">S</span>
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ backgroundColor: '#FF7A00' }}
+          >
+            <span className="text-white font-bold text-sm">S</span>
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-bold text-[var(--text-primary)] truncate">Sunstone Admin</div>
-            <div className="text-xs text-[var(--text-tertiary)] truncate">{userEmail}</div>
+            <div className="text-sm font-bold truncate" style={{ color: '#E8E4DF' }}>Sunstone Admin</div>
+            <div className="text-xs truncate" style={{ color: '#6B6560' }}>{userEmail}</div>
           </div>
         </div>
       </div>
@@ -141,14 +215,22 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
               className={cn(
                 'flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-accent-500/15 text-accent-500'
-                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)]'
+                  ? 'border-l-[3px]'
+                  : 'hover:bg-[rgba(255,255,255,0.04)]'
               )}
+              style={{
+                color: isActive ? '#FF7A00' : '#6B6560',
+                backgroundColor: isActive ? 'rgba(255, 122, 0, 0.12)' : undefined,
+                borderColor: isActive ? '#FF7A00' : 'transparent',
+              }}
             >
               <item.icon className="w-5 h-5 shrink-0" />
               <span className="flex-1">{item.label}</span>
               {item.badge && pendingGapCount > 0 && (
-                <span className="px-2 py-0.5 bg-accent-500 text-[var(--text-on-accent)] text-[10px] font-bold rounded-full min-w-[20px] text-center">
+                <span
+                  className="px-2 py-0.5 text-[10px] font-bold rounded-full min-w-[20px] text-center"
+                  style={{ backgroundColor: '#FF7A00', color: '#FFFFFF' }}
+                >
                   {pendingGapCount}
                 </span>
               )}
@@ -158,20 +240,19 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-4 border-t border-[var(--border-default)] space-y-1">
-        {/* Back to Dashboard */}
+      <div className="px-3 py-4 space-y-1" style={{ borderTop: '1px solid #2A2A35' }}>
         <Link
           href="/dashboard"
-          className="flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] transition-colors"
+          className="flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+          style={{ color: '#9B9590' }}
         >
           <BackIcon className="w-5 h-5 shrink-0" />
           Back to Dashboard
         </Link>
-
-        {/* Logout */}
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] transition-colors"
+          className="w-full flex items-center gap-3 px-3 min-h-[44px] rounded-lg text-sm transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+          style={{ color: '#9B9590' }}
         >
           <LogoutIcon className="w-5 h-5 shrink-0" />
           Sign Out
@@ -182,117 +263,115 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
 }
 
 // ============================================================================
-// Mobile Header
+// Mobile Header — with Atlas pill
 // ============================================================================
 
-function MobileHeader({ onToggle }: { onToggle: () => void }) {
+function MobileHeader({ onAtlasOpen }: { onAtlasOpen: () => void }) {
   return (
-    <div className="lg:hidden flex items-center gap-3 px-4 h-14 bg-[var(--surface-base)] border-b border-[var(--border-default)] shrink-0">
-      <button
-        onClick={onToggle}
-        className="w-10 h-10 flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-subtle)] transition-colors"
-      >
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-        </svg>
-      </button>
-      <div className="text-sm font-bold text-[var(--text-primary)]">Sunstone Admin</div>
+    <div
+      className="lg:hidden flex items-center justify-between px-4 h-14 shrink-0"
+      style={{ backgroundColor: '#18181F', borderBottom: '1px solid #2A2A35' }}
+    >
+      <div className="flex items-center gap-2.5">
+        <div
+          className="w-7 h-7 rounded-md flex items-center justify-center"
+          style={{ backgroundColor: '#FF7A00' }}
+        >
+          <span className="text-white font-bold text-xs">S</span>
+        </div>
+        <div className="text-sm font-bold" style={{ color: '#E8E4DF' }}>Sunstone Admin</div>
+      </div>
+      <AtlasPill onClick={onAtlasOpen} compact />
     </div>
   );
 }
 
 // ============================================================================
-// Mobile Sidebar Content
+// Phone Bottom Nav — 5 tabs with center Overview button
 // ============================================================================
 
-function MobileSidebarContent({
-  userEmail,
-  onClose,
-}: {
-  userEmail: string;
-  onClose: () => void;
-}) {
+function PhoneBottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
-  const supabase = createClient();
   const pendingGapCount = usePendingGapCount();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/auth/login');
-    router.refresh();
-  };
+  const isOverviewActive = pathname === '/admin';
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Close + Brand */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center">
-            <span className="text-[var(--text-on-accent)] font-bold text-sm">S</span>
-          </div>
-          <div className="text-sm font-bold text-[var(--text-primary)]">Sunstone Admin</div>
-        </div>
-        <button
-          onClick={onClose}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-subtle)]"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
+    <nav
+      className="lg:hidden flex items-end justify-around shrink-0 px-2"
+      style={{ backgroundColor: '#18181F', borderTop: '1px solid #2A2A35' }}
+    >
+      {/* Tenants */}
+      <BottomTab href="/admin/tenants" label="Tenants" icon={TenantsIcon} />
 
-      {/* Nav items */}
-      <nav className="flex-1 space-y-1">
-        {navItems.map((item) => {
-          const isActive = item.exact
-            ? pathname === item.href
-            : pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              className={cn(
-                'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-accent-500/15 text-accent-500'
-                  : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)]'
-              )}
-            >
-              <item.icon className="w-5 h-5 shrink-0" />
-              <span className="flex-1">{item.label}</span>
-              {item.badge && pendingGapCount > 0 && (
-                <span className="px-2 py-0.5 bg-accent-500 text-[var(--text-on-accent)] text-[10px] font-bold rounded-full min-w-[20px] text-center">
-                  {pendingGapCount}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
+      {/* Revenue */}
+      <BottomTab href="/admin/revenue" label="Revenue" icon={RevenueIcon} />
 
-      {/* Footer */}
-      <div className="border-t border-[var(--border-default)] pt-4 space-y-1">
-        <div className="px-3 text-xs text-[var(--text-secondary)] mb-2 truncate">{userEmail}</div>
+      {/* Overview — raised center button */}
+      <div className="flex flex-col items-center justify-end pb-1.5 -mt-3">
         <Link
-          href="/dashboard"
-          onClick={onClose}
-          className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] transition-colors"
+          href="/admin"
+          className="w-12 h-12 rounded-full flex items-center justify-center"
+          style={{
+            backgroundColor: '#FF7A00',
+            boxShadow: '0 4px 14px rgba(255, 122, 0, 0.35)',
+          }}
+          aria-label="Overview"
         >
-          <BackIcon className="w-5 h-5 shrink-0" />
-          Back to Dashboard
+          <OverviewIcon className="w-6 h-6 text-white" />
         </Link>
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)] transition-colors"
+        <span
+          className="text-[9px] font-semibold mt-0.5"
+          style={{ color: isOverviewActive ? '#FF7A00' : '#6B6560' }}
         >
-          <LogoutIcon className="w-5 h-5 shrink-0" />
-          Sign Out
-        </button>
+          Overview
+        </span>
       </div>
-    </div>
+
+      {/* Spotlight */}
+      <BottomTab href="/admin/spotlight" label="Spotlight" icon={SpotlightIcon} />
+
+      {/* Learning */}
+      <div className="relative">
+        <BottomTab href="/admin/mentor" label="Learning" icon={SunnyIcon} />
+        {pendingGapCount > 0 && (
+          <span
+            className="absolute -top-0.5 right-1 px-1 min-w-[14px] h-[14px] text-[8px] font-bold rounded-full flex items-center justify-center"
+            style={{ backgroundColor: '#FF7A00', color: '#FFFFFF' }}
+          >
+            {pendingGapCount}
+          </span>
+        )}
+      </div>
+    </nav>
+  );
+}
+
+function BottomTab({
+  href,
+  label,
+  icon: Icon,
+}: {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+}) {
+  const pathname = usePathname();
+  const isActive = href === '/admin' ? pathname === '/admin' : pathname.startsWith(href);
+
+  return (
+    <Link
+      href={href}
+      className="flex flex-col items-center justify-center gap-0.5 py-2 min-h-[48px] min-w-[48px]"
+    >
+      <Icon className="w-5 h-5" style={{ color: isActive ? '#FF7A00' : '#6B6560' }} />
+      <span
+        className="text-[9px] font-semibold"
+        style={{ color: isActive ? '#FF7A00' : '#6B6560' }}
+      >
+        {label}
+      </span>
+    </Link>
   );
 }
 
@@ -300,49 +379,41 @@ function MobileSidebarContent({
 // Icons (inline SVG)
 // ============================================================================
 
-function OverviewIcon({ className }: { className?: string }) {
+function OverviewIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
     </svg>
   );
 }
 
-function TenantsIcon({ className }: { className?: string }) {
+function TenantsIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.15c0 .415.336.75.75.75z" />
-    </svg>
-  );
-}
-
-function UsersIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
     </svg>
   );
 }
 
-function RevenueIcon({ className }: { className?: string }) {
+function RevenueIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
 }
 
-function SunnyIcon({ className }: { className?: string }) {
+function SunnyIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+    <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
     </svg>
   );
 }
 
-function SpotlightIcon({ className }: { className?: string }) {
+function SpotlightIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
     </svg>
   );
@@ -360,6 +431,14 @@ function LogoutIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+    </svg>
+  );
+}
+
+function AtlasIconSmall({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 2v7.5c0 .828.672 1.5 1.5 1.5h1.5M2.5 2H1.5m1 0h11m0 0h1m-1 0v7.5c0 .828-.672 1.5-1.5 1.5h-1.5m-5 0h5m-5 0l-.667 2m5.667-2l.667 2M6 7.5v1M8 6v2.5m2-4v4" />
     </svg>
   );
 }
