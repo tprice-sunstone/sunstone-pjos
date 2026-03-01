@@ -1,0 +1,171 @@
+// src/app/api/clients/[id]/activity/route.ts
+// GET: Returns unified chronological activity feed for a client
+
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerSupabase } from '@/lib/supabase/server';
+
+interface ActivityEntry {
+  id: string;
+  type: 'purchase' | 'waiver' | 'message_sent' | 'tag_added' | 'workflow_action' | 'note';
+  date: string;
+  summary: string;
+  details?: string;
+  metadata?: {
+    channel?: string;
+    template_name?: string;
+    source?: string;
+    event_name?: string;
+    items?: string[];
+    total?: number;
+    tag_name?: string;
+    tag_color?: string;
+    payment_method?: string;
+  };
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const supabase = await createServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { id: clientId } = await params;
+  const tenantId = request.nextUrl.searchParams.get('tenantId');
+  if (!tenantId) return NextResponse.json({ error: 'tenantId required' }, { status: 400 });
+
+  const [salesRes, waiversRes, messagesRes, tagsRes, workflowRes, notesRes] = await Promise.all([
+    supabase
+      .from('sales')
+      .select('id, created_at, total, payment_method, items:sale_items(name, quantity), event:events(name)')
+      .eq('client_id', clientId)
+      .eq('tenant_id', tenantId)
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false }),
+
+    supabase
+      .from('waivers')
+      .select('id, signed_at, signer_name, event:events(name)')
+      .eq('client_id', clientId)
+      .eq('tenant_id', tenantId)
+      .order('signed_at', { ascending: false }),
+
+    supabase
+      .from('message_log')
+      .select('id, created_at, channel, template_name, body, source')
+      .eq('client_id', clientId)
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false }),
+
+    supabase
+      .from('client_tag_assignments')
+      .select('id, assigned_at, tag:client_tags(name, color)')
+      .eq('client_id', clientId),
+
+    supabase
+      .from('workflow_queue')
+      .select('id, acted_at, template_name, status, description')
+      .eq('client_id', clientId)
+      .eq('tenant_id', tenantId)
+      .in('status', ['sent', 'skipped'])
+      .order('acted_at', { ascending: false }),
+
+    supabase
+      .from('client_notes')
+      .select('id, created_at, body')
+      .eq('client_id', clientId)
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false }),
+  ]);
+
+  const entries: ActivityEntry[] = [];
+
+  // Purchases
+  for (const sale of salesRes.data || []) {
+    const itemNames = (sale.items || []).map((i: any) => i.name);
+    const itemsSummary = itemNames.length > 0 ? itemNames.join(', ') : 'Purchase';
+    entries.push({
+      id: `purchase-${sale.id}`,
+      type: 'purchase',
+      date: sale.created_at,
+      summary: `Purchased ${itemsSummary} — $${Number(sale.total).toFixed(2)}`,
+      metadata: {
+        items: itemNames,
+        total: Number(sale.total),
+        payment_method: sale.payment_method,
+        event_name: (sale.event as any)?.name || undefined,
+      },
+    });
+  }
+
+  // Waivers
+  for (const waiver of waiversRes.data || []) {
+    const eventName = (waiver.event as any)?.name;
+    entries.push({
+      id: `waiver-${waiver.id}`,
+      type: 'waiver',
+      date: waiver.signed_at,
+      summary: eventName ? `Signed waiver for ${eventName}` : 'Signed waiver',
+      metadata: { event_name: eventName || undefined },
+    });
+  }
+
+  // Messages
+  for (const msg of messagesRes.data || []) {
+    const channelLabel = msg.channel === 'sms' ? 'SMS' : 'Email';
+    const nameLabel = msg.template_name || (msg.source === 'receipt' ? 'Receipt' : 'Message');
+    entries.push({
+      id: `message-${msg.id}`,
+      type: 'message_sent',
+      date: msg.created_at,
+      summary: `${channelLabel} sent — ${nameLabel}`,
+      details: msg.body,
+      metadata: {
+        channel: msg.channel,
+        template_name: msg.template_name || undefined,
+        source: msg.source,
+      },
+    });
+  }
+
+  // Tags
+  for (const assignment of tagsRes.data || []) {
+    const tag = assignment.tag as any;
+    if (!tag) continue;
+    entries.push({
+      id: `tag-${assignment.id}`,
+      type: 'tag_added',
+      date: assignment.assigned_at,
+      summary: `Tagged as ${tag.name}`,
+      metadata: { tag_name: tag.name, tag_color: tag.color },
+    });
+  }
+
+  // Workflow actions
+  for (const wf of workflowRes.data || []) {
+    if (!wf.acted_at) continue;
+    entries.push({
+      id: `workflow-${wf.id}`,
+      type: 'workflow_action',
+      date: wf.acted_at,
+      summary: `Workflow: ${wf.template_name || wf.description || 'Action'} ${wf.status}`,
+      metadata: { template_name: wf.template_name || undefined, source: wf.status },
+    });
+  }
+
+  // Notes
+  for (const note of notesRes.data || []) {
+    entries.push({
+      id: `note-${note.id}`,
+      type: 'note',
+      date: note.created_at,
+      summary: note.body,
+      details: note.body,
+    });
+  }
+
+  entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  return NextResponse.json({ entries });
+}

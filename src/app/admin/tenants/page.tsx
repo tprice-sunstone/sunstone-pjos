@@ -2,9 +2,10 @@
 // Searchable, sortable tenant list + slide-in profile panel + broadcast modal
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { cn, formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -49,6 +50,19 @@ interface TenantDetail {
   };
   members: TenantMember[];
   recent_sales: Array<{ id: string; total: number; platform_fee_amount: number; created_at: string }>;
+}
+
+interface AdminActivityEntry {
+  id: string;
+  type: 'subscription_change' | 'admin_message' | 'tenant_message' | 'signup' | 'admin_note';
+  date: string;
+  summary: string;
+  details?: string;
+  metadata?: {
+    channel?: string;
+    count?: number;
+    source?: string;
+  };
 }
 
 type SortKey = 'name' | 'created_at' | 'sales_count' | 'subscription_tier';
@@ -339,6 +353,46 @@ function TenantProfilePanel({
   onEmail: () => void;
 }) {
   const accountRef = useRef<HTMLDivElement>(null);
+  const [activityEntries, setActivityEntries] = useState<AdminActivityEntry[]>([]);
+  const [adminNoteText, setAdminNoteText] = useState('');
+  const [addingAdminNote, setAddingAdminNote] = useState(false);
+  const [expandedActivityId, setExpandedActivityId] = useState<string | null>(null);
+
+  const loadActivity = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/tenants/${tenant.id}/activity`);
+      if (res.ok) {
+        const data = await res.json();
+        setActivityEntries(data.entries || []);
+      }
+    } catch {}
+  }, [tenant.id]);
+
+  useEffect(() => { loadActivity(); }, [loadActivity]);
+
+  async function handleAddAdminNote() {
+    if (!adminNoteText.trim()) return;
+    setAddingAdminNote(true);
+    try {
+      const res = await fetch(`/api/admin/tenants/${tenant.id}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: adminNoteText.trim() }),
+      });
+      if (res.ok) {
+        const note = await res.json();
+        setActivityEntries(prev => [{
+          id: `admin-note-${note.id}`,
+          type: 'admin_note' as const,
+          date: note.created_at,
+          summary: note.body,
+          details: note.body,
+        }, ...prev]);
+        setAdminNoteText('');
+      }
+    } catch { toast.error('Failed to add note'); }
+    finally { setAddingAdminNote(false); }
+  }
 
   return (
     <>
@@ -545,7 +599,71 @@ function TenantProfilePanel({
             {/* ── Activity Log ── */}
             <div className="px-6 pb-4">
               <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-3">Activity Log</h3>
-              <p className="text-sm text-[var(--text-tertiary)] italic">Coming soon</p>
+
+              {/* Add Note input */}
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={adminNoteText}
+                  onChange={e => setAdminNoteText(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddAdminNote()}
+                  placeholder="Add a note about this tenant..."
+                  maxLength={500}
+                  className="flex-1 px-3 py-2 text-sm bg-[var(--surface-subtle)] border border-[var(--border-default)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF7A00] focus:border-[#FF7A00]"
+                />
+                <button
+                  onClick={handleAddAdminNote}
+                  disabled={addingAdminNote || !adminNoteText.trim()}
+                  className="px-3 py-2 text-xs font-semibold rounded-lg text-white disabled:opacity-50"
+                  style={{ backgroundColor: '#FF7A00' }}
+                >
+                  {addingAdminNote ? '...' : 'Add'}
+                </button>
+              </div>
+
+              {/* Timeline */}
+              {activityEntries.length === 0 ? (
+                <p className="text-sm text-[var(--text-tertiary)]">No activity yet.</p>
+              ) : (
+                <div>
+                  {activityEntries.map((entry, i) => {
+                    const icon = getAdminActivityIcon(entry);
+                    const isExpandable = (entry.type === 'admin_message' || entry.type === 'admin_note') && entry.details;
+
+                    return (
+                      <div key={entry.id} className="flex gap-3">
+                        {/* Timeline line + icon */}
+                        <div className="relative flex flex-col items-center">
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10"
+                            style={{ backgroundColor: icon.bg }}
+                          >
+                            <span style={{ color: icon.color, fontSize: 12 }}>{icon.emoji}</span>
+                          </div>
+                          {i < activityEntries.length - 1 && (
+                            <div className="w-0.5 flex-1 bg-[var(--border-subtle)]" />
+                          )}
+                        </div>
+
+                        {/* Content */}
+                        <div
+                          className="flex-1 pb-3 min-w-0"
+                          onClick={isExpandable ? () => setExpandedActivityId(expandedActivityId === entry.id ? null : entry.id) : undefined}
+                          style={isExpandable ? { cursor: 'pointer' } : undefined}
+                        >
+                          <p className="text-sm font-medium text-[var(--text-primary)] leading-snug">{entry.summary}</p>
+                          <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">{adminRelativeTime(entry.date)}</p>
+                          {isExpandable && expandedActivityId === entry.id && (
+                            <div className="mt-2 bg-[var(--surface-subtle)] rounded-lg p-2.5 text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">
+                              {entry.details}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -865,6 +983,39 @@ function SortHeader({
       </span>
     </th>
   );
+}
+
+// ─── Activity Helpers ─────────────────────────────────────────────────────────
+
+function adminRelativeTime(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return format(new Date(dateStr), 'MMM d');
+}
+
+function getAdminActivityIcon(entry: AdminActivityEntry): { bg: string; color: string; emoji: string } {
+  switch (entry.type) {
+    case 'signup':
+      return { bg: '#D1FAE5', color: '#059669', emoji: '+' };
+    case 'subscription_change':
+      return { bg: '#DBEAFE', color: '#2563EB', emoji: '$' };
+    case 'admin_message':
+      return { bg: 'rgba(255,122,0,0.12)', color: '#FF7A00', emoji: '>' };
+    case 'tenant_message':
+      return { bg: '#EDE9FE', color: '#7C3AED', emoji: '#' };
+    case 'admin_note':
+      return { bg: '#FEF9C3', color: '#A16207', emoji: '*' };
+    default:
+      return { bg: '#F3F4F6', color: '#6B7280', emoji: '?' };
+  }
 }
 
 // ─── SVG Icons ───────────────────────────────────────────────────────────────

@@ -30,6 +30,25 @@ interface SaleWithItems extends Sale {
   event?: { name: string } | null;
 }
 
+interface ActivityEntry {
+  id: string;
+  type: 'purchase' | 'waiver' | 'message_sent' | 'tag_added' | 'workflow_action' | 'note';
+  date: string;
+  summary: string;
+  details?: string;
+  metadata?: {
+    channel?: string;
+    template_name?: string;
+    source?: string;
+    event_name?: string;
+    items?: string[];
+    total?: number;
+    tag_name?: string;
+    tag_color?: string;
+    payment_method?: string;
+  };
+}
+
 export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onTagsChanged }: ClientProfileProps) {
   const { tenant } = useTenant();
   const supabase = createClient();
@@ -45,6 +64,12 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [showWaiverModal, setShowWaiverModal] = useState(false);
   const [composeChannel, setComposeChannel] = useState<'sms' | 'email' | null>(null);
+
+  // Activity timeline
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [noteText, setNoteText] = useState('');
+  const [addingNote, setAddingNote] = useState(false);
+  const [expandedMsgId, setExpandedMsgId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!tenant) return;
@@ -68,6 +93,12 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
     // Check if this client has a suggestion
     const clientSuggestion = (suggestionsRes || []).find((s: any) => s.client_id === clientId);
     if (clientSuggestion) setSuggestion(clientSuggestion.suggestion);
+
+    // Fetch activity timeline
+    fetch(`/api/clients/${clientId}/activity?tenantId=${tenant.id}`)
+      .then(r => r.ok ? r.json() : { entries: [] })
+      .then(data => setActivity(data.entries || []))
+      .catch(() => {});
 
     setLoading(false);
   }, [tenant, clientId]);
@@ -124,6 +155,30 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
     } finally {
       setDownloadingId(null);
     }
+  };
+
+  const handleAddNote = async () => {
+    if (!noteText.trim() || !tenant) return;
+    setAddingNote(true);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tenant.id, body: noteText.trim() }),
+      });
+      if (res.ok) {
+        const note = await res.json();
+        setActivity(prev => [{
+          id: `note-${note.id}`,
+          type: 'note' as const,
+          date: note.created_at,
+          summary: note.body,
+          details: note.body,
+        }, ...prev]);
+        setNoteText('');
+      }
+    } catch { toast.error('Failed to add note'); }
+    finally { setAddingNote(false); }
   };
 
   const totalSpent = sales.reduce((sum, s) => sum + Number(s.total), 0);
@@ -313,71 +368,95 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
               {client.birthday && <p>Birthday: {format(new Date(client.birthday + 'T00:00:00'), 'MMM d')}</p>}
             </div>
 
-            {/* Visit History */}
+            {/* Activity Timeline */}
             <div>
-              <div className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
-                Visit History
+              <div className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-[0.05em] mb-3">
+                Activity
               </div>
-              {sales.length === 0 ? (
-                <p className="text-[11px] text-[var(--text-tertiary)]">No visits yet.</p>
+
+              {/* Add Note input */}
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={noteText}
+                  onChange={e => setNoteText(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAddNote()}
+                  placeholder="Add a note about this client..."
+                  maxLength={500}
+                  className="flex-1 px-3 py-2 text-[12px] bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:border-[var(--accent-primary)]"
+                />
+                <button
+                  onClick={handleAddNote}
+                  disabled={addingNote || !noteText.trim()}
+                  className="px-3 py-2 text-[11px] font-semibold rounded-lg text-white disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--accent-primary)' }}
+                >
+                  {addingNote ? '...' : 'Add'}
+                </button>
+              </div>
+
+              {/* Timeline entries */}
+              {activity.length === 0 ? (
+                <p className="text-[11px] text-[var(--text-tertiary)]">No activity yet.</p>
               ) : (
-                <div className="space-y-0">
-                  {sales.map((sale) => (
-                    <div key={sale.id} className="flex gap-2 py-2">
-                      {/* Vertical accent bar */}
-                      <div className="w-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--accent-200)' }} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-medium text-[var(--text-primary)]">
-                            {format(new Date(sale.created_at), 'MMM d, yyyy')}
-                          </span>
-                          <span className="text-[11px] font-semibold text-[var(--text-primary)]">
-                            ${Number(sale.total).toFixed(2)}
-                          </span>
+                <div>
+                  {activity.map((entry, i) => {
+                    const { bg, color, Icon } = getActivityIcon(entry);
+                    const isExpandable = entry.type === 'message_sent' && entry.details && i < 10;
+                    const sourceLabel = entry.type === 'message_sent' && entry.metadata?.source
+                      ? entry.metadata.source === 'manual' ? 'Manual'
+                        : entry.metadata.source === 'workflow' ? 'Workflow'
+                        : entry.metadata.source === 'receipt' ? 'Auto'
+                        : entry.metadata.source === 'admin_broadcast' ? 'Admin'
+                        : null
+                      : null;
+
+                    return (
+                      <div key={entry.id} className="flex gap-3">
+                        {/* Timeline line + icon */}
+                        <div className="relative flex flex-col items-center">
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10"
+                            style={{ backgroundColor: bg }}
+                          >
+                            <Icon className="w-3 h-3" style={{ color }} />
+                          </div>
+                          {i < activity.length - 1 && (
+                            <div className="w-0.5 flex-1 bg-[var(--border-subtle)]" />
+                          )}
                         </div>
-                        {sale.event?.name && (
-                          <p className="text-[10px] text-[var(--text-secondary)]">{sale.event.name}</p>
-                        )}
-                        {sale.items && sale.items.length > 0 && (
-                          <p className="text-[10px] text-[var(--text-tertiary)]">
-                            {sale.items.map((i) => i.name).join(', ')}
-                          </p>
-                        )}
+
+                        {/* Content */}
+                        <div
+                          className="flex-1 pb-4 min-w-0"
+                          onClick={isExpandable ? () => setExpandedMsgId(expandedMsgId === entry.id ? null : entry.id) : undefined}
+                          style={isExpandable ? { cursor: 'pointer' } : undefined}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-[12px] font-medium text-[var(--text-primary)] leading-snug">{entry.summary}</p>
+                            {sourceLabel && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border-subtle)] text-[var(--text-tertiary)] shrink-0">
+                                {sourceLabel}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">{relativeTime(entry.date)}</p>
+                          {entry.metadata?.event_name && entry.type === 'purchase' && (
+                            <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{entry.metadata.event_name}</p>
+                          )}
+                          {/* Expandable message body */}
+                          {isExpandable && expandedMsgId === entry.id && (
+                            <div className="mt-2 bg-[var(--surface-raised)] rounded-lg p-2.5 text-[11px] text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">
+                              {entry.details}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
-
-            {/* Waivers */}
-            {waivers.length > 0 && (
-              <div>
-                <div className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
-                  Waivers
-                </div>
-                <div className="space-y-1.5">
-                  {waivers.map((waiver) => (
-                    <div key={waiver.id} className="flex items-center justify-between py-1.5 border-b border-[var(--border-subtle)]">
-                      <div>
-                        <p className="text-[11px] text-[var(--text-primary)]">{waiver.signer_name}</p>
-                        <p className="text-[10px] text-[var(--text-tertiary)]">
-                          {format(new Date(waiver.signed_at), 'MMM d, yyyy')}
-                        </p>
-                      </div>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleDownloadPDF(waiver)}
-                        disabled={downloadingId === waiver.id}
-                      >
-                        {downloadingId === waiver.id ? '...' : 'PDF'}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Waiver status modal */}
             {showWaiverModal && (
@@ -465,6 +544,45 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
   );
 }
 
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function relativeTime(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return format(new Date(dateStr), 'MMM d');
+}
+
+type IconProps = { className?: string; style?: React.CSSProperties };
+
+function getActivityIcon(entry: ActivityEntry): { bg: string; color: string; Icon: React.ComponentType<IconProps> } {
+  switch (entry.type) {
+    case 'purchase':
+      return { bg: '#D1FAE5', color: '#059669', Icon: ShoppingBagIcon };
+    case 'waiver':
+      return { bg: '#DBEAFE', color: '#2563EB', Icon: FileTextIconTL };
+    case 'message_sent':
+      return entry.metadata?.channel === 'email'
+        ? { bg: '#EDE9FE', color: '#7C3AED', Icon: MailIconTL }
+        : { bg: '#FEF3C7', color: '#D97706', Icon: MessageSquareIconTL };
+    case 'tag_added':
+      return { bg: entry.metadata?.tag_color ? `${entry.metadata.tag_color}22` : '#F3F4F6', color: entry.metadata?.tag_color || '#6B7280', Icon: TagIconTL };
+    case 'workflow_action':
+      return { bg: '#FCE7F3', color: '#DB2777', Icon: ZapIcon };
+    case 'note':
+      return { bg: '#FEF9C3', color: '#A16207', Icon: NoteIcon };
+    default:
+      return { bg: '#F3F4F6', color: '#6B7280', Icon: FileTextIconTL };
+  }
+}
+
 // ── Lucide-style icons (no emojis) ────────────────────────────────────────
 
 function MessageSquareIcon({ className }: { className?: string }) {
@@ -496,6 +614,65 @@ function FileTextIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+    </svg>
+  );
+}
+
+// ── Timeline-specific icons (accept style prop) ─────────────────────────────
+
+function MessageSquareIconTL({ className, style }: IconProps) {
+  return (
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+    </svg>
+  );
+}
+
+function MailIconTL({ className, style }: IconProps) {
+  return (
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+    </svg>
+  );
+}
+
+function TagIconTL({ className, style }: IconProps) {
+  return (
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
+    </svg>
+  );
+}
+
+function FileTextIconTL({ className, style }: IconProps) {
+  return (
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+    </svg>
+  );
+}
+
+function ShoppingBagIcon({ className, style }: IconProps) {
+  return (
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+    </svg>
+  );
+}
+
+function ZapIcon({ className, style }: IconProps) {
+  return (
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+    </svg>
+  );
+}
+
+function NoteIcon({ className, style }: IconProps) {
+  return (
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
     </svg>
   );
 }
