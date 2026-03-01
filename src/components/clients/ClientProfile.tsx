@@ -65,6 +65,13 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
   const [showWaiverModal, setShowWaiverModal] = useState(false);
   const [composeChannel, setComposeChannel] = useState<'sms' | 'email' | null>(null);
 
+  // Workflow enrollment
+  const [showWorkflowModal, setShowWorkflowModal] = useState(false);
+  const [workflows, setWorkflows] = useState<any[]>([]);
+  const [enrolledWorkflowIds, setEnrolledWorkflowIds] = useState<Set<string>>(new Set());
+  const [enrollingId, setEnrollingId] = useState<string | null>(null);
+  const [workflowsLoading, setWorkflowsLoading] = useState(false);
+
   // Activity timeline
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [noteText, setNoteText] = useState('');
@@ -181,6 +188,77 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
     finally { setAddingNote(false); }
   };
 
+  const openWorkflowModal = useCallback(async () => {
+    if (!tenant) return;
+    setShowWorkflowModal(true);
+    setWorkflowsLoading(true);
+
+    try {
+      // Fetch active workflows with steps
+      const res = await fetch(`/api/workflows?tenantId=${tenant.id}`);
+      const data = res.ok ? await res.json() : [];
+      const active = data.filter((w: any) => w.is_active);
+      setWorkflows(active);
+
+      // Check which workflows this client is already enrolled in (pending/ready queue entries)
+      const { data: queueEntries } = await supabase
+        .from('workflow_queue')
+        .select('workflow_step_id')
+        .eq('client_id', clientId)
+        .eq('tenant_id', tenant.id)
+        .in('status', ['pending', 'ready']);
+
+      if (queueEntries && queueEntries.length > 0) {
+        const stepIds = queueEntries.map((e: any) => e.workflow_step_id);
+        // Map step IDs back to workflow IDs
+        const enrolled = new Set<string>();
+        for (const wf of active) {
+          const wfStepIds = (wf.steps || []).map((s: any) => s.id);
+          if (wfStepIds.some((id: string) => stepIds.includes(id))) {
+            enrolled.add(wf.id);
+          }
+        }
+        setEnrolledWorkflowIds(enrolled);
+      } else {
+        setEnrolledWorkflowIds(new Set());
+      }
+    } catch {
+      toast.error('Failed to load workflows');
+    } finally {
+      setWorkflowsLoading(false);
+    }
+  }, [tenant, clientId, supabase]);
+
+  const handleEnroll = async (workflowId: string) => {
+    setEnrollingId(workflowId);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/enroll-workflow`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workflowId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to enroll');
+        return;
+      }
+      toast.success(`Added to ${data.workflowName}`);
+      setEnrolledWorkflowIds(prev => new Set([...prev, workflowId]));
+      // Add enrollment to activity timeline
+      setActivity(prev => [{
+        id: `enroll-${Date.now()}`,
+        type: 'workflow_action' as const,
+        date: new Date().toISOString(),
+        summary: `Enrolled in ${data.workflowName}`,
+        metadata: { source: 'enrollment' },
+      }, ...prev]);
+    } catch {
+      toast.error('Failed to enroll');
+    } finally {
+      setEnrollingId(null);
+    }
+  };
+
   const totalSpent = sales.reduce((sum, s) => sum + Number(s.total), 0);
   const totalPieces = sales.reduce((sum, s) => sum + (s.items?.length || 0), 0);
 
@@ -254,8 +332,8 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
               </div>
             </div>
 
-            {/* Quick action buttons — 4 in a row */}
-            <div className="grid grid-cols-4 gap-2">
+            {/* Quick action buttons — 5 in a row */}
+            <div className="grid grid-cols-5 gap-2">
               {[
                 {
                   label: 'Text',
@@ -280,6 +358,7 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
                   },
                 },
                 { label: 'Tag', icon: TagIcon, onClick: () => setShowTagDropdown(!showTagDropdown) },
+                { label: 'Workflow', icon: ZapIconAction, onClick: openWorkflowModal },
                 { label: 'Waiver', icon: FileTextIcon, onClick: () => setShowWaiverModal(true) },
               ].map(({ label, icon: Icon, onClick }) => (
                 <button
@@ -513,6 +592,64 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
               </div>
             )}
 
+            {/* Workflow enrollment modal */}
+            {showWorkflowModal && (
+              <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)]">Enroll in Workflow</h3>
+                  <button
+                    onClick={() => setShowWorkflowModal(false)}
+                    className="p-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                {workflowsLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin h-5 w-5 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full" />
+                  </div>
+                ) : workflows.length === 0 ? (
+                  <p className="text-xs text-[var(--text-tertiary)] py-2">No active workflows. Create one in Settings.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {workflows.map((wf: any) => {
+                      const isEnrolled = enrolledWorkflowIds.has(wf.id);
+                      const stepCount = wf.steps?.length || 0;
+                      return (
+                        <div
+                          key={wf.id}
+                          className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-base)]"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-[12px] font-medium text-[var(--text-primary)] truncate">{wf.name}</div>
+                            <div className="text-[10px] text-[var(--text-tertiary)]">
+                              {stepCount} step{stepCount !== 1 ? 's' : ''} &middot; {wf.trigger_type?.replace(/_/g, ' ')}
+                            </div>
+                          </div>
+                          {isEnrolled ? (
+                            <span className="text-[10px] font-semibold px-2 py-1 rounded-md bg-[#D1FAE5] text-[#059669] shrink-0">
+                              Active
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleEnroll(wf.id)}
+                              disabled={enrollingId === wf.id}
+                              className="text-[10px] font-semibold px-3 py-1 rounded-md text-white shrink-0 disabled:opacity-50"
+                              style={{ backgroundColor: 'var(--accent-primary)' }}
+                            >
+                              {enrollingId === wf.id ? '...' : 'Enroll'}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Edit button */}
             <div className="pt-2">
               <button
@@ -606,6 +743,14 @@ function TagIcon({ className }: { className?: string }) {
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
+    </svg>
+  );
+}
+
+function ZapIconAction({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
     </svg>
   );
 }

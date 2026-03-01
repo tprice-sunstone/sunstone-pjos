@@ -154,15 +154,25 @@ export async function GET(
     });
   }
 
-  // Notes
+  // Notes (detect workflow enrollment notes for special rendering)
   for (const note of notesRes.data || []) {
-    entries.push({
-      id: `note-${note.id}`,
-      type: 'note',
-      date: note.created_at,
-      summary: note.body,
-      details: note.body,
-    });
+    if (note.body.startsWith('Enrolled in ')) {
+      entries.push({
+        id: `note-${note.id}`,
+        type: 'workflow_action',
+        date: note.created_at,
+        summary: note.body,
+        metadata: { source: 'enrollment' },
+      });
+    } else {
+      entries.push({
+        id: `note-${note.id}`,
+        type: 'note',
+        date: note.created_at,
+        summary: note.body,
+        details: note.body,
+      });
+    }
   }
 
   entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
