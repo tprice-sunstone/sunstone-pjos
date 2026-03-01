@@ -94,9 +94,11 @@ export default function AdminOverviewPage() {
       if (res.ok) {
         const data = await res.json();
         setSuggestions(data.suggestions || []);
+      } else {
+        console.warn('[Needs Attention] API returned', res.status);
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.warn('[Needs Attention] Fetch failed:', err);
     }
   }
 

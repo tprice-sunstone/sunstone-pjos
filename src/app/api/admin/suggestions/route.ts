@@ -79,11 +79,12 @@ export async function GET() {
         }
       }
 
-      // New signups (last 48 hours)
+      // New signups (last 7 days)
       const created = new Date(t.created_at);
       const hoursAge = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
-      if (hoursAge <= 48) {
-        const label = hoursAge < 24 ? 'signed up today' : 'signed up yesterday';
+      if (hoursAge <= 168) {
+        const daysAgo = Math.floor(hoursAge / 24);
+        const label = daysAgo === 0 ? 'signed up today' : daysAgo === 1 ? 'signed up yesterday' : `signed up ${daysAgo} days ago`;
         suggestions.push({
           type: 'new_signup',
           tenantId: t.id,
@@ -94,9 +95,9 @@ export async function GET() {
       }
     }
 
-    // Sort by urgency then limit to 5
+    // Sort by urgency then limit to 8
     suggestions.sort((a, b) => a.urgency - b.urgency);
-    const topSuggestions = suggestions.slice(0, 5);
+    const topSuggestions = suggestions.slice(0, 8);
 
     return NextResponse.json({ suggestions: topSuggestions });
   } catch (err) {
