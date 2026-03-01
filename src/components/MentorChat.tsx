@@ -13,6 +13,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/hooks/use-tenant';
 import { getSubscriptionTier, getSunnyQuestionLimit } from '@/lib/subscription';
+import { getThemeById } from '@/lib/themes';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
 
 // ============================================================================
@@ -57,20 +58,22 @@ const SUGGESTED_PROMPTS = [
 // Simple markdown renderer (no external dependency)
 // ============================================================================
 
-function renderMarkdown(text: string): string {
+function renderMarkdown(text: string, isDark: boolean): string {
   let html = text.replace(/<!--[\s\S]*?-->/g, '');
   html = html
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  const boldColor = isDark ? '#FFFFFF' : '#000000';
+  html = html.replace(/\*\*(.+?)\*\*/g, `<strong style="color:${boldColor};">$1</strong>`);
   html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
   html = html.replace(/^### (.+)$/gm, '<h4 class="font-semibold text-sm mt-3 mb-1">$1</h4>');
   html = html.replace(/^## (.+)$/gm, '<h3 class="font-semibold text-sm mt-3 mb-1">$1</h3>');
   html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<li class="ml-4 list-decimal text-sm leading-relaxed">$2</li>');
   html = html.replace(/^[-•]\s+(.+)$/gm, '<li class="ml-4 list-disc text-sm leading-relaxed">$1</li>');
+  const linkColor = isDark ? '#F6C654' : 'var(--accent-500, #B76E79)';
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" target="_blank" rel="noopener noreferrer" class="underline" style="color:#F6C654;">$1</a>');
+    `<a href="$2" target="_blank" rel="noopener noreferrer" class="underline" style="color:${linkColor};">$1</a>`);
   html = html.replace(/\n\n/g, '</p><p class="text-sm leading-relaxed mb-2">');
   html = html.replace(/\n/g, '<br>');
   if (!html.startsWith('<')) {
@@ -101,6 +104,7 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
   const effectiveTier = tenant ? getSubscriptionTier(tenant) : 'starter';
   const questionLimit = getSunnyQuestionLimit(effectiveTier);
   const isMetered = effectiveTier === 'starter' && questionLimit !== Infinity;
+  const isDark = getThemeById(tenant?.theme_id || 'rose-gold').mode === 'dark';
 
   // Initialize questions used from tenant data
   useEffect(() => {
@@ -393,12 +397,12 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
           ) : (
             <>
               {messages.map(msg => (
-                <MessageBubble key={msg.id} message={msg} />
+                <MessageBubble key={msg.id} message={msg} isDark={isDark} />
               ))}
               {isLoading && messages[messages.length - 1]?.content === '' && (
                 messages[messages.length - 1]?.toolStatus
-                  ? <ToolStatusIndicator status={messages[messages.length - 1].toolStatus!} />
-                  : <TypingIndicator />
+                  ? <ToolStatusIndicator status={messages[messages.length - 1].toolStatus!} isDark={isDark} />
+                  : <TypingIndicator isDark={isDark} />
               )}
             </>
           )}
@@ -487,8 +491,12 @@ function EmptyState({ onSelectPrompt }: { onSelectPrompt: (text: string) => void
 // Message bubble
 // ============================================================================
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({ message, isDark }: { message: ChatMessage; isDark: boolean }) {
   const isUser = message.role === 'user';
+
+  const assistantStyle = isDark
+    ? { background: 'rgba(255,255,255,0.10)', color: '#F0F0F0', borderColor: 'rgba(255,255,255,0.08)' }
+    : { background: 'rgba(0,0,0,0.06)', color: '#1A1A1A', borderColor: 'rgba(0,0,0,0.08)' };
 
   return (
     <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
@@ -498,16 +506,16 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             'rounded-2xl px-3.5 py-2.5 text-sm',
             isUser
               ? 'bg-accent-500 text-white rounded-br-md'
-              : 'bg-surface-raised rounded-bl-md border border-border-default'
+              : 'rounded-bl-md border'
           )}
-          style={!isUser ? { color: '#F5F5F5' } : undefined}
+          style={!isUser ? assistantStyle : undefined}
         >
           {isUser ? (
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
           ) : (
             <div
               className="mentor-markdown"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content, isDark) }}
             />
           )}
           {message.isStreaming && message.content && (
@@ -528,30 +536,40 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 // Typing indicator
 // ============================================================================
 
-function TypingIndicator() {
+function TypingIndicator({ isDark }: { isDark: boolean }) {
+  const bubbleStyle = isDark
+    ? { background: 'rgba(255,255,255,0.10)', borderColor: 'rgba(255,255,255,0.08)' }
+    : { background: 'rgba(0,0,0,0.06)', borderColor: 'rgba(0,0,0,0.08)' };
+  const dotColor = isDark ? 'bg-gray-400' : 'bg-gray-500';
+
   return (
     <div className="flex justify-start">
-      <div className="bg-surface-raised rounded-2xl rounded-bl-md px-4 py-3 border border-border-default">
+      <div className="rounded-2xl rounded-bl-md px-4 py-3 border" style={bubbleStyle}>
         <div className="flex gap-1.5 items-center">
-          <span className="w-2 h-2 rounded-full bg-text-tertiary animate-bounce" style={{ animationDelay: '0ms' }} />
-          <span className="w-2 h-2 rounded-full bg-text-tertiary animate-bounce" style={{ animationDelay: '150ms' }} />
-          <span className="w-2 h-2 rounded-full bg-text-tertiary animate-bounce" style={{ animationDelay: '300ms' }} />
+          <span className={cn('w-2 h-2 rounded-full animate-bounce', dotColor)} style={{ animationDelay: '0ms' }} />
+          <span className={cn('w-2 h-2 rounded-full animate-bounce', dotColor)} style={{ animationDelay: '150ms' }} />
+          <span className={cn('w-2 h-2 rounded-full animate-bounce', dotColor)} style={{ animationDelay: '300ms' }} />
         </div>
       </div>
     </div>
   );
 }
 
-function ToolStatusIndicator({ status }: { status: string }) {
+function ToolStatusIndicator({ status, isDark }: { status: string; isDark: boolean }) {
+  const bubbleStyle = isDark
+    ? { background: 'rgba(255,255,255,0.10)', borderColor: 'rgba(255,255,255,0.08)' }
+    : { background: 'rgba(0,0,0,0.06)', borderColor: 'rgba(0,0,0,0.08)' };
+  const textColor = isDark ? '#E0E0E0' : '#555555';
+
   return (
     <div className="flex justify-start">
-      <div className="bg-surface-raised rounded-2xl rounded-bl-md px-4 py-3 border border-border-default">
+      <div className="rounded-2xl rounded-bl-md px-4 py-3 border" style={bubbleStyle}>
         <div className="flex items-center gap-2">
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent-500" />
           </span>
-          <span className="text-xs" style={{ color: '#E0E0E0' }}>{status}</span>
+          <span className="text-xs" style={{ color: textColor }}>{status}</span>
         </div>
       </div>
     </div>
