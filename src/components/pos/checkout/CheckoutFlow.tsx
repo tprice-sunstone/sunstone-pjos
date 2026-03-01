@@ -42,6 +42,7 @@ interface CheckoutFlowProps {
   processing: boolean;
   items: Array<{ name: string; quantity: number; unitPrice: number; lineTotal: number }>;
   activeQueueEntry?: { name: string } | null;
+  cardProcessor?: string | null;
   // Step navigation
   onContinueToPayment: () => void;
   // Jump ring step (Event Mode only)
@@ -81,6 +82,7 @@ export function CheckoutFlow({
   processing,
   items,
   activeQueueEntry,
+  cardProcessor,
   onContinueToPayment,
   jumpRingData,
   onJumpRingConfirm,
@@ -131,6 +133,7 @@ export function CheckoutFlow({
         taxAmount={taxAmount}
         tipAmount={tipAmount}
         activeQueueEntry={activeQueueEntry}
+        cardProcessor={cardProcessor}
       />
     );
   } else if (step === 'jump_ring' && jumpRingData && onJumpRingConfirm && onJumpRingSkip) {

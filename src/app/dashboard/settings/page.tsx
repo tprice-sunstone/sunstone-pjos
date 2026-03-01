@@ -352,9 +352,10 @@ function SettingsPage() {
   const [savingReceipts, setSavingReceipts] = useState(false);
 
   // ── Payment ──
-  const [paymentTab, setPaymentTab] = useState<PaymentProcessor>('square');
   const [disconnectingSquare, setDisconnectingSquare] = useState(false);
   const [disconnectingStripe, setDisconnectingStripe] = useState(false);
+  const [defaultProcessor, setDefaultProcessor] = useState<string | null>(null);
+  const [savingProcessor, setSavingProcessor] = useState(false);
 
   // ── Team state ──
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -459,12 +460,8 @@ function SettingsPage() {
       setSelectedThemeId(tenant.theme_id);
     }
 
-    // Auto-select connected processor tab
-    if (tenant.stripe_account_id) {
-      setPaymentTab('stripe');
-    } else if ((tenant as any).square_merchant_id) {
-      setPaymentTab('square');
-    }
+    // Load default payment processor
+    setDefaultProcessor((tenant as any).default_payment_processor || null);
 
     supabase
       .from('tax_profiles')
@@ -710,6 +707,20 @@ function SettingsPage() {
       .eq('id', tenant.id);
     if (error) { toast.error(error.message); return; }
     toast.success('Fee handling updated');
+    refetch();
+  };
+
+  const saveDefaultProcessor = async (processor: string) => {
+    if (!tenant) return;
+    setSavingProcessor(true);
+    setDefaultProcessor(processor);
+    const { error } = await supabase
+      .from('tenants')
+      .update({ default_payment_processor: processor })
+      .eq('id', tenant.id);
+    setSavingProcessor(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Default processor set to ${processor === 'stripe' ? 'Stripe' : 'Square'}`);
     refetch();
   };
 
@@ -1082,91 +1093,106 @@ function SettingsPage() {
       >
         <div className="space-y-5 pt-4">
           <p className="text-sm text-[var(--text-secondary)]">
-            Connect one payment processor to accept card payments. Payments settle directly to your account.
+            Connect a payment processor to accept card payments. You can connect both, but only one processes card payments at a time.
           </p>
 
-          {/* Processor selector tabs */}
-          <div className="flex rounded-lg border border-[var(--border-default)] overflow-hidden">
-            <button
-              onClick={() => setPaymentTab('square')}
-              className={`flex-1 py-3 text-sm font-medium text-center transition-colors ${
-                paymentTab === 'square'
-                  ? 'bg-[var(--accent-primary)] text-white'
-                  : 'bg-[var(--surface-base)] text-[var(--text-secondary)] hover:bg-[var(--surface-raised)]'
-              }`}
-            >
-              Square {squareConnected && '✓'}
-            </button>
-            <button
-              onClick={() => setPaymentTab('stripe')}
-              className={`flex-1 py-3 text-sm font-medium text-center transition-colors border-l border-[var(--border-default)] ${
-                paymentTab === 'stripe'
-                  ? 'bg-[var(--accent-primary)] text-white'
-                  : 'bg-[var(--surface-base)] text-[var(--text-secondary)] hover:bg-[var(--surface-raised)]'
-              }`}
-            >
-              Stripe {stripeConnected && '✓'}
-            </button>
-          </div>
-
-          {/* Square pane */}
-          {paymentTab === 'square' && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                {squareConnected ? (
-                  <>
-                    <Badge variant="accent" size="md">Connected</Badge>
-                    <span className="text-sm text-[var(--text-secondary)]">
-                      {(tenant as any).square_merchant_id}
-                    </span>
-                  </>
-                ) : (
-                  <Badge variant="default" size="md">Not connected</Badge>
-                )}
+          {/* Side-by-side processor cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Stripe card */}
+            <div className={`relative rounded-xl border-2 p-4 space-y-3 transition-colors ${
+              stripeConnected ? 'border-[var(--accent-primary)] bg-[var(--surface-subtle)]' : 'border-[var(--border-default)]'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-[var(--text-primary)]">Stripe</span>
+                <Badge variant="accent" size="sm">Recommended</Badge>
               </div>
-              {squareConnected ? (
-                <Button variant="danger" onClick={disconnectSquare} loading={disconnectingSquare}>
-                  Disconnect Square
-                </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  onClick={() => { window.location.href = '/api/square/authorize'; }}
-                >
-                  Connect Square
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Stripe pane */}
-          {paymentTab === 'stripe' && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
+              <p className="text-xs text-[var(--text-secondary)]">
+                Full integration — card payments, Tap to Pay, automatic fee collection, and refunds
+              </p>
+              <div className="flex items-center gap-2">
                 {stripeConnected ? (
-                  <>
-                    <Badge variant="accent" size="md">Connected</Badge>
-                    <span className="text-sm text-[var(--text-secondary)]">
-                      {tenant.stripe_account_id}
-                    </span>
-                  </>
+                  <Badge variant="accent" size="sm">Connected</Badge>
                 ) : (
-                  <Badge variant="default" size="md">Not connected</Badge>
+                  <Badge variant="default" size="sm">Not connected</Badge>
                 )}
               </div>
               {stripeConnected ? (
-                <Button variant="danger" onClick={disconnectStripe} loading={disconnectingStripe}>
-                  Disconnect Stripe
+                <Button variant="danger" size="sm" onClick={disconnectStripe} loading={disconnectingStripe}>
+                  Disconnect
                 </Button>
               ) : (
-                <Button
-                  variant="primary"
-                  onClick={() => { window.location.href = '/api/stripe/authorize'; }}
-                >
+                <Button variant="primary" size="sm" onClick={() => { window.location.href = '/api/stripe/authorize'; }}>
                   Connect Stripe
                 </Button>
               )}
             </div>
+
+            {/* Square card */}
+            <div className={`relative rounded-xl border-2 p-4 space-y-3 transition-colors ${
+              squareConnected ? 'border-[var(--accent-primary)] bg-[var(--surface-subtle)]' : 'border-[var(--border-default)]'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-[var(--text-primary)]">Square</span>
+              </div>
+              <p className="text-xs text-[var(--text-secondary)]">
+                Accept card payments through your existing Square account
+              </p>
+              <div className="flex items-center gap-2">
+                {squareConnected ? (
+                  <Badge variant="accent" size="sm">Connected</Badge>
+                ) : (
+                  <Badge variant="default" size="sm">Not connected</Badge>
+                )}
+              </div>
+              {squareConnected ? (
+                <Button variant="danger" size="sm" onClick={disconnectSquare} loading={disconnectingSquare}>
+                  Disconnect
+                </Button>
+              ) : (
+                <Button variant="primary" size="sm" onClick={() => { window.location.href = '/api/square/authorize'; }}>
+                  Connect Square
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Default processor toggle — shown when both connected */}
+          {squareConnected && stripeConnected && (
+            <>
+              <div className="border-t border-[var(--border-subtle)]" />
+              <div className="space-y-3">
+                <span className="text-sm font-medium text-[var(--text-primary)]">Default for Card Payments</span>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  Choose which processor handles card payments at checkout.
+                </p>
+                <div className="flex gap-3">
+                  <label className={`flex-1 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    defaultProcessor === 'stripe' ? 'border-[var(--accent-primary)] bg-[var(--surface-subtle)]' : 'border-[var(--border-default)]'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="defaultProcessor"
+                      checked={defaultProcessor === 'stripe'}
+                      onChange={() => saveDefaultProcessor('stripe')}
+                      className="accent-[var(--accent-primary)]"
+                    />
+                    <span className="text-sm font-medium text-[var(--text-primary)]">Stripe</span>
+                  </label>
+                  <label className={`flex-1 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    defaultProcessor === 'square' ? 'border-[var(--accent-primary)] bg-[var(--surface-subtle)]' : 'border-[var(--border-default)]'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="defaultProcessor"
+                      checked={defaultProcessor === 'square'}
+                      onChange={() => saveDefaultProcessor('square')}
+                      className="accent-[var(--accent-primary)]"
+                    />
+                    <span className="text-sm font-medium text-[var(--text-primary)]">Square</span>
+                  </label>
+                </div>
+              </div>
+            </>
           )}
 
           {/* Fee handling */}

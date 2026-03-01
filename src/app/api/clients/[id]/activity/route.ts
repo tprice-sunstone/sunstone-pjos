@@ -6,7 +6,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 
 interface ActivityEntry {
   id: string;
-  type: 'purchase' | 'waiver' | 'message_sent' | 'tag_added' | 'workflow_action' | 'note';
+  type: 'purchase' | 'waiver' | 'message_sent' | 'tag_added' | 'workflow_action' | 'note' | 'refund';
   date: string;
   summary: string;
   details?: string;
@@ -20,6 +20,10 @@ interface ActivityEntry {
     tag_name?: string;
     tag_color?: string;
     payment_method?: string;
+    refund_status?: string;
+    refund_amount?: number;
+    payment_provider?: string;
+    sale_id?: string;
   };
 }
 
@@ -35,10 +39,10 @@ export async function GET(
   const tenantId = request.nextUrl.searchParams.get('tenantId');
   if (!tenantId) return NextResponse.json({ error: 'tenantId required' }, { status: 400 });
 
-  const [salesRes, waiversRes, messagesRes, tagsRes, workflowRes, notesRes] = await Promise.all([
+  const [salesRes, waiversRes, messagesRes, tagsRes, workflowRes, notesRes, refundsRes] = await Promise.all([
     supabase
       .from('sales')
-      .select('id, created_at, total, payment_method, items:sale_items(name, quantity), event:events(name)')
+      .select('id, created_at, total, payment_method, payment_provider, refund_status, refund_amount, items:sale_items(name, quantity), event:events(name)')
       .eq('client_id', clientId)
       .eq('tenant_id', tenantId)
       .eq('status', 'completed')
@@ -77,6 +81,13 @@ export async function GET(
       .eq('client_id', clientId)
       .eq('tenant_id', tenantId)
       .order('created_at', { ascending: false }),
+
+    supabase
+      .from('refunds')
+      .select('id, created_at, amount, reason, sale:sales!inner(id, client_id)')
+      .eq('tenant_id', tenantId)
+      .eq('sale.client_id', clientId)
+      .order('created_at', { ascending: false }),
   ]);
 
   const entries: ActivityEntry[] = [];
@@ -94,7 +105,26 @@ export async function GET(
         items: itemNames,
         total: Number(sale.total),
         payment_method: sale.payment_method,
+        payment_provider: (sale as any).payment_provider || undefined,
+        refund_status: (sale as any).refund_status || 'none',
+        refund_amount: Number((sale as any).refund_amount) || 0,
         event_name: (sale.event as any)?.name || undefined,
+        sale_id: sale.id,
+      },
+    });
+  }
+
+  // Refunds
+  for (const refund of refundsRes.data || []) {
+    const reasonSuffix = refund.reason ? ` — ${refund.reason}` : '';
+    entries.push({
+      id: `refund-${refund.id}`,
+      type: 'refund',
+      date: refund.created_at,
+      summary: `Refund of $${Number(refund.amount).toFixed(2)}${reasonSuffix}`,
+      metadata: {
+        total: Number(refund.amount),
+        sale_id: (refund.sale as any)?.id,
       },
     });
   }

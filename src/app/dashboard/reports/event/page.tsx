@@ -24,7 +24,9 @@ import {
   CardContent,
   Badge,
 } from '@/components/ui';
-import type { Event, Sale, SaleItem } from '@/types';
+import type { Event, Sale, SaleItem, Refund } from '@/types';
+import ExpensesSection from '@/components/reports/ExpensesSection';
+import type { ExpenseTotals } from '@/components/reports/ExpensesSection';
 
 // ————————————————————————————————————————————————
 // Types
@@ -39,6 +41,8 @@ interface EventPL {
   totalTips: number;
   totalPlatformFees: number;
   totalDiscounts: number;
+  totalRefunds: number;
+  netRevenue: number;
   boothFee: number;
   costOfGoods: number;
   chainMaterialCost: number;
@@ -72,7 +76,7 @@ const paymentMethodLabels: Record<string, string> = {
 // CSV Export — FIXED
 // ————————————————————————————————————————————————
 
-function exportCSV(report: EventPL) {
+function exportCSV(report: EventPL, expenses: ExpenseTotals) {
   const eventName = report.event.name.replace(/[^a-zA-Z0-9 ]/g, '');
   const eventDate = format(new Date(report.event.start_time), 'yyyy-MM-dd');
   const filename = `${eventName} - PL Report - ${eventDate}.csv`;
@@ -94,21 +98,26 @@ function exportCSV(report: EventPL) {
 
   // Revenue
   lines.push('REVENUE');
+  lines.push(`Gross Revenue,${report.totalRevenue.toFixed(2)}`);
   lines.push(`Product Revenue,${report.totalSubtotal.toFixed(2)}`);
   lines.push(`Tax Collected,${report.totalTax.toFixed(2)}`);
   lines.push(`Tips,${report.totalTips.toFixed(2)}`);
   if (report.totalDiscounts > 0) lines.push(`Discounts Given,-${report.totalDiscounts.toFixed(2)}`);
-  lines.push(`Total Collected,${report.totalRevenue.toFixed(2)}`);
+  if (report.totalRefunds > 0) lines.push(`Refunds,-${report.totalRefunds.toFixed(2)}`);
+  lines.push(`Net Revenue,${report.netRevenue.toFixed(2)}`);
   lines.push('');
 
-  // Costs — FIXED: only absorbed fees, COGS breakdown
+  // Costs
   lines.push('COSTS');
   if (report.chainMaterialCost > 0) lines.push(`Chain Material,${report.chainMaterialCost.toFixed(2)}`);
   if (report.jumpRingCost > 0) lines.push(`Jump Rings,${report.jumpRingCost.toFixed(2)}`);
   lines.push(`Total COGS,${report.costOfGoods.toFixed(2)}`);
   lines.push(`Booth Fee,${report.boothFee.toFixed(2)}`);
+  if (expenses.total > 0) {
+    lines.push(`Other Expenses,${expenses.total.toFixed(2)}`);
+  }
   lines.push(`Platform Fees (Absorbed),${report.totalPlatformFees.toFixed(2)}`);
-  lines.push(`Total Costs,${(report.costOfGoods + report.boothFee + report.totalPlatformFees).toFixed(2)}`);
+  lines.push(`Total Costs,${(report.costOfGoods + report.boothFee + report.totalPlatformFees + expenses.total).toFixed(2)}`);
   lines.push('');
 
   // Profit
@@ -190,6 +199,7 @@ function EventPLReportPage() {
   const [loading, setLoading] = useState(true);
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(eventId);
+  const [expenseTotals, setExpenseTotals] = useState<ExpenseTotals>({ total: 0, byCategory: {} });
   useEffect(() => {
    if (eventId && eventId !== selectedEventId) {setSelectedEventId(eventId);}
    }, [eventId]);
@@ -212,20 +222,21 @@ function EventPLReportPage() {
       });
   }, [tenant]);
 
-  // Load P&L data
+  // Load P&L data (re-compute when expenses change)
   useEffect(() => {
     if (!tenant || !selectedEventId) return;
     loadReport(selectedEventId);
-  }, [tenant, selectedEventId]);
+  }, [tenant, selectedEventId, expenseTotals]);
 
   // ============================================================
   // Load & compute report — WITH FINANCIAL ACCURACY FIXES
   // ============================================================
   const loadReport = async (evId: string) => {
+    if (!tenant) return;
     setLoading(true);
 
     // NOTE: fee_handling included via * wildcard. sale_items includes chain_material_cost and jump_ring_cost
-    const [eventRes, salesRes] = await Promise.all([
+    const [eventRes, salesRes, refundsRes] = await Promise.all([
       supabase.from('events').select('*').eq('id', evId).single(),
       supabase
         .from('sales')
@@ -233,12 +244,17 @@ function EventPLReportPage() {
         .eq('event_id', evId)
         .eq('status', 'completed')
         .order('created_at', { ascending: true }),
+      supabase.from('refunds').select('*, sale:sales!inner(event_id)')
+        .eq('tenant_id', tenant.id)
+        .eq('sale.event_id', evId),
     ]);
 
     if (!eventRes.data) { setLoading(false); return; }
 
     const event = eventRes.data as Event;
     const sales = (salesRes.data || []) as (Sale & { sale_items: SaleItem[] })[];
+    const eventRefunds = (refundsRes.data || []) as any[];
+    const totalRefunds = eventRefunds.reduce((sum: number, r: any) => sum + Number(r.amount), 0);
 
     let totalSubtotal = 0;
     let totalTax = 0;
@@ -298,9 +314,10 @@ function EventPLReportPage() {
     // FIX: Revenue = subtotal + tax + tip (not sale.total)
     const totalRevenue = totalSubtotal + totalTax + totalTips;
     const costOfGoods = chainMaterialCost + jumpRingCost;
+    const netRevenue = totalRevenue - totalRefunds;
 
-    // FIX: Net Profit = subtotal - COGS - booth fee - absorbed platform fees
-    const netProfit = totalSubtotal - costOfGoods - boothFee - totalPlatformFees;
+    // Net Profit = subtotal - refunds - COGS - booth fee - absorbed platform fees - expenses
+    const netProfit = totalSubtotal - totalRefunds - costOfGoods - boothFee - totalPlatformFees - expenseTotals.total;
     const salesCount = sales.length;
     const avgSaleValue = salesCount > 0 ? totalRevenue / salesCount : 0;
 
@@ -310,7 +327,8 @@ function EventPLReportPage() {
 
     setReport({
       event, sales, totalRevenue, totalSubtotal, totalTax, totalTips,
-      totalPlatformFees, totalDiscounts, boothFee, costOfGoods,
+      totalPlatformFees, totalDiscounts, totalRefunds, netRevenue,
+      boothFee, costOfGoods,
       chainMaterialCost, jumpRingCost,
       netProfit, salesCount, avgSaleValue, paymentBreakdown, topItems,
     });
@@ -382,7 +400,7 @@ function EventPLReportPage() {
                 {report.event.location && ` · ${report.event.location}`}
               </p>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => exportCSV(report)}>
+            <Button variant="secondary" size="sm" onClick={() => exportCSV(report, expenseTotals)}>
               <span className="flex items-center gap-1.5">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -412,14 +430,31 @@ function EventPLReportPage() {
                 <CardTitle>Revenue</CardTitle>
               </CardHeader>
               <CardContent className="space-y-0">
-                <ReportRow label="Product Revenue" value={money(report.totalSubtotal)} />
-                <ReportRow label="Tax Collected" value={money(report.totalTax)} subtle />
-                <ReportRow label="Tips" value={money(report.totalTips)} subtle />
+                <ReportRow label="Gross Revenue" value={money(report.totalRevenue)} />
+                <div className="ml-4 mb-1">
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-xs text-text-tertiary">Product revenue</span>
+                    <span className="text-xs text-text-tertiary">{money(report.totalSubtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-xs text-text-tertiary">Tax collected</span>
+                    <span className="text-xs text-text-tertiary">{money(report.totalTax)}</span>
+                  </div>
+                  {report.totalTips > 0 && (
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-xs text-text-tertiary">Tips</span>
+                      <span className="text-xs text-text-tertiary">{money(report.totalTips)}</span>
+                    </div>
+                  )}
+                </div>
                 {report.totalDiscounts > 0 && (
                   <ReportRow label="Discounts Given" value={money(-report.totalDiscounts)} negative />
                 )}
+                {report.totalRefunds > 0 && (
+                  <ReportRow label="Refunds" value={money(-report.totalRefunds)} negative />
+                )}
                 <div className="border-t border-[var(--border-default)] mt-1 pt-3">
-                  <ReportRow label="Total Collected" value={money(report.totalRevenue)} bold />
+                  <ReportRow label="Net Revenue" value={money(report.netRevenue)} bold />
                 </div>
               </CardContent>
             </Card>
@@ -451,11 +486,14 @@ function EventPLReportPage() {
                 )}
 
                 <ReportRow label="Booth Fee" value={money(report.boothFee)} negative />
+                {expenseTotals.total > 0 && (
+                  <ReportRow label="Other Expenses" value={money(expenseTotals.total)} negative />
+                )}
                 <ReportRow label="Platform Fees" value={money(report.totalPlatformFees)} negative />
                 <div className="border-t border-[var(--border-default)] mt-1 pt-3">
                   <ReportRow
                     label="Total Costs"
-                    value={money(report.costOfGoods + report.boothFee + report.totalPlatformFees)}
+                    value={money(report.costOfGoods + report.boothFee + report.totalPlatformFees + expenseTotals.total)}
                     bold
                     negative
                   />
@@ -522,6 +560,17 @@ function EventPLReportPage() {
               ))}
             </CardContent>
           </Card>
+
+          {/* Expenses linked to this event */}
+          {report.event && (
+            <ExpensesSection
+              tenantId={tenant.id}
+              startDate="2000-01-01"
+              endDate="2099-12-31"
+              eventId={report.event.id}
+              onTotalsReady={setExpenseTotals}
+            />
+          )}
 
           {/* Sales Timeline */}
           {report.sales.length > 0 && (

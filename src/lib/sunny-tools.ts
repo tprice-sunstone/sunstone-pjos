@@ -466,6 +466,71 @@ export const SUNNY_TOOL_DEFINITIONS = [
       required: ['workflow_name', 'updates'],
     },
   },
+  // 29. find_sale
+  {
+    name: 'find_sale',
+    description: 'Find a sale by client name, date, amount, or sale ID. Use this before processing a refund.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_name: { type: 'string', description: 'Client name to search by (partial match)' },
+        date: { type: 'string', description: 'Sale date (YYYY-MM-DD) to filter by' },
+        amount: { type: 'number', description: 'Sale total to filter by (approximate match)' },
+        sale_id: { type: 'string', description: 'Exact sale UUID if known' },
+        limit: { type: 'number', description: 'Max results (default 5)' },
+      },
+      required: [],
+    },
+  },
+  // 30. process_refund
+  {
+    name: 'process_refund',
+    description: 'Process a refund for a sale. ALWAYS show preview first and require confirmation before executing. Supports full and partial refunds for Stripe, Square, and cash payments.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        sale_id: { type: 'string', description: 'The sale UUID to refund' },
+        amount: { type: 'number', description: 'Refund amount. Omit or set to sale total for full refund.' },
+        reason: { type: 'string', description: 'Reason for the refund (max 200 chars)' },
+        confirmed: { type: 'boolean', description: 'Set to true only after showing the preview and getting user confirmation' },
+      },
+      required: ['sale_id'],
+    },
+  },
+  // 31. add_expense
+  {
+    name: 'add_expense',
+    description: 'Log a business expense (booth fee, supplies, travel, etc.).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Expense name (e.g. "Spring Market Booth Fee")' },
+        amount: { type: 'number', description: 'Expense amount in dollars' },
+        category: { type: 'string', enum: ['Booth Fee', 'Supplies', 'Chain Restock', 'Travel & Gas', 'Marketing & Advertising', 'Equipment', 'Insurance', 'Software & Subscriptions', 'Education & Training', 'Packaging & Display', 'Other'], description: 'Expense category' },
+        date: { type: 'string', description: 'Expense date (YYYY-MM-DD). Defaults to today.' },
+        event_id: { type: 'string', description: 'Link to an event UUID (optional)' },
+        notes: { type: 'string', description: 'Additional notes (optional)' },
+        is_recurring: { type: 'boolean', description: 'Whether this is a recurring expense' },
+        recurring_frequency: { type: 'string', enum: ['weekly', 'monthly', 'quarterly', 'yearly'], description: 'Frequency if recurring' },
+      },
+      required: ['name', 'amount', 'category'],
+    },
+  },
+  // 32. get_expenses
+  {
+    name: 'get_expenses',
+    description: 'Get expenses for a date range, optionally filtered by category or event.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        start_date: { type: 'string', description: 'Start date (YYYY-MM-DD). Defaults to 30 days ago.' },
+        end_date: { type: 'string', description: 'End date (YYYY-MM-DD). Defaults to today.' },
+        category: { type: 'string', description: 'Filter by category (optional)' },
+        event_id: { type: 'string', description: 'Filter by event UUID (optional)' },
+      },
+      required: [],
+    },
+  },
 ];
 
 // ============================================================================
@@ -502,6 +567,10 @@ export function getSunnyToolStatusLabel(name: string): string {
     delete_inventory_item: 'Processing inventory item...',
     create_workflow: 'Creating workflow...',
     update_workflow: 'Updating workflow...',
+    find_sale: 'Searching sales...',
+    process_refund: 'Processing refund...',
+    add_expense: 'Adding expense...',
+    get_expenses: 'Fetching expenses...',
   };
   return labels[name] || 'Working...';
 }
@@ -1762,6 +1831,234 @@ export async function executeSunnyTool(
             updates_applied: input.updates,
           },
         };
+      }
+
+      // ── 29. find_sale ───────────────────────────────────────────────────
+      case 'find_sale': {
+        let query = serviceClient
+          .from('sales')
+          .select('id, created_at, total, payment_method, payment_provider, refund_status, refund_amount, status, client:clients(id, first_name, last_name), items:sale_items(name, quantity), event:events(name)')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'completed')
+          .order('created_at', { ascending: false });
+
+        if (input.sale_id) {
+          query = query.eq('id', input.sale_id);
+        } else {
+          if (input.date) {
+            query = query.gte('created_at', `${input.date}T00:00:00`).lte('created_at', `${input.date}T23:59:59`);
+          }
+          if (input.amount) {
+            const tolerance = input.amount * 0.05;
+            query = query.gte('total', input.amount - tolerance).lte('total', input.amount + tolerance);
+          }
+        }
+
+        const { data, error } = await query.limit(input.limit || 5);
+        if (error) return { result: { error: error.message }, isError: true };
+
+        let results = (data || []).map((s: any) => ({
+          id: s.id,
+          date: s.created_at,
+          total: Number(s.total),
+          payment_method: s.payment_method,
+          payment_provider: s.payment_provider,
+          refund_status: s.refund_status || 'none',
+          refund_amount: Number(s.refund_amount) || 0,
+          client_name: s.client ? `${s.client.first_name || ''} ${s.client.last_name || ''}`.trim() : 'Walk-in',
+          items: (s.items || []).map((i: any) => i.name),
+          event_name: s.event?.name || null,
+        }));
+
+        // Client name filter (post-query since it's a join)
+        if (input.client_name) {
+          const search = input.client_name.toLowerCase();
+          results = results.filter((s: any) => s.client_name.toLowerCase().includes(search));
+        }
+
+        return { result: { sales: results, total: results.length } };
+      }
+
+      // ── 30. process_refund ────────────────────────────────────────────────
+      case 'process_refund': {
+        // Fetch the sale
+        const { data: sale, error: saleErr } = await serviceClient
+          .from('sales')
+          .select('id, total, refund_status, refund_amount, payment_method, payment_provider, payment_provider_id, client:clients(id, first_name, last_name), items:sale_items(name, quantity)')
+          .eq('id', input.sale_id)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (saleErr || !sale) return { result: { error: 'Sale not found' }, isError: true };
+        if (sale.refund_status === 'full') return { result: { error: 'Sale is already fully refunded' }, isError: true };
+
+        const maxRefundable = Number(sale.total) - (Number(sale.refund_amount) || 0);
+        const refundAmount = input.amount ? Math.min(input.amount, maxRefundable) : maxRefundable;
+        if (refundAmount <= 0) return { result: { error: 'No refundable amount remaining' }, isError: true };
+
+        const clientName = sale.client ? `${sale.client.first_name || ''} ${sale.client.last_name || ''}`.trim() : 'Walk-in';
+        const itemNames = (sale.items || []).map((i: any) => i.name);
+        const isFullRefund = refundAmount >= maxRefundable;
+
+        // Preview mode
+        if (!input.confirmed) {
+          return {
+            result: {
+              pending_confirmation: true,
+              preview: {
+                sale_id: sale.id,
+                client_name: clientName,
+                items: itemNames,
+                sale_total: Number(sale.total),
+                already_refunded: Number(sale.refund_amount) || 0,
+                refund_amount: refundAmount,
+                refund_type: isFullRefund ? 'full' : 'partial',
+                payment_method: sale.payment_method,
+                payment_provider: sale.payment_provider,
+                reason: input.reason || null,
+                note: sale.payment_method === 'cash' || sale.payment_method === 'venmo'
+                  ? 'This is a cash/Venmo payment — refund will be recorded but you must return money manually.'
+                  : `Card refund will be automatically processed via ${sale.payment_provider || 'Stripe'}.`,
+              },
+            },
+          };
+        }
+
+        // Confirmed — call the refund API
+        // We use a direct fetch to /api/sales/[id]/refund which handles Stripe/Square/cash
+        // But since this runs server-side, we do the refund logic inline
+        const Stripe = (await import('stripe')).default;
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', { apiVersion: '2025-03-31.basil' as any });
+
+        let stripeRefundId: string | null = null;
+        let squareRefundId: string | null = null;
+
+        if (sale.payment_provider === 'stripe' && sale.payment_provider_id) {
+          const stripeRefund = await stripe.refunds.create({
+            payment_intent: sale.payment_provider_id,
+            amount: Math.round(refundAmount * 100),
+            reason: 'requested_by_customer',
+          });
+          stripeRefundId = stripeRefund.id;
+        } else if (sale.payment_provider === 'square' && sale.payment_provider_id) {
+          const { Client: SquareClient, Environment } = await import('square');
+          const { data: tenantData } = await serviceClient
+            .from('tenants')
+            .select('square_access_token')
+            .eq('id', tenantId)
+            .single();
+          if (!tenantData?.square_access_token) {
+            return { result: { error: 'Square not connected' }, isError: true };
+          }
+          const squareClient = new SquareClient({
+            accessToken: tenantData.square_access_token,
+            environment: process.env.NODE_ENV === 'production' ? Environment.Production : Environment.Sandbox,
+          });
+          const { result: sqResult } = await squareClient.refundsApi.refundPayment({
+            idempotencyKey: `refund-${sale.id}-${Date.now()}`,
+            paymentId: sale.payment_provider_id,
+            amountMoney: { amount: BigInt(Math.round(refundAmount * 100)), currency: 'USD' },
+            reason: input.reason || 'Refund via Sunny',
+          });
+          squareRefundId = sqResult.refund?.id || null;
+        }
+
+        // Record the refund
+        await serviceClient.from('refunds').insert({
+          tenant_id: tenantId,
+          sale_id: sale.id,
+          amount: refundAmount,
+          reason: input.reason || null,
+          payment_method: sale.payment_method,
+          stripe_refund_id: stripeRefundId,
+          square_refund_id: squareRefundId,
+          created_by: userId,
+        });
+
+        const newRefundAmount = (Number(sale.refund_amount) || 0) + refundAmount;
+        const newStatus = newRefundAmount >= Number(sale.total) ? 'full' : 'partial';
+        await serviceClient.from('sales').update({
+          refund_amount: newRefundAmount,
+          refund_status: newStatus,
+          refunded_at: new Date().toISOString(),
+          refunded_by: userId,
+        }).eq('id', sale.id);
+
+        return {
+          result: {
+            success: true,
+            client_name: clientName,
+            refund_amount: refundAmount,
+            refund_status: newStatus,
+            payment_method: sale.payment_method,
+          },
+        };
+      }
+
+      // ── 31. add_expense ───────────────────────────────────────────────────
+      case 'add_expense': {
+        const today = new Date().toISOString().split('T')[0];
+        const { data, error } = await serviceClient
+          .from('expenses')
+          .insert({
+            tenant_id: tenantId,
+            name: input.name,
+            amount: input.amount,
+            category: input.category,
+            date: input.date || today,
+            event_id: input.event_id || null,
+            notes: input.notes || null,
+            is_recurring: input.is_recurring || false,
+            recurring_frequency: input.is_recurring ? (input.recurring_frequency || 'monthly') : null,
+            created_by: userId,
+          })
+          .select('id, name, amount, category, date')
+          .single();
+
+        if (error) return { result: { error: error.message }, isError: true };
+        return { result: { success: true, expense: data } };
+      }
+
+      // ── 32. get_expenses ──────────────────────────────────────────────────
+      case 'get_expenses': {
+        const today = new Date().toISOString().split('T')[0];
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const startDate = input.start_date || thirtyDaysAgo;
+        const endDate = input.end_date || today;
+
+        let query = serviceClient
+          .from('expenses')
+          .select('id, name, amount, category, date, notes, is_recurring, recurring_frequency, event:events(name)')
+          .eq('tenant_id', tenantId)
+          .gte('date', startDate)
+          .lte('date', endDate)
+          .order('date', { ascending: false });
+
+        if (input.category) query = query.eq('category', input.category);
+        if (input.event_id) query = query.eq('event_id', input.event_id);
+
+        const { data, error } = await query.limit(100);
+        if (error) return { result: { error: error.message }, isError: true };
+
+        const expenses = (data || []).map((e: any) => ({
+          id: e.id,
+          name: e.name,
+          amount: Number(e.amount),
+          category: e.category,
+          date: e.date,
+          notes: e.notes,
+          is_recurring: e.is_recurring,
+          recurring_frequency: e.recurring_frequency,
+          event_name: e.event?.name || null,
+        }));
+
+        const total = expenses.reduce((s: number, e: any) => s + e.amount, 0);
+        const byCategory: Record<string, number> = {};
+        for (const e of expenses) {
+          byCategory[e.category] = (byCategory[e.category] || 0) + e.amount;
+        }
+
+        return { result: { expenses, total, by_category: byCategory, period: { start: startDate, end: endDate } } };
       }
 
       default:

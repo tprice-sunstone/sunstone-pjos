@@ -24,10 +24,12 @@ import {
   Badge,
   Input,
 } from '@/components/ui';
-import type { Event, Sale, SaleItem } from '@/types';
+import type { Event, Sale, SaleItem, Refund } from '@/types';
 import { PLATFORM_FEE_RATES } from '@/types';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import SunnyTutorial from '@/components/SunnyTutorial';
+import ExpensesSection from '@/components/reports/ExpensesSection';
+import type { ExpenseTotals } from '@/components/reports/ExpensesSection';
 
 // ————————————————————————————————————————————————
 // Types
@@ -47,6 +49,8 @@ interface AggregatedData {
   totalCOGS: number;
   totalChainCost: number;
   totalJumpRingCost: number;
+  totalRefunds: number;
+  netRevenue: number;
   salesCount: number;
   avgSaleValue: number;
   netProfit: number;
@@ -136,7 +140,7 @@ function getEffectiveTier(tenant: any): 'starter' | 'pro' | 'business' {
 // CSV Export (overview) — FIXED
 // ————————————————————————————————————————————————
 
-function exportOverviewCSV(data: AggregatedData, dateLabel: string, sourceLabel: string) {
+function exportOverviewCSV(data: AggregatedData, dateLabel: string, sourceLabel: string, expenses: ExpenseTotals) {
   const filename = `Business Report - ${dateLabel} - ${sourceLabel}.csv`;
   const lines: string[] = [];
 
@@ -151,19 +155,32 @@ function exportOverviewCSV(data: AggregatedData, dateLabel: string, sourceLabel:
   lines.push('');
 
   lines.push('REVENUE');
+  lines.push(`Gross Revenue,${data.totalRevenue.toFixed(2)}`);
   lines.push(`Product Revenue,${data.totalSubtotal.toFixed(2)}`);
   lines.push(`Tax Collected,${data.totalTax.toFixed(2)}`);
   lines.push(`Tips,${data.totalTips.toFixed(2)}`);
   if (data.totalDiscounts > 0) lines.push(`Discounts Given,-${data.totalDiscounts.toFixed(2)}`);
-  lines.push(`Total Collected,${data.totalRevenue.toFixed(2)}`);
+  if (data.totalRefunds > 0) lines.push(`Refunds,-${data.totalRefunds.toFixed(2)}`);
+  lines.push(`Net Revenue,${data.netRevenue.toFixed(2)}`);
   lines.push('');
 
   lines.push('COSTS');
   if (data.totalChainCost > 0) lines.push(`Chain Material,${data.totalChainCost.toFixed(2)}`);
   if (data.totalJumpRingCost > 0) lines.push(`Jump Rings,${data.totalJumpRingCost.toFixed(2)}`);
   lines.push(`Total COGS,${data.totalCOGS.toFixed(2)}`);
+  if (expenses.total > 0) {
+    lines.push('');
+    lines.push('EXPENSES');
+    Object.entries(expenses.byCategory)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([cat, amt]) => {
+        lines.push(`"${cat}",${amt.toFixed(2)}`);
+      });
+    lines.push(`Total Expenses,${expenses.total.toFixed(2)}`);
+  }
+  lines.push('');
   lines.push(`Platform Fees (Absorbed),${data.totalPlatformFees.toFixed(2)}`);
-  lines.push(`Total Costs,${(data.totalCOGS + data.totalPlatformFees).toFixed(2)}`);
+  lines.push(`Total Costs,${(data.totalCOGS + data.totalPlatformFees + expenses.total).toFixed(2)}`);
   lines.push('');
 
   lines.push('PROFIT');
@@ -222,6 +239,8 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<(Sale & { sale_items: SaleItem[] })[]>([]);
   const [boothFeeMap, setBoothFeeMap] = useState<Map<string, number>>(new Map());
+  const [refunds, setRefunds] = useState<Refund[]>([]);
+  const [expenseTotals, setExpenseTotals] = useState<ExpenseTotals>({ total: 0, byCategory: {} });
 
   // Events tab state
   const [events, setEvents] = useState<Event[]>([]);
@@ -287,9 +306,14 @@ export default function ReportsPage() {
       query = query.is('event_id', null);
     }
 
-    const [salesRes, eventsRes] = await Promise.all([
+    const [salesRes, eventsRes, refundsRes] = await Promise.all([
       query,
       supabase.from('events').select('id, booth_fee').eq('tenant_id', tenant.id),
+      supabase.from('refunds')
+        .select('*')
+        .eq('tenant_id', tenant.id)
+        .gte('created_at', dateRange.start.toISOString())
+        .lte('created_at', dateRange.end.toISOString()),
     ]);
 
     const bm = new Map<string, number>();
@@ -299,6 +323,7 @@ export default function ReportsPage() {
     setBoothFeeMap(bm);
 
     setSales((salesRes.data || []) as (Sale & { sale_items: SaleItem[] })[]);
+    setRefunds((refundsRes.data || []) as Refund[]);
     setLoading(false);
   };
 
@@ -387,7 +412,13 @@ export default function ReportsPage() {
     // FIX: Revenue = subtotal + tax + tip
     const totalRevenue = totalSubtotal + totalTax + totalTips;
     const totalCOGS = totalChainCost + totalJumpRingCost;
-    const netProfit = totalSubtotal - totalCOGS - totalPlatformFees;
+
+    // Refunds total (based on refund period, not sale date)
+    const totalRefunds = refunds.reduce((sum, r) => sum + Number(r.amount), 0);
+    const netRevenue = totalRevenue - totalRefunds;
+
+    // Net profit includes refunds and expenses
+    const netProfit = totalSubtotal - totalRefunds - totalCOGS - totalPlatformFees - expenseTotals.total;
     const salesCount = sales.length;
     const avgSaleValue = salesCount > 0 ? totalRevenue / salesCount : 0;
 
@@ -401,10 +432,11 @@ export default function ReportsPage() {
     return {
       totalRevenue, totalSubtotal, totalTax, totalTips, totalPlatformFees,
       totalDiscounts, totalCOGS, totalChainCost, totalJumpRingCost,
+      totalRefunds, netRevenue,
       salesCount, avgSaleValue, netProfit,
       paymentBreakdown, monthlyBreakdown,
     };
-  }, [sales]);
+  }, [sales, refunds, expenseTotals]);
 
   // ============================================================
   // Build event summaries for events tab — WITH FIXES
@@ -643,7 +675,7 @@ export default function ReportsPage() {
                   <h2 className="text-lg font-semibold text-text-primary">{dateLabel}</h2>
                   <p className="text-sm text-text-tertiary">{sourceLabel} · {aggregated.salesCount} sale{aggregated.salesCount !== 1 ? 's' : ''}</p>
                 </div>
-                <Button variant="secondary" size="sm" onClick={() => exportOverviewCSV(aggregated, dateLabel, sourceLabel)}>
+                <Button variant="secondary" size="sm" onClick={() => exportOverviewCSV(aggregated, dateLabel, sourceLabel, expenseTotals)}>
                   <span className="flex items-center gap-1.5">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -666,14 +698,31 @@ export default function ReportsPage() {
                 <Card>
                   <CardHeader><CardTitle>Revenue</CardTitle></CardHeader>
                   <CardContent className="space-y-0">
-                    <ReportRow label="Product Revenue" value={money(aggregated.totalSubtotal)} />
-                    <ReportRow label="Tax Collected" value={money(aggregated.totalTax)} subtle />
-                    <ReportRow label="Tips" value={money(aggregated.totalTips)} subtle />
+                    <ReportRow label="Gross Revenue" value={money(aggregated.totalRevenue)} />
+                    <div className="ml-4 mb-1">
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-xs text-text-tertiary">Product revenue</span>
+                        <span className="text-xs text-text-tertiary">{money(aggregated.totalSubtotal)}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-1">
+                        <span className="text-xs text-text-tertiary">Tax collected</span>
+                        <span className="text-xs text-text-tertiary">{money(aggregated.totalTax)}</span>
+                      </div>
+                      {aggregated.totalTips > 0 && (
+                        <div className="flex items-center justify-between py-1">
+                          <span className="text-xs text-text-tertiary">Tips</span>
+                          <span className="text-xs text-text-tertiary">{money(aggregated.totalTips)}</span>
+                        </div>
+                      )}
+                    </div>
                     {aggregated.totalDiscounts > 0 && (
                       <ReportRow label="Discounts Given" value={money(-aggregated.totalDiscounts)} negative />
                     )}
+                    {aggregated.totalRefunds > 0 && (
+                      <ReportRow label="Refunds" value={money(-aggregated.totalRefunds)} negative />
+                    )}
                     <div className="border-t border-[var(--border-default)] mt-1 pt-3">
-                      <ReportRow label="Total Collected" value={money(aggregated.totalRevenue)} bold />
+                      <ReportRow label="Net Revenue" value={money(aggregated.netRevenue)} bold />
                     </div>
                   </CardContent>
                 </Card>
@@ -681,7 +730,7 @@ export default function ReportsPage() {
                 <Card>
                   <CardHeader><CardTitle>Costs</CardTitle></CardHeader>
                   <CardContent className="space-y-0">
-                    <ReportRow label="Cost of Goods" value={money(aggregated.totalCOGS)} negative />
+                    <ReportRow label="Product Costs / COGS" value={money(aggregated.totalCOGS)} negative />
 
                     {/* Materials COGS Breakdown */}
                     {(aggregated.totalChainCost > 0 || aggregated.totalJumpRingCost > 0) && (
@@ -701,9 +750,37 @@ export default function ReportsPage() {
                       </div>
                     )}
 
+                    {/* Expense categories */}
+                    {expenseTotals.total > 0 && (
+                      <>
+                        {(expenseTotals.byCategory['Booth Fee'] || 0) > 0 && (
+                          <ReportRow label="Booth Fees" value={money(expenseTotals.byCategory['Booth Fee'])} negative />
+                        )}
+                        {(() => {
+                          const supplies = (expenseTotals.byCategory['Supplies'] || 0)
+                            + (expenseTotals.byCategory['Chain Restock'] || 0)
+                            + (expenseTotals.byCategory['Packaging & Display'] || 0);
+                          return supplies > 0 ? <ReportRow label="Supplies & Materials" value={money(supplies)} negative /> : null;
+                        })()}
+                        {(expenseTotals.byCategory['Travel & Gas'] || 0) > 0 && (
+                          <ReportRow label="Travel" value={money(expenseTotals.byCategory['Travel & Gas'])} negative />
+                        )}
+                        {(expenseTotals.byCategory['Marketing & Advertising'] || 0) > 0 && (
+                          <ReportRow label="Marketing" value={money(expenseTotals.byCategory['Marketing & Advertising'])} negative />
+                        )}
+                        {(() => {
+                          const knownCats = ['Booth Fee', 'Supplies', 'Chain Restock', 'Packaging & Display', 'Travel & Gas', 'Marketing & Advertising'];
+                          const otherExpenses = Object.entries(expenseTotals.byCategory)
+                            .filter(([cat]) => !knownCats.includes(cat))
+                            .reduce((sum, [, amt]) => sum + amt, 0);
+                          return otherExpenses > 0 ? <ReportRow label="Other Expenses" value={money(otherExpenses)} negative /> : null;
+                        })()}
+                      </>
+                    )}
+
                     <ReportRow label="Platform Fees" value={money(aggregated.totalPlatformFees)} negative />
                     <div className="border-t border-[var(--border-default)] mt-1 pt-3">
-                      <ReportRow label="Total Costs" value={money(aggregated.totalCOGS + aggregated.totalPlatformFees)} bold negative />
+                      <ReportRow label="Total Costs" value={money(aggregated.totalCOGS + aggregated.totalPlatformFees + expenseTotals.total)} bold negative />
                     </div>
                     <div className="border-t border-[var(--border-default)] mt-1 pt-4">
                       <div className="flex items-center justify-between">
@@ -740,6 +817,14 @@ export default function ReportsPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Expenses */}
+              <ExpensesSection
+                tenantId={tenant.id}
+                startDate={format(dateRange.start, 'yyyy-MM-dd')}
+                endDate={format(dateRange.end, 'yyyy-MM-dd')}
+                onTotalsReady={setExpenseTotals}
+              />
 
               {/* Monthly Breakdown */}
               {aggregated.monthlyBreakdown.length > 1 && (

@@ -12,6 +12,8 @@ import { getThemeById } from '@/lib/themes';
 import type { Client, ClientTag, Waiver, Sale, SaleItem } from '@/types';
 import type { WaiverPDFData } from '@/lib/generate-waiver-pdf';
 import ComposeModal from './ComposeModal';
+import RefundModal from '@/components/RefundModal';
+import type { RefundModalSaleSummary } from '@/components/RefundModal';
 
 interface TagWithCount extends ClientTag {
   usage_count: number;
@@ -32,7 +34,7 @@ interface SaleWithItems extends Sale {
 
 interface ActivityEntry {
   id: string;
-  type: 'purchase' | 'waiver' | 'message_sent' | 'tag_added' | 'workflow_action' | 'note';
+  type: 'purchase' | 'waiver' | 'message_sent' | 'tag_added' | 'workflow_action' | 'note' | 'refund';
   date: string;
   summary: string;
   details?: string;
@@ -46,11 +48,15 @@ interface ActivityEntry {
     tag_name?: string;
     tag_color?: string;
     payment_method?: string;
+    payment_provider?: string;
+    refund_status?: string;
+    refund_amount?: number;
+    sale_id?: string;
   };
 }
 
 export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onTagsChanged }: ClientProfileProps) {
-  const { tenant } = useTenant();
+  const { tenant, can } = useTenant();
   const supabase = createClient();
 
   const [client, setClient] = useState<Client | null>(null);
@@ -77,6 +83,8 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
   const [noteText, setNoteText] = useState('');
   const [addingNote, setAddingNote] = useState(false);
   const [expandedMsgId, setExpandedMsgId] = useState<string | null>(null);
+  const [refundSaleId, setRefundSaleId] = useState<string | null>(null);
+  const [refundSummary, setRefundSummary] = useState<RefundModalSaleSummary | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!tenant) return;
@@ -525,12 +533,43 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
                           style={isExpandable ? { cursor: 'pointer' } : undefined}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <p className="text-[12px] font-medium text-[var(--text-primary)] leading-snug">{entry.summary}</p>
-                            {sourceLabel && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border-subtle)] text-[var(--text-tertiary)] shrink-0">
-                                {sourceLabel}
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <p className="text-[12px] font-medium text-[var(--text-primary)] leading-snug">{entry.summary}</p>
+                              {entry.type === 'purchase' && entry.metadata?.refund_status === 'full' && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-medium shrink-0">Refunded</span>
+                              )}
+                              {entry.type === 'purchase' && entry.metadata?.refund_status === 'partial' && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium shrink-0">Partial Refund</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {sourceLabel && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface-raised)] border border-[var(--border-subtle)] text-[var(--text-tertiary)]">
+                                  {sourceLabel}
+                                </span>
+                              )}
+                              {entry.type === 'purchase' && entry.metadata?.refund_status !== 'full' && entry.metadata?.sale_id && can('sales:refund') && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRefundSaleId(entry.metadata!.sale_id!);
+                                    setRefundSummary({
+                                      total: entry.metadata!.total || 0,
+                                      refund_amount: entry.metadata!.refund_amount || 0,
+                                      refund_status: (entry.metadata!.refund_status as 'none' | 'partial' | 'full') || 'none',
+                                      payment_method: entry.metadata!.payment_method || 'cash',
+                                      payment_provider: entry.metadata!.payment_provider || null,
+                                      items: (entry.metadata!.items || []).map(name => ({ name, quantity: 1, line_total: 0 })),
+                                      created_at: entry.date,
+                                      client_name: client ? `${client.first_name || ''} ${client.last_name || ''}`.trim() : '',
+                                    });
+                                  }}
+                                  className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors font-medium"
+                                >
+                                  Refund
+                                </button>
+                              )}
+                            </div>
                           </div>
                           <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">{relativeTime(entry.date)}</p>
                           {entry.metadata?.event_name && entry.type === 'purchase' && (
@@ -678,6 +717,16 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
         )}
       </div>
 
+      {/* Refund Modal */}
+      {refundSaleId && refundSummary && (
+        <RefundModal
+          saleId={refundSaleId}
+          saleSummary={refundSummary}
+          onClose={() => { setRefundSaleId(null); setRefundSummary(null); }}
+          onRefunded={() => { setRefundSaleId(null); setRefundSummary(null); fetchData(); }}
+        />
+      )}
+
       {/* Compose Modal */}
       {composeChannel && client && tenant && (
         <ComposeModal
@@ -728,6 +777,8 @@ function getActivityIcon(entry: ActivityEntry): { bg: string; color: string; Ico
       return { bg: '#FCE7F3', color: '#DB2777', Icon: ZapIcon };
     case 'note':
       return { bg: '#FEF9C3', color: '#A16207', Icon: NoteIcon };
+    case 'refund':
+      return { bg: '#FEE2E2', color: '#DC2626', Icon: RefundIcon };
     default:
       return { bg: '#F3F4F6', color: '#6B7280', Icon: FileTextIconTL };
   }
@@ -839,6 +890,14 @@ function NoteIcon({ className, style }: IconProps) {
   return (
     <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+    </svg>
+  );
+}
+
+function RefundIcon({ className, style }: IconProps) {
+  return (
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
     </svg>
   );
 }

@@ -16,6 +16,7 @@ export type PaymentMethod = 'card_present' | 'card_not_present' | 'cash' | 'venm
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
 export type QueueStatus = 'waiting' | 'notified' | 'served' | 'no_show';
 export type SaleStatus = 'draft' | 'completed' | 'voided';
+export type RefundStatus = 'none' | 'partial' | 'full';
 export type PricingMode = 'per_product' | 'per_inch';
 
 // Re-export Permission from the canonical source
@@ -57,6 +58,7 @@ export interface Tenant {
   square_location_id: string | null;
   stripe_account_id: string | null;
   stripe_onboarding_complete: boolean;
+  default_payment_processor: string | null;
   // Branding
   logo_url: string | null;
   brand_color: string;
@@ -236,6 +238,10 @@ export interface Sale {
   payment_provider_id: string | null;
   platform_fee_rate: number | null;
   fee_handling: FeeHandling | null;
+  refund_status: RefundStatus;
+  refund_amount: number;
+  refunded_at: string | null;
+  refunded_by: string | null;
   status: SaleStatus;
   receipt_email: string | null;
   receipt_phone: string | null;
@@ -614,6 +620,60 @@ export interface TutorialProgress {
   completed_at: string | null;
   created_at: string;
 }
+
+// ============================================================================
+// Refunds
+// ============================================================================
+
+export interface Refund {
+  id: string;
+  tenant_id: string;
+  sale_id: string;
+  amount: number;
+  reason: string | null;
+  payment_method: string | null;
+  stripe_refund_id: string | null;
+  square_refund_id: string | null;
+  created_at: string;
+  created_by: string | null;
+}
+
+// ============================================================================
+// Expenses
+// ============================================================================
+
+export interface Expense {
+  id: string;
+  tenant_id: string;
+  name: string;
+  amount: number;
+  category: string;
+  date: string;
+  event_id: string | null;
+  notes: string | null;
+  is_recurring: boolean;
+  recurring_frequency: string | null;
+  created_by: string | null;
+  created_at: string;
+  // Joined
+  event?: { name: string } | null;
+}
+
+export const EXPENSE_CATEGORIES = [
+  'Booth Fee',
+  'Supplies',
+  'Chain Restock',
+  'Travel & Gas',
+  'Marketing & Advertising',
+  'Equipment',
+  'Insurance',
+  'Software & Subscriptions',
+  'Education & Training',
+  'Packaging & Display',
+  'Other',
+] as const;
+
+export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number];
 
 // Jump Ring Confirmation — used in post-sale confirmation UI
 export interface JumpRingConfirmation {

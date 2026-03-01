@@ -214,12 +214,19 @@ export default function StoreModePage() {
     setProcessing(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      const isCardPayment = cart.payment_method === 'card_present' || cart.payment_method === 'card_not_present';
+      const provider = isCardPayment ? (tenant.default_payment_processor || 'stripe') : null;
+      const isSquare = provider === 'square';
       const { data: sale, error: saleErr } = await supabase.from('sales').insert({
         tenant_id: tenant.id, event_id: null, client_id: cart.client_id,
         subtotal: cart.subtotal, discount_amount: cart.discount_amount, tax_amount: cart.tax_amount,
-        tip_amount: cart.tip_amount, platform_fee_amount: cart.platform_fee_amount, total: cart.total,
+        tip_amount: cart.tip_amount,
+        platform_fee_amount: isSquare ? 0 : cart.platform_fee_amount,
+        total: cart.total,
         payment_method: cart.payment_method, payment_status: 'completed',
-        platform_fee_rate: PLATFORM_FEE_RATES[tenant.subscription_tier], fee_handling: tenant.fee_handling,
+        payment_provider: provider,
+        platform_fee_rate: isSquare ? 0 : PLATFORM_FEE_RATES[tenant.subscription_tier],
+        fee_handling: tenant.fee_handling,
         status: 'completed', receipt_email: receiptEmail || null, receipt_phone: receiptPhone || null,
         notes: cart.notes || 'Store sale', completed_by: user?.id,
       }).select().single();
@@ -480,6 +487,7 @@ export default function StoreModePage() {
               processing={processing}
               items={cart.items.map((i: any) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unit_price, lineTotal: i.line_total }))}
               activeQueueEntry={activeQueueEntry}
+              cardProcessor={tenant.default_payment_processor}
               onContinueToPayment={() => setStep('payment')}
               completedSale={completedSale}
               receiptConfig={receiptConfig}

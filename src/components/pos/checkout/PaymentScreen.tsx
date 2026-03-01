@@ -48,6 +48,7 @@ interface PaymentScreenProps {
   taxAmount: number;
   tipAmount: number;
   activeQueueEntry?: { name: string } | null;
+  cardProcessor?: string | null;
 }
 
 export function PaymentScreen({
@@ -61,6 +62,7 @@ export function PaymentScreen({
   taxAmount,
   tipAmount,
   activeQueueEntry,
+  cardProcessor,
 }: PaymentScreenProps) {
   return (
     <div className="flex items-start justify-center min-h-screen px-4 py-8">
@@ -176,6 +178,13 @@ export function PaymentScreen({
                 </button>
               ))}
             </div>
+
+            {/* Processor label for card payments */}
+            {cardProcessor && (selectedMethod === 'card_present' || selectedMethod === 'card_not_present') && (
+              <p className="text-[11px] text-center text-[var(--text-tertiary)]">
+                Processing via {cardProcessor === 'square' ? 'Square' : 'Stripe'}
+              </p>
+            )}
 
             {/* Complete Sale CTA */}
             {selectedMethod && (
