@@ -5,7 +5,7 @@
 //   1. My Business — name, type, phone, website, logo, theme
 //   2. Payments — Square/Stripe connections, fee handling
 //   3. Plan & Billing — current plan, trial, upgrade, comparison
-//   4. Tax & Receipts — tax profile CRUD
+//   4. Tax — tax profile CRUD
 //   5. Waiver — waiver text editor with confirmation
 //   6. Team — members, invites, roles
 // ============================================================================
@@ -72,7 +72,6 @@ const PLAN_FEATURES: Record<string, string[]> = {
     'Unlimited Sunny AI questions',
     'Business insights & analytics',
     'Full P&L reports',
-    'CRM & client management',
     'Up to 3 team members',
   ],
   business: [
@@ -1262,7 +1261,7 @@ function SettingsPage() {
             <div className="bg-warning-50 border border-warning-200 rounded-2xl p-5">
               <h3 className="text-base font-semibold text-warning-600">You&apos;re on the Starter plan</h3>
               <p className="text-sm text-warning-600 mt-1">
-                Upgrade to Pro or Business to unlock lower fees, unlimited AI, reports, CRM, and more.
+                Upgrade to Pro or Business to unlock lower fees, unlimited AI, reports, and more.
               </p>
             </div>
           )}
@@ -1381,8 +1380,8 @@ function SettingsPage() {
                   <tr>
                     <td className="py-2.5 pr-4 text-[var(--text-secondary)]">CRM</td>
                     <td className="py-2.5 px-3 text-center text-[var(--text-tertiary)]">—</td>
-                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
-                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">Add-on</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">Add-on</td>
                   </tr>
                   <tr>
                     <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Team members</td>
@@ -1404,11 +1403,11 @@ function SettingsPage() {
       </AccordionSection>
 
       {/* ================================================================ */}
-      {/* Section 4: Tax & Receipts                                        */}
+      {/* Section 4: Tax                                        */}
       {/* ================================================================ */}
       <AccordionSection
         icon={IconTax}
-        title="Tax & Receipts"
+        title="Tax"
         summary={taxSummary}
         isOpen={openSection === 'tax'}
         onToggle={() => toggleSection('tax')}

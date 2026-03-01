@@ -105,10 +105,10 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--surface-base)]">
       {/* Tablet sidebar: md–lg */}
-      <TabletSidebar onSunnyOpen={openSunny} />
+      <TabletSidebar />
 
       {/* Desktop sidebar: lg+ */}
-      <DesktopSidebar onSunnyOpen={openSunny} />
+      <DesktopSidebar />
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
@@ -117,6 +117,11 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
 
         {/* Trial banner */}
         <TrialBanner />
+
+        {/* Desktop/Tablet header bar — Ask Sunny pill (md+) */}
+        <div className="hidden md:flex items-center justify-end px-4 lg:px-8 py-2 shrink-0">
+          <SunnyPill onClick={openSunny} />
+        </div>
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
@@ -198,13 +203,13 @@ function useIsActive(href: string) {
 // SunnyPill — shared pill button
 // ============================================================================
 
-function SunnyPill({ onClick, collapsed }: { onClick: () => void; collapsed?: boolean }) {
+function SunnyPill({ onClick, collapsed, label }: { onClick: () => void; collapsed?: boolean; label?: string }) {
   if (collapsed) {
     return (
       <button
         onClick={onClick}
         className="w-10 h-10 rounded-full bg-[var(--accent-50)] border border-[var(--accent-200)] text-[var(--accent-700)] flex items-center justify-center hover:bg-[var(--accent-100)] transition-colors"
-        title="Sunny"
+        title="Ask Sunny"
         aria-label="Open Sunny AI"
       >
         <SparkleIcon className="w-4 h-4" />
@@ -219,7 +224,7 @@ function SunnyPill({ onClick, collapsed }: { onClick: () => void; collapsed?: bo
       aria-label="Open Sunny AI"
     >
       <SparkleIcon className="w-4 h-4" />
-      <span>Sunny</span>
+      <span>{label || 'Ask Sunny'}</span>
     </button>
   );
 }
@@ -426,7 +431,7 @@ function MoreSheet({ isOpen, onClose, onSunnyOpen }: { isOpen: boolean; onClose:
 // TabletSidebar (md to lg)
 // ============================================================================
 
-function TabletSidebar({ onSunnyOpen }: { onSunnyOpen: () => void }) {
+function TabletSidebar() {
   const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
   const { tenant, role } = useTenant();
@@ -480,11 +485,6 @@ function TabletSidebar({ onSunnyOpen }: { onSunnyOpen: () => void }) {
 
       {/* Footer */}
       <div className={cn('border-t border-border-default py-3 space-y-1', expanded ? 'px-3' : 'px-2')}>
-        {/* Sunny pill */}
-        <div className={cn('flex', expanded ? 'justify-start' : 'justify-center')}>
-          <SunnyPill onClick={onSunnyOpen} collapsed={!expanded} />
-        </div>
-
         {/* Platform Admin */}
         {isPlatformAdmin && (
           <Link
@@ -521,7 +521,7 @@ function TabletSidebar({ onSunnyOpen }: { onSunnyOpen: () => void }) {
 // DesktopSidebar (lg+)
 // ============================================================================
 
-function DesktopSidebar({ onSunnyOpen }: { onSunnyOpen: () => void }) {
+function DesktopSidebar() {
   const pathname = usePathname();
   const { tenant, role } = useTenant();
   const isPlatformAdmin = useIsPlatformAdmin();
@@ -567,11 +567,6 @@ function DesktopSidebar({ onSunnyOpen }: { onSunnyOpen: () => void }) {
 
       {/* Footer */}
       <div className="px-3 py-4 border-t border-border-default space-y-1">
-        {/* Sunny pill */}
-        <div className="px-1 mb-2">
-          <SunnyPill onClick={onSunnyOpen} />
-        </div>
-
         {/* Platform Admin */}
         {isPlatformAdmin && (
           <Link
