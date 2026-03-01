@@ -300,16 +300,19 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
             : m
         )
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('[MentorChat] Error:', error);
+      // Show the actual error instead of a generic message
+      let errorMessage: string;
+      if (error?.message && error.message !== 'No reader' && error.message !== 'Failed to fetch') {
+        errorMessage = `Something went wrong: ${error.message}`;
+      } else {
+        errorMessage = "Couldn't reach Sunny right now — check your internet connection and try again. If this keeps happening, contact Sunstone support at 385-999-5240.";
+      }
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantMsg.id
-            ? {
-                ...m,
-                content: "I'm having trouble connecting right now. Please try again in a moment, or reach out to Sunstone support at 385-999-5240.",
-                isStreaming: false,
-              }
+            ? { ...m, content: errorMessage, isStreaming: false }
             : m
         )
       );

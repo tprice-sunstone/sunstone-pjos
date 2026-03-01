@@ -185,7 +185,14 @@ export default function AdminAIChat({ isOpen, onClose }: { isOpen: boolean; onCl
           body: JSON.stringify({ messages: conversationHistory }),
         });
 
-        if (!response.ok) throw new Error('Failed to get response');
+        if (!response.ok) {
+          let errorDetail = `Status ${response.status}`;
+          try {
+            const errBody = await response.json();
+            errorDetail = errBody.error || errorDetail;
+          } catch { /* ignore */ }
+          throw new Error(errorDetail);
+        }
         const reader = response.body?.getReader();
         if (!reader) throw new Error('No stream');
 
@@ -220,12 +227,15 @@ export default function AdminAIChat({ isOpen, onClose }: { isOpen: boolean; onCl
             }
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Admin AI chat error:', err);
+        const errorMessage = err?.message && err.message !== 'Failed to fetch'
+          ? `Something went wrong: ${err.message}`
+          : "Couldn't reach Atlas right now — check your connection and try again.";
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMsg.id
-              ? { ...m, content: 'Something went wrong connecting to Atlas. Please try again.' }
+              ? { ...m, content: errorMessage }
               : m
           )
         );

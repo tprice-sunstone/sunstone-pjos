@@ -174,7 +174,6 @@ export const SUNNY_TOOL_DEFINITIONS = [
         start_time: { type: 'string', description: 'ISO 8601 start time' },
         end_time: { type: 'string', description: 'ISO 8601 end time (optional)' },
         location: { type: 'string', description: 'Event location (optional)' },
-        max_capacity: { type: 'number', description: 'Maximum capacity (optional)' },
         notes: { type: 'string', description: 'Event notes (optional)' },
       },
       required: ['name', 'start_time'],
@@ -290,10 +289,9 @@ export const SUNNY_TOOL_DEFINITIONS = [
         updates: {
           type: 'object',
           properties: {
-            cost_per_inch: { type: 'number', description: 'New cost per inch' },
-            sell_price: { type: 'number', description: 'New sell price (for per_product pricing)' },
-            sell_price_per_inch: { type: 'number', description: 'New sell price per inch (for per_inch pricing)' },
-            current_length_inches: { type: 'number', description: 'Set total inches (replaces, does not add)' },
+            cost_per_inch: { type: 'number', description: 'New cost per inch (mapped to cost_per_unit)' },
+            sell_price: { type: 'number', description: 'New sell price' },
+            current_length_inches: { type: 'number', description: 'Set total inches (replaces, does not add — mapped to quantity_on_hand)' },
             material: { type: 'string', description: 'Update material type' },
             is_active: { type: 'boolean', description: 'Activate or deactivate' },
           },
@@ -341,7 +339,6 @@ export const SUNNY_TOOL_DEFINITIONS = [
             location: { type: 'string' },
             notes: { type: 'string' },
             booth_fee: { type: 'number' },
-            max_capacity: { type: 'number' },
           },
         },
       },
@@ -671,6 +668,7 @@ export async function executeSunnyTool(
             .from('sales')
             .select('id, total, created_at, status')
             .eq('tenant_id', tenantId)
+            .eq('client_id', input.client_id)
             .eq('status', 'completed')
             .limit(20)
             .order('created_at', { ascending: false }),
@@ -1020,10 +1018,8 @@ export async function executeSunnyTool(
             start_time: input.start_time,
             end_time: input.end_time || null,
             location: input.location || null,
-            max_capacity: input.max_capacity || null,
             notes: input.notes || null,
             is_active: true,
-            created_by: userId,
           })
           .select('id, name, start_time, location')
           .single();
@@ -1037,7 +1033,7 @@ export async function executeSunnyTool(
         const [eventRes, salesRes, queueRes] = await Promise.all([
           serviceClient
             .from('events')
-            .select('id, name, location, start_time, end_time, booth_fee, max_capacity')
+            .select('id, name, location, start_time, end_time, booth_fee')
             .eq('id', input.event_id)
             .eq('tenant_id', tenantId)
             .single(),
@@ -1084,7 +1080,7 @@ export async function executeSunnyTool(
         const limit = input.limit || 10;
         let query = serviceClient
           .from('events')
-          .select('id, name, location, start_time, end_time, booth_fee, is_active, max_capacity')
+          .select('id, name, location, start_time, end_time, booth_fee, is_active')
           .eq('tenant_id', tenantId)
           .order('start_time', { ascending: false })
           .limit(limit);
@@ -1362,7 +1358,7 @@ export async function executeSunnyTool(
         // Find item by name
         const { data: matches, error: searchErr } = await serviceClient
           .from('inventory_items')
-          .select('id, name, type, material, quantity_on_hand, cost_per_unit, sell_price, sell_price_per_inch, unit, is_active')
+          .select('id, name, type, material, quantity_on_hand, cost_per_unit, sell_price, unit, is_active')
           .eq('tenant_id', tenantId)
           .ilike('name', `%${input.search_name}%`);
 
@@ -1383,7 +1379,6 @@ export async function executeSunnyTool(
 
         if (input.updates.cost_per_inch !== undefined) dbUpdates.cost_per_unit = input.updates.cost_per_inch;
         if (input.updates.sell_price !== undefined) dbUpdates.sell_price = input.updates.sell_price;
-        if (input.updates.sell_price_per_inch !== undefined) dbUpdates.sell_price_per_inch = input.updates.sell_price_per_inch;
         if (input.updates.current_length_inches !== undefined) dbUpdates.quantity_on_hand = input.updates.current_length_inches;
         if (input.updates.material !== undefined) dbUpdates.material = input.updates.material;
         if (input.updates.is_active !== undefined) dbUpdates.is_active = input.updates.is_active;
@@ -1497,7 +1492,6 @@ export async function executeSunnyTool(
         if (input.updates.location) dbUpdates.location = input.updates.location;
         if (input.updates.notes) dbUpdates.notes = input.updates.notes;
         if (input.updates.booth_fee !== undefined) dbUpdates.booth_fee = input.updates.booth_fee;
-        if (input.updates.max_capacity !== undefined) dbUpdates.max_capacity = input.updates.max_capacity;
 
         if (Object.keys(dbUpdates).length === 0) return { result: { error: 'No valid updates provided' }, isError: true };
 
@@ -1669,7 +1663,6 @@ export async function executeSunnyTool(
             name: input.name,
             trigger_type: input.trigger_type,
             is_active: true,
-            created_by: userId,
           })
           .select('id, name')
           .single();
