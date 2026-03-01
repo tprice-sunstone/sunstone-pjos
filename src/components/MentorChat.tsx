@@ -70,7 +70,7 @@ function renderMarkdown(text: string): string {
   html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<li class="ml-4 list-decimal text-sm leading-relaxed">$2</li>');
   html = html.replace(/^[-•]\s+(.+)$/gm, '<li class="ml-4 list-disc text-sm leading-relaxed">$1</li>');
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-accent-600 underline hover:text-accent-700">$1</a>');
+    '<a href="$2" target="_blank" rel="noopener noreferrer" class="underline" style="color:#F6C654;">$1</a>');
   html = html.replace(/\n\n/g, '</p><p class="text-sm leading-relaxed mb-2">');
   html = html.replace(/\n/g, '<br>');
   if (!html.startsWith('<')) {
@@ -490,8 +490,9 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             'rounded-2xl px-3.5 py-2.5 text-sm',
             isUser
               ? 'bg-accent-500 text-white rounded-br-md'
-              : 'bg-surface-raised text-text-primary rounded-bl-md border border-border-default'
+              : 'bg-surface-raised rounded-bl-md border border-border-default'
           )}
+          style={!isUser ? { color: '#F5F5F5' } : undefined}
         >
           {isUser ? (
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
@@ -542,7 +543,7 @@ function ToolStatusIndicator({ status }: { status: string }) {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent-500" />
           </span>
-          <span className="text-xs text-text-secondary">{status}</span>
+          <span className="text-xs" style={{ color: '#E0E0E0' }}>{status}</span>
         </div>
       </div>
     </div>
