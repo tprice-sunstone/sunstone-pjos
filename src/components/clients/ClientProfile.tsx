@@ -11,6 +11,7 @@ import { downloadWaiverPDF } from '@/lib/generate-waiver-pdf';
 import { getThemeById } from '@/lib/themes';
 import type { Client, ClientTag, Waiver, Sale, SaleItem } from '@/types';
 import type { WaiverPDFData } from '@/lib/generate-waiver-pdf';
+import ComposeModal from './ComposeModal';
 
 interface TagWithCount extends ClientTag {
   usage_count: number;
@@ -43,6 +44,7 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [showWaiverModal, setShowWaiverModal] = useState(false);
+  const [composeChannel, setComposeChannel] = useState<'sms' | 'email' | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!tenant) return;
@@ -205,7 +207,7 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
                   icon: MessageSquareIcon,
                   onClick: () => {
                     if (client.phone) {
-                      window.open(`sms:${client.phone}`, '_blank');
+                      setComposeChannel('sms');
                     } else {
                       toast.error('No phone number on file');
                     }
@@ -216,7 +218,7 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
                   icon: MailIcon,
                   onClick: () => {
                     if (client.email) {
-                      window.open(`mailto:${client.email}`, '_blank');
+                      setComposeChannel('email');
                     } else {
                       toast.error('No email on file');
                     }
@@ -296,6 +298,7 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
                 </div>
                 <p className="text-[11px] text-[var(--text-secondary)] mb-2">{suggestion}</p>
                 <button
+                  onClick={() => setComposeChannel(client.phone ? 'sms' : client.email ? 'email' : null)}
                   className="text-[10px] font-semibold px-3 py-1 rounded-md text-white"
                   style={{ backgroundColor: 'var(--accent-primary)' }}
                 >
@@ -412,13 +415,10 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
                     <p className="text-xs text-[var(--text-tertiary)]">No signed waiver on file.</p>
                     <button
                       onClick={() => {
-                        const waiverUrl = `${window.location.origin}/waiver?tenant=${tenantId}`;
                         if (client.phone) {
-                          window.open(`sms:${client.phone}?body=${encodeURIComponent(`Please sign our waiver: ${waiverUrl}`)}`, '_blank');
-                          toast.success('Opening SMS with waiver link');
+                          setComposeChannel('sms');
                         } else if (client.email) {
-                          window.open(`mailto:${client.email}?subject=${encodeURIComponent('Please sign our waiver')}&body=${encodeURIComponent(`Please sign our waiver: ${waiverUrl}`)}`, '_blank');
-                          toast.success('Opening email with waiver link');
+                          setComposeChannel('email');
                         } else {
                           toast.error('No phone or email on file');
                         }
@@ -448,6 +448,19 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
           <div className="flex items-center justify-center h-full text-[var(--text-tertiary)]">Client not found</div>
         )}
       </div>
+
+      {/* Compose Modal */}
+      {composeChannel && client && tenant && (
+        <ComposeModal
+          channel={composeChannel}
+          clientId={clientId}
+          clientName={`${client.first_name || ''} ${client.last_name || ''}`.trim()}
+          tenantId={tenantId}
+          tenantName={tenant.name}
+          onClose={() => setComposeChannel(null)}
+          onSent={() => setComposeChannel(null)}
+        />
+      )}
     </>
   );
 }

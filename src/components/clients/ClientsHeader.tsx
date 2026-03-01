@@ -40,7 +40,7 @@ export default function ClientsHeader({
               borderColor: 'var(--accent-primary)',
             }}
           >
-            Broadcast
+            CRM
           </button>
         )}
         {canEdit && (

@@ -1,6 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
 
+// Default workflows seeded for new tenants
+const DEFAULT_WORKFLOWS = [
+  {
+    name: 'Event Follow-Up Sequence',
+    trigger_type: 'event_purchase',
+    is_active: true,
+    steps: [
+      { step_order: 1, delay_hours: 0, channel: 'sms', template_name: 'Welcome New Client', description: 'Immediate thank-you after purchase' },
+      { step_order: 2, delay_hours: 24, channel: 'sms', template_name: 'Aftercare', description: 'Care instructions next day' },
+      { step_order: 3, delay_hours: 72, channel: 'sms', template_name: 'Social Media Request', description: 'Ask for social share after 3 days' },
+      { step_order: 4, delay_hours: 168, channel: 'sms', template_name: 'Review Request + Party Invite', description: 'Review + party invite after 1 week' },
+    ],
+  },
+  {
+    name: 'Private Party Follow-Up',
+    trigger_type: 'private_party_purchase',
+    is_active: true,
+    steps: [
+      { step_order: 1, delay_hours: 0, channel: 'sms', template_name: 'Welcome New Client', description: 'Thank host and guests' },
+      { step_order: 2, delay_hours: 24, channel: 'sms', template_name: 'Aftercare', description: 'Care instructions next day' },
+      { step_order: 3, delay_hours: 72, channel: 'sms', template_name: 'Social Media Request', description: 'Ask for social share after 3 days' },
+      { step_order: 4, delay_hours: 168, channel: 'sms', template_name: 'Review Request + Party Invite', description: 'Review + referral ask after 1 week' },
+    ],
+  },
+];
+
+async function seedDefaultWorkflows(supabase: any, tenantId: string) {
+  for (const wf of DEFAULT_WORKFLOWS) {
+    const { data: workflow } = await supabase
+      .from('workflow_templates')
+      .insert({ tenant_id: tenantId, name: wf.name, trigger_type: wf.trigger_type, is_active: wf.is_active })
+      .select('id')
+      .single();
+
+    if (workflow) {
+      await supabase.from('workflow_steps').insert(
+        wf.steps.map((s) => ({ workflow_id: workflow.id, ...s }))
+      );
+    }
+  }
+}
+
 // GET: List workflow templates with step counts
 export async function GET(request: NextRequest) {
   const supabase = await createServerSupabase();
@@ -9,6 +51,17 @@ export async function GET(request: NextRequest) {
 
   const tenantId = request.nextUrl.searchParams.get('tenantId');
   if (!tenantId) return NextResponse.json({ error: 'tenantId required' }, { status: 400 });
+
+  // Seed defaults if none exist
+  const { data: existing } = await supabase
+    .from('workflow_templates')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .limit(1);
+
+  if (!existing || existing.length === 0) {
+    await seedDefaultWorkflows(supabase, tenantId);
+  }
 
   const { data: workflows, error } = await supabase
     .from('workflow_templates')
