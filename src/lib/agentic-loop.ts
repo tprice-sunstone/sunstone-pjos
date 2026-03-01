@@ -2,7 +2,7 @@
 // Agentic Loop — src/lib/agentic-loop.ts
 // ============================================================================
 // Shared utility for Sunny + Atlas agentic tool execution.
-// Calls Anthropic with stream: false, executes tools in a loop (max 5),
+// Calls Anthropic with stream: false, executes tools in a loop (max 8),
 // then returns the final text + tool status events for simulated SSE.
 // ============================================================================
 
@@ -40,9 +40,21 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
 
   while (iterations < maxIterations) {
     iterations++;
+    console.log(`[AgenticLoop] Iteration ${iterations}/${maxIterations}, messages: ${conversationMessages.length}`);
 
     let response;
     try {
+      const requestBody = {
+        model,
+        max_tokens: maxTokens,
+        stream: false,
+        system: systemPrompt,
+        messages: conversationMessages,
+        tools,
+      };
+
+      console.log(`[AgenticLoop] Calling Anthropic API (model: ${model}, messages: ${conversationMessages.length}, tools: ${tools.length})`);
+
       response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -50,35 +62,36 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
           'x-api-key': process.env.ANTHROPIC_API_KEY!,
           'anthropic-version': '2023-06-01',
         },
-        body: JSON.stringify({
-          model,
-          max_tokens: maxTokens,
-          stream: false,
-          system: systemPrompt,
-          messages: conversationMessages,
-          tools,
-        }),
+        body: JSON.stringify(requestBody),
       });
     } catch (fetchErr: any) {
-      console.error('[AgenticLoop] Fetch error:', fetchErr);
-      throw new Error('AI service error: network failure');
+      console.error('[AgenticLoop] Fetch error:', fetchErr?.message, fetchErr?.stack);
+      throw new Error(`AI service error: network failure — ${fetchErr?.message || 'unknown'}`);
     }
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error('[AgenticLoop] Anthropic API error:', response.status, errText);
-      throw new Error(`AI service error: ${response.status}`);
+      console.error(`[AgenticLoop] Anthropic API error (iteration ${iterations}):`, response.status, errText);
+      throw new Error(`AI service error: ${response.status} — ${errText.slice(0, 200)}`);
     }
 
     let result;
     try {
       result = await response.json();
-    } catch (parseErr) {
-      console.error('[AgenticLoop] JSON parse error:', parseErr);
-      throw new Error('AI service error: invalid response');
+    } catch (parseErr: any) {
+      console.error('[AgenticLoop] JSON parse error:', parseErr?.message);
+      throw new Error('AI service error: invalid JSON response');
     }
 
+    console.log(`[AgenticLoop] Response: stop_reason=${result.stop_reason}, content_blocks=${result.content?.length || 0}`);
+
     if (result.stop_reason === 'tool_use') {
+      // Log tool_use blocks
+      const toolUseBlocks = (result.content || []).filter((b: any) => b.type === 'tool_use');
+      for (const tu of toolUseBlocks) {
+        console.log(`[AgenticLoop] Tool call: ${tu.name} (id: ${tu.id})`, JSON.stringify(tu.input).slice(0, 500));
+      }
+
       // Append assistant message with full content (text + tool_use blocks)
       conversationMessages.push({ role: 'assistant', content: result.content });
 
@@ -90,15 +103,27 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
           toolStatusEvents.push(statusLabel);
 
           try {
+            console.log(`[AgenticLoop] Executing tool: ${block.name}`);
             const toolOutput = await executeTool(block.name, block.input);
-            toolResults.push({
+            console.log(`[AgenticLoop] Tool "${block.name}" succeeded:`, JSON.stringify(toolOutput.result).slice(0, 300));
+
+            const toolResult: any = {
               type: 'tool_result',
               tool_use_id: block.id,
               content: JSON.stringify(toolOutput.result),
-              is_error: toolOutput.isError || false,
-            });
+            };
+            // Only include is_error when true (omit for successful results)
+            if (toolOutput.isError) {
+              toolResult.is_error = true;
+            }
+            toolResults.push(toolResult);
           } catch (err: any) {
-            console.error(`[AgenticLoop] Tool "${block.name}" threw:`, err);
+            console.error(`[AgenticLoop] Tool "${block.name}" threw:`, {
+              toolName: block.name,
+              toolInput: JSON.stringify(block.input).slice(0, 500),
+              error: err?.message,
+              stack: err?.stack,
+            });
             toolResults.push({
               type: 'tool_result',
               tool_use_id: block.id,
@@ -111,6 +136,8 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
         }
       }
 
+      console.log(`[AgenticLoop] Sending ${toolResults.length} tool result(s) back to API`);
+
       // Append tool results as a user message
       conversationMessages.push({ role: 'user', content: toolResults });
       continue;
@@ -120,10 +147,12 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
     const textBlocks = (result.content || []).filter((b: any) => b.type === 'text');
     const fullResponseText = textBlocks.map((b: any) => b.text).join('');
 
+    console.log(`[AgenticLoop] Done after ${iterations} iteration(s), response length: ${fullResponseText.length}`);
     return { fullResponseText, toolStatusEvents };
   }
 
   // Safety cap reached — return whatever we have
+  console.warn(`[AgenticLoop] Safety cap reached after ${maxIterations} iterations`);
   return {
     fullResponseText: "I've been working on your request but hit my processing limit. Could you try rephrasing or breaking it into smaller steps?",
     toolStatusEvents,

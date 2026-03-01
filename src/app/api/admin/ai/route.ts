@@ -2,9 +2,12 @@
 // Admin AI Route — src/app/api/admin/ai/route.ts
 // ============================================================================
 // POST endpoint for platform admin AI assistant ("Atlas").
-// Fetches comprehensive platform data, then calls Anthropic with streaming
-// to provide insights, analytics, and custom reports.
+// Fetches comprehensive platform data, then calls Anthropic with agentic
+// tool execution to provide insights, analytics, and actions.
 // ============================================================================
+
+// Vercel function timeout — agentic loop needs 2+ Anthropic API calls + tool execution
+export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPlatformAdmin, AdminAuthError } from '@/lib/admin/verify-platform-admin';
@@ -525,6 +528,7 @@ After a tool executes, summarize the result naturally. If a tool errors, explain
 
     let agenticResult;
     try {
+      console.log(`[Atlas] Starting agentic loop, ${conversationMessages.length} messages`);
       agenticResult = await runAgenticLoop({
         model: 'claude-sonnet-4-20250514',
         maxTokens: 4096,
@@ -535,9 +539,13 @@ After a tool executes, summarize the result naturally. If a tool errors, explain
         maxIterations: 5,
         getToolStatusLabel: getAtlasToolStatusLabel,
       });
-    } catch (err) {
-      console.error('Admin AI agentic loop error:', err);
-      return NextResponse.json({ error: 'Failed to get AI response' }, { status: 502 });
+      console.log(`[Atlas] Agentic loop completed: ${agenticResult.toolStatusEvents.length} tool(s) used`);
+    } catch (err: any) {
+      console.error('[Atlas] Agentic loop error:', err?.message, err?.stack);
+      return NextResponse.json(
+        { error: `AI service error: ${err?.message || 'unknown'}` },
+        { status: 502 }
+      );
     }
 
     const { fullResponseText, toolStatusEvents } = agenticResult;

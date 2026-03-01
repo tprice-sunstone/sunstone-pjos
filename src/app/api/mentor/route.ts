@@ -1,5 +1,8 @@
 // src/app/api/mentor/route.ts
-// POST endpoint for Sunny mentor chat with streaming responses
+// POST endpoint for Sunny mentor chat with agentic tool execution
+
+// Vercel function timeout — agentic loop needs 2+ Anthropic API calls + tool execution
+export const maxDuration = 60;
 // ============================================================================
 // V4: Tenant data enrichment + anti-hallucination hardening
 // - Queries actual inventory items (chain names, quantities, prices)
@@ -905,6 +908,7 @@ After a tool executes, summarize the result naturally. If a tool errors, explain
 
     let agenticResult;
     try {
+      console.log(`[Mentor] Starting agentic loop for tenant ${tenantId}, ${messages.length} messages`);
       agenticResult = await runAgenticLoop({
         model: 'claude-sonnet-4-20250514',
         maxTokens: 1024,
@@ -915,9 +919,13 @@ After a tool executes, summarize the result naturally. If a tool errors, explain
         maxIterations: 8,
         getToolStatusLabel: getSunnyToolStatusLabel,
       });
-    } catch (err) {
-      console.error('[Mentor] Agentic loop error:', err);
-      return NextResponse.json({ error: 'AI service error' }, { status: 502 });
+      console.log(`[Mentor] Agentic loop completed: ${agenticResult.toolStatusEvents.length} tool(s) used, response length: ${agenticResult.fullResponseText.length}`);
+    } catch (err: any) {
+      console.error('[Mentor] Agentic loop error:', err?.message, err?.stack);
+      return NextResponse.json(
+        { error: `AI service error: ${err?.message || 'unknown'}` },
+        { status: 502 }
+      );
     }
 
     const { fullResponseText, toolStatusEvents } = agenticResult;

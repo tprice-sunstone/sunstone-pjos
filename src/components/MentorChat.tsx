@@ -195,7 +195,15 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
         return;
       }
 
-      if (!response.ok) throw new Error('Failed to get response');
+      if (!response.ok) {
+        let errorDetail = `Status ${response.status}`;
+        try {
+          const errBody = await response.json();
+          errorDetail = errBody.error || errorDetail;
+        } catch { /* ignore */ }
+        console.error('[MentorChat] API error:', errorDetail);
+        throw new Error(errorDetail);
+      }
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No reader');
