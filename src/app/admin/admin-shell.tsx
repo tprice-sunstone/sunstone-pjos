@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -267,6 +267,29 @@ function DesktopSidebar({ userEmail }: { userEmail: string }) {
 // ============================================================================
 
 function MobileHeader({ onAtlasOpen }: { onAtlasOpen: () => void }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const supabase = createClient();
+
+  // Close on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [menuOpen]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push('/auth/login');
+    router.refresh();
+  };
+
   return (
     <div
       className="lg:hidden flex items-center justify-between px-4 h-14 shrink-0"
@@ -281,7 +304,48 @@ function MobileHeader({ onAtlasOpen }: { onAtlasOpen: () => void }) {
         </div>
         <div className="text-sm font-bold" style={{ color: '#E8E4DF' }}>Sunstone Admin</div>
       </div>
-      <AtlasPill onClick={onAtlasOpen} compact />
+      <div className="flex items-center gap-2">
+        <AtlasPill onClick={onAtlasOpen} compact />
+        {/* Menu button */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+            style={{ backgroundColor: menuOpen ? 'rgba(255, 122, 0, 0.12)' : 'transparent' }}
+            aria-label="Menu"
+          >
+            <MobileMenuIcon className="w-5 h-5" style={{ color: '#FF7A00' }} />
+          </button>
+          {menuOpen && (
+            <div
+              className="absolute right-0 top-full mt-2 w-52 py-1 z-50"
+              style={{
+                backgroundColor: '#1F1F28',
+                border: '1px solid #2A2A35',
+                borderRadius: 12,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              }}
+            >
+              <a
+                href="/dashboard"
+                className="flex items-center gap-3 px-4 transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+                style={{ color: '#E8E4DF', height: 44 }}
+              >
+                <BackIcon className="w-4 h-4" style={{ color: '#FF7A00' }} />
+                <span className="text-sm">Tenant Dashboard</span>
+              </a>
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center gap-3 px-4 transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+                style={{ color: '#E8E4DF', height: 44 }}
+              >
+                <LogoutIcon className="w-4 h-4" style={{ color: '#FF7A00' }} />
+                <span className="text-sm">Sign Out</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -419,17 +483,17 @@ function SpotlightIcon({ className, style }: { className?: string; style?: React
   );
 }
 
-function BackIcon({ className }: { className?: string }) {
+function BackIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
     </svg>
   );
 }
 
-function LogoutIcon({ className }: { className?: string }) {
+function LogoutIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
     </svg>
   );
@@ -439,6 +503,14 @@ function AtlasIconSmall({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 2v7.5c0 .828.672 1.5 1.5 1.5h1.5M2.5 2H1.5m1 0h11m0 0h1m-1 0v7.5c0 .828-.672 1.5-1.5 1.5h-1.5m-5 0h5m-5 0l-.667 2m5.667-2l.667 2M6 7.5v1M8 6v2.5m2-4v4" />
+    </svg>
+  );
+}
+
+function MobileMenuIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
     </svg>
   );
 }

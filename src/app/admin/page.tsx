@@ -29,14 +29,6 @@ interface Insight {
   body: string;
 }
 
-interface Suggestion {
-  type: 'past_due' | 'trial_expiring' | 'inactive' | 'new_signup';
-  tenantId: string;
-  tenantName: string;
-  message: string;
-  urgency: number;
-}
-
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -70,9 +62,6 @@ export default function AdminOverviewPage() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [insightsLoading, setInsightsLoading] = useState(true);
   const [insightsError, setInsightsError] = useState(false);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [suggestionsHidden, setSuggestionsHidden] = useState(false);
-
   // Load stats (existing pattern)
   useEffect(() => {
     loadStats();
@@ -82,25 +71,6 @@ export default function AdminOverviewPage() {
   useEffect(() => {
     loadInsights();
   }, []);
-
-  // Load suggestions (needs attention)
-  useEffect(() => {
-    loadSuggestions();
-  }, []);
-
-  async function loadSuggestions() {
-    try {
-      const res = await fetch('/api/admin/suggestions');
-      if (res.ok) {
-        const data = await res.json();
-        setSuggestions(data.suggestions || []);
-      } else {
-        console.warn('[Needs Attention] API returned', res.status);
-      }
-    } catch (err) {
-      console.warn('[Needs Attention] Fetch failed:', err);
-    }
-  }
 
   async function loadStats() {
     try {
@@ -184,45 +154,6 @@ export default function AdminOverviewPage() {
           Sunstone PJOS — platform health at a glance
         </p>
       </div>
-
-      {/* ================================================================ */}
-      {/* Needs Attention                                                    */}
-      {/* ================================================================ */}
-      {suggestions.length > 0 && !suggestionsHidden && (
-        <div className="bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-subtle)]">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#FF7A00' }} />
-              <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide">
-                Needs Attention
-              </h3>
-            </div>
-            <button
-              onClick={() => setSuggestionsHidden(true)}
-              className="text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
-            >
-              Hide
-            </button>
-          </div>
-          <div className="divide-y divide-[var(--border-subtle)]">
-            {suggestions.map((s, i) => (
-              <div key={i} className="flex items-center justify-between px-5 py-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <SuggestionTypeIcon type={s.type} />
-                  <span className="text-sm text-[var(--text-primary)] truncate">{s.message}</span>
-                </div>
-                <a
-                  href="/admin/tenants"
-                  className="shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-                  style={{ color: '#FF7A00', backgroundColor: 'rgba(255, 122, 0, 0.12)' }}
-                >
-                  View Tenant
-                </a>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ================================================================ */}
       {/* Stat Cards                                                        */}
@@ -472,40 +403,6 @@ function InsightTypeIcon({ type, className }: { type: string; className?: string
 // ============================================================================
 // Icons (inline SVG)
 // ============================================================================
-
-function SuggestionTypeIcon({ type }: { type: string }) {
-  const colors: Record<string, string> = {
-    past_due: '#D06050',
-    trial_expiring: '#E8B84C',
-    inactive: '#9B9590',
-    new_signup: '#6B8E6B',
-  };
-  const color = colors[type] || '#9B9590';
-  return (
-    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}20` }}>
-      {type === 'past_due' && (
-        <svg className="w-3.5 h-3.5" style={{ color }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-        </svg>
-      )}
-      {type === 'trial_expiring' && (
-        <svg className="w-3.5 h-3.5" style={{ color }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )}
-      {type === 'inactive' && (
-        <svg className="w-3.5 h-3.5" style={{ color }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
-        </svg>
-      )}
-      {type === 'new_signup' && (
-        <svg className="w-3.5 h-3.5" style={{ color }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )}
-    </div>
-  );
-}
 
 function SparkleIcon({ className }: { className?: string }) {
   return (
