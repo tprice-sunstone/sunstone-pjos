@@ -68,6 +68,11 @@ export interface Tenant {
   min_monthly_transactions: number;
   is_suspended: boolean;
   crm_enabled: boolean;
+  // Receipts
+  auto_email_receipt: boolean;
+  auto_sms_receipt: boolean;
+  receipt_footer: string;
+  receipt_tagline: string;
   // Timestamps
   created_at: string;
   updated_at: string;

@@ -6,6 +6,8 @@ interface ReceiptEmailBody {
   tenantName: string;
   tenantAccentColor?: string;
   eventName?: string;
+  tagline?: string;
+  footer?: string;
   saleDate: string;
   items: Array<{
     name: string;
@@ -73,7 +75,8 @@ function buildReceiptHTML(data: ReceiptEmailBody): string {
               <h1 style="margin: 0 0 4px; font-size: 22px; font-weight: 700; color: ${accent};">
                 ${data.tenantName}
               </h1>
-              ${data.eventName ? `<p style="margin: 0; font-size: 14px; color: #6b7280;">${data.eventName}</p>` : ''}
+              ${data.tagline ? `<p style="margin: 4px 0 0; font-size: 13px; color: #6b7280; font-style: italic;">${data.tagline}</p>` : ''}
+              ${data.eventName ? `<p style="margin: 4px 0 0; font-size: 14px; color: #6b7280;">${data.eventName}</p>` : ''}
               <p style="margin: 8px 0 0; font-size: 13px; color: #9ca3af;">${date}</p>
             </td>
           </tr>
@@ -123,9 +126,10 @@ function buildReceiptHTML(data: ReceiptEmailBody): string {
             </td>
           </tr>
 
-          <!-- Thank You -->
+          <!-- Footer & Thank You -->
           <tr>
             <td style="padding: 24px 32px; text-align: center; background-color: #f9fafb; border-top: 1px solid #f3f4f6;">
+              ${data.footer ? `<p style="margin: 0 0 12px; font-size: 13px; color: #6b7280;">${data.footer}</p>` : ''}
               <p style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #111827;">Thank you for your purchase!</p>
               <p style="margin: 0; font-size: 12px; color: #d1d5db;">Powered by Sunstone</p>
             </td>

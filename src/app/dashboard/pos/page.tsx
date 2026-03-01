@@ -178,6 +178,7 @@ export default function StoreModePage() {
     try {
       const res = await fetch('/api/receipts/email', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: receiptEmail, tenantName: tenant.name, tenantAccentColor: tenant.brand_color || undefined,
+          tagline: tenant.receipt_tagline || undefined, footer: tenant.receipt_footer || undefined,
           saleDate: completedSale.saleDate, items: completedSale.items,
           subtotal: completedSale.subtotal, taxAmount: completedSale.taxAmount, taxRate: completedSale.taxRate,
           tipAmount: completedSale.tipAmount, total: completedSale.total, paymentMethod: completedSale.paymentMethod }) });
@@ -195,7 +196,7 @@ export default function StoreModePage() {
       const res = await fetch('/api/receipts/sms', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: receiptPhone.replace(/[^\d+]/g, ''), tenantName: tenant.name,
           total: completedSale.total, itemCount: completedSale.items.reduce((s: number, i: any) => s + i.quantity, 0),
-          paymentMethod: completedSale.paymentMethod }) });
+          paymentMethod: completedSale.paymentMethod, footer: tenant.receipt_footer || undefined }) });
       const data = await res.json();
       if (data.sent) { setSmsSent(true); if (completedSale.saleId) await supabase.from('sales').update({ receipt_sent_at: new Date().toISOString() }).eq('id', completedSale.saleId); }
       else setSmsError(data.error || "Couldn't send text.");
@@ -266,6 +267,54 @@ export default function StoreModePage() {
       setEmailSent(false); setSmsSent(false); setEmailError(''); setSmsError('');
       setQueueRefresh((n) => n + 1);
       toast.success('Sale completed');
+
+      // Fire-and-forget auto-send receipts
+      if (tenant.auto_email_receipt && receiptEmail) {
+        fetch('/api/receipts/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: receiptEmail,
+            tenantName: tenant.name,
+            tenantAccentColor: tenant.brand_color || undefined,
+            tagline: tenant.receipt_tagline || undefined,
+            footer: tenant.receipt_footer || undefined,
+            saleDate: saleData.saleDate,
+            items: saleData.items,
+            subtotal: saleData.subtotal,
+            taxAmount: saleData.taxAmount,
+            taxRate: saleData.taxRate,
+            tipAmount: saleData.tipAmount,
+            total: saleData.total,
+            paymentMethod: saleData.paymentMethod,
+          }),
+        }).then(async (r) => {
+          if (r.ok) {
+            setEmailSent(true);
+            if (sale.id) await supabase.from('sales').update({ receipt_sent_at: new Date().toISOString() }).eq('id', sale.id);
+          }
+        }).catch(() => {});
+      }
+
+      if (tenant.auto_sms_receipt && receiptPhone) {
+        fetch('/api/receipts/sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: receiptPhone.replace(/[^\d+]/g, ''),
+            tenantName: tenant.name,
+            total: saleData.total,
+            itemCount: saleData.items.reduce((s: number, i: any) => s + i.quantity, 0),
+            paymentMethod: saleData.paymentMethod,
+            footer: tenant.receipt_footer || undefined,
+          }),
+        }).then(async (r) => {
+          if (r.ok) {
+            setSmsSent(true);
+            if (sale.id) await supabase.from('sales').update({ receipt_sent_at: new Date().toISOString() }).eq('id', sale.id);
+          }
+        }).catch(() => {});
+      }
 
       // Fire-and-forget auto-tagging
       if (cart.client_id) {

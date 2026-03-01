@@ -343,6 +343,13 @@ function SettingsPage() {
   const [waiverText, setWaiverText] = useState('');
   const [showWaiverConfirm, setShowWaiverConfirm] = useState(false);
 
+  // ── Receipts ──
+  const [autoEmailReceipt, setAutoEmailReceipt] = useState(false);
+  const [autoSmsReceipt, setAutoSmsReceipt] = useState(false);
+  const [receiptFooter, setReceiptFooter] = useState('');
+  const [receiptTagline, setReceiptTagline] = useState('');
+  const [savingReceipts, setSavingReceipts] = useState(false);
+
   // ── Payment ──
   const [paymentTab, setPaymentTab] = useState<PaymentProcessor>('square');
   const [disconnectingSquare, setDisconnectingSquare] = useState(false);
@@ -442,6 +449,10 @@ function SettingsPage() {
     setBusinessWebsite((tenant as any).website || '');
     setFeeHandling(tenant.fee_handling);
     setWaiverText(tenant.waiver_text);
+    setAutoEmailReceipt(tenant.auto_email_receipt ?? false);
+    setAutoSmsReceipt(tenant.auto_sms_receipt ?? false);
+    setReceiptFooter(tenant.receipt_footer ?? '');
+    setReceiptTagline(tenant.receipt_tagline ?? '');
     setLogoUrl((tenant as any).logo_url || null);
     if (tenant.theme_id) {
       setSelectedThemeId(tenant.theme_id);
@@ -737,6 +748,26 @@ function SettingsPage() {
     toast.success('Tax profile removed');
   };
 
+  const saveReceiptSettings = async () => {
+    if (!tenant) return;
+    setSavingReceipts(true);
+    try {
+      const { error } = await supabase.from('tenants').update({
+        auto_email_receipt: autoEmailReceipt,
+        auto_sms_receipt: autoSmsReceipt,
+        receipt_footer: receiptFooter,
+        receipt_tagline: receiptTagline,
+      }).eq('id', tenant.id);
+      if (error) throw error;
+      toast.success('Receipt settings saved');
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save receipt settings');
+    } finally {
+      setSavingReceipts(false);
+    }
+  };
+
   const disconnectSquare = async () => {
     setDisconnectingSquare(true);
     try {
@@ -858,9 +889,18 @@ function SettingsPage() {
         ? `${tier.charAt(0).toUpperCase() + tier.slice(1)} Plan · $${SUBSCRIPTION_PRICES[tier]}/mo`
         : 'Starter · Free';
 
-  const taxSummary = taxProfiles.length > 0
-    ? `${taxProfiles.length} tax profile${taxProfiles.length !== 1 ? 's' : ''}`
-    : 'No tax profiles configured';
+  const receiptAutoStatus = [
+    autoEmailReceipt && 'Email',
+    autoSmsReceipt && 'SMS',
+  ].filter(Boolean);
+  const taxSummary = [
+    taxProfiles.length > 0
+      ? `${taxProfiles.length} tax profile${taxProfiles.length !== 1 ? 's' : ''}`
+      : 'No tax profiles',
+    receiptAutoStatus.length > 0
+      ? `Auto-send: ${receiptAutoStatus.join(' & ')}`
+      : null,
+  ].filter(Boolean).join(' · ');
 
   const waiverSummary = waiverText
     ? waiverText.slice(0, 60) + (waiverText.length > 60 ? '…' : '')
@@ -1403,11 +1443,11 @@ function SettingsPage() {
       </AccordionSection>
 
       {/* ================================================================ */}
-      {/* Section 4: Tax                                        */}
+      {/* Section 4: Tax & Receipts                                     */}
       {/* ================================================================ */}
       <AccordionSection
         icon={IconTax}
-        title="Tax"
+        title="Tax & Receipts"
         summary={taxSummary}
         isOpen={openSection === 'tax'}
         onToggle={() => toggleSection('tax')}
@@ -1456,6 +1496,79 @@ function SettingsPage() {
             <Button variant="secondary" onClick={addTaxProfile}>
               Add
             </Button>
+          </div>
+        </div>
+
+        {/* ── Receipts subsection ── */}
+        <div className="border-t border-[var(--border-subtle)] mt-6 pt-6">
+          <h4 className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text-tertiary)] mb-4">Receipts</h4>
+
+          <div className="space-y-4">
+            {/* Auto-send email toggle */}
+            <label className="flex items-center justify-between cursor-pointer">
+              <span className="text-sm text-[var(--text-primary)]">Auto-send email receipt after sale</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoEmailReceipt}
+                onClick={() => setAutoEmailReceipt(!autoEmailReceipt)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  autoEmailReceipt ? 'bg-[var(--accent-primary)]' : 'bg-[var(--border-strong)]'
+                }`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  autoEmailReceipt ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </label>
+
+            {/* Auto-send SMS toggle */}
+            <label className="flex items-center justify-between cursor-pointer">
+              <span className="text-sm text-[var(--text-primary)]">Auto-send SMS receipt after sale</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoSmsReceipt}
+                onClick={() => setAutoSmsReceipt(!autoSmsReceipt)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  autoSmsReceipt ? 'bg-[var(--accent-primary)]' : 'bg-[var(--border-strong)]'
+                }`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  autoSmsReceipt ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </label>
+
+            {/* Receipt footer */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Receipt footer message</label>
+              <Input
+                placeholder="Thank you for choosing us!"
+                value={receiptFooter}
+                onChange={(e) => setReceiptFooter(e.target.value.slice(0, 200))}
+                maxLength={200}
+              />
+              <p className="text-xs text-[var(--text-tertiary)] mt-1">{receiptFooter.length}/200 characters</p>
+            </div>
+
+            {/* Business tagline */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Business tagline</label>
+              <Input
+                placeholder="Permanent jewelry, permanently yours"
+                value={receiptTagline}
+                onChange={(e) => setReceiptTagline(e.target.value.slice(0, 100))}
+                maxLength={100}
+              />
+              <p className="text-xs text-[var(--text-tertiary)] mt-1">{receiptTagline.length}/100 characters</p>
+            </div>
+
+            <div className="flex justify-end">
+              <Button variant="primary" onClick={saveReceiptSettings} disabled={savingReceipts}>
+                {savingReceipts ? 'Saving...' : 'Save Receipt Settings'}
+              </Button>
+            </div>
           </div>
         </div>
       </AccordionSection>
