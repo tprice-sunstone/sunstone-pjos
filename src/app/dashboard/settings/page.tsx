@@ -35,6 +35,7 @@ import { THEMES, LIGHT_THEMES, DARK_THEMES, getThemeById, DEFAULT_THEME_ID, type
 import type { TaxProfile, FeeHandling, BusinessType, SubscriptionTier } from '@/types';
 import { PLATFORM_FEE_RATES, SUBSCRIPTION_PRICES } from '@/types';
 import { getSubscriptionTier } from '@/lib/subscription';
+import SunnyTutorial from '@/components/SunnyTutorial';
 
 // ============================================================================
 // Constants
@@ -1933,6 +1934,14 @@ function SettingsPage() {
           </Button>
         </ModalFooter>
       </Modal>
+
+      <SunnyTutorial
+        pageKey="settings"
+        tips={[
+          { title: 'Connect payments first', body: 'Link Square or Stripe so you can accept card payments at events. This takes about 5 minutes.' },
+          { title: 'Set up tax profiles', body: 'Create tax profiles for different rates (e.g. state vs county). Assign them to events for automatic tax calculation.' },
+        ]}
+      />
     </div>
   );
 }

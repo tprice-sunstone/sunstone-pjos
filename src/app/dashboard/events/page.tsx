@@ -28,6 +28,7 @@ import {
   Textarea,
 } from '@/components/ui';
 import { QRCode, FullScreenQR } from '@/components/QRCode';
+import SunnyTutorial from '@/components/SunnyTutorial';
 
 export default function EventsPage() {
   const { tenant, can } = useTenant();
@@ -344,6 +345,15 @@ export default function EventsPage() {
           onClose={() => setFullScreenQR(false)}
         />
       )}
+
+      <SunnyTutorial
+        pageKey="events"
+        tips={[
+          { title: 'Create an event first', body: 'Events are how you track where you sell. Create one for each market, pop-up, or party.' },
+          { title: 'QR codes for check-in', body: 'Each event gets a QR code. Print it or display it so customers can sign waivers and join your queue.' },
+          { title: 'Track booth fees', body: 'Add your booth fee to each event so Reports can show your true profit per event.' },
+        ]}
+      />
     </div>
   );
 }

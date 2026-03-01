@@ -25,6 +25,7 @@ import ChainPricingConfig, { type PriceConfigRow } from '@/components/inventory/
 import SupplierDropdown from '@/components/inventory/SupplierDropdown';
 import MaterialDropdown from '@/components/inventory/MaterialDropdown';
 import type { InventoryItem, InventoryType, InventoryUnit, PricingMode, Material } from '@/types';
+import SunnyTutorial from '@/components/SunnyTutorial';
 
 // â”€â”€â”€ Constants â”€â”€â”€
 const ITEM_TYPES: { value: InventoryType; label: string }[] = [
@@ -518,6 +519,15 @@ export default function InventoryPage() {
           }}
         />
       )}
+
+      <SunnyTutorial
+        pageKey="inventory"
+        tips={[
+          { title: 'Track every chain', body: 'Add each chain style with its length in inches. Sunstone auto-deducts when you make a sale.' },
+          { title: 'Set sell prices', body: 'Pricing can be per-product (flat rate) or per-inch. Choose what works for your business.' },
+          { title: 'Reorder alerts', body: 'Set a reorder threshold on each item. When stock drops below it, you\'ll see an alert on your dashboard.' },
+        ]}
+      />
     </div>
   );
 }

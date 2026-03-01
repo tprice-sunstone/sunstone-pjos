@@ -23,6 +23,7 @@ import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
 import { ProductSelector, QueueBadge, CheckoutFlow } from '@/components/pos';
 import type { CompletedSaleData, CheckoutStep } from '@/components/pos';
+import SunnyTutorial from '@/components/SunnyTutorial';
 import type {
   InventoryItem,
   TaxProfile,
@@ -593,6 +594,14 @@ export default function StoreModePage() {
           onClose={() => setShowFullScreenQR(false)}
         />
       )}
+
+      <SunnyTutorial
+        pageKey="pos"
+        tips={[
+          { title: 'Tap to add items', body: 'Select a chain, then pick the product type (bracelet, anklet, etc.). Sunstone calculates the price automatically.' },
+          { title: 'Jump rings are auto-deducted', body: 'When you complete a sale, jump rings are deducted from inventory based on each product type\'s requirements.' },
+        ]}
+      />
     </div>
   );
 }

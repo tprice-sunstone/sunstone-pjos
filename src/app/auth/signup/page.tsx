@@ -7,8 +7,10 @@ import Link from 'next/link';
 import { Button, Input } from '@/components/ui';
 
 export default function SignupPage() {
+  const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [businessName, setBusinessName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -26,7 +28,7 @@ export default function SignupPage() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { business_name: businessName } },
+        options: { data: { business_name: businessName, first_name: firstName.trim() } },
       });
 
       if (authError) throw new Error(authError.message);
@@ -39,6 +41,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           userId: authData.user.id,
           businessName: businessName.trim(),
+          firstName: firstName.trim(),
         }),
       });
 
@@ -52,7 +55,7 @@ export default function SignupPage() {
 
       if (session) {
         // Logged in immediately — go to onboarding
-        router.push('/dashboard/onboarding');
+        router.push('/onboarding');
       } else {
         // Email confirmation required — show success message
         setSuccess(true);
@@ -81,11 +84,11 @@ export default function SignupPage() {
               </svg>
             </div>
             <h2 className="text-xl font-semibold text-text-primary">
-              Check your email
+              Check your inbox
             </h2>
             <p className="text-sm text-text-secondary">
               We sent a confirmation link to <strong>{email}</strong>.
-              Click the link to activate your account, then sign in.
+              Click the link to activate your account and start your free trial.
             </p>
             <div className="pt-2">
               <Link
@@ -109,8 +112,11 @@ export default function SignupPage() {
           <h1 className="font-display text-4xl font-bold text-accent-600 tracking-tight">
             Sunstone
           </h1>
-          <p className="text-text-secondary text-sm mt-2">
-            Create your workspace
+          <p className="text-text-primary text-lg font-semibold mt-3">
+            Start your permanent jewelry business
+          </p>
+          <p className="text-text-secondary text-sm mt-1">
+            60 days free. No credit card required.
           </p>
         </div>
 
@@ -124,13 +130,22 @@ export default function SignupPage() {
             )}
 
             <Input
+              label="Your Name"
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="First name"
+              required
+              autoFocus
+            />
+
+            <Input
               label="Business Name"
               type="text"
               value={businessName}
               onChange={(e) => setBusinessName(e.target.value)}
               placeholder="My Jewelry Studio"
               required
-              autoFocus
             />
 
             <Input
@@ -142,29 +157,44 @@ export default function SignupPage() {
               required
             />
 
-            <Input
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Min 6 characters"
-              helperText="At least 6 characters"
-              minLength={6}
-              required
-            />
+            <div className="relative">
+              <Input
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min 6 characters"
+                helperText="At least 6 characters"
+                minLength={6}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-[34px] text-text-tertiary hover:text-text-secondary transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                )}
+              </button>
+            </div>
 
             <Button
               type="submit"
               variant="primary"
               loading={loading}
-              className="w-full"
+              className="w-full min-h-[48px]"
             >
-              Create Workspace
+              Start Your Free Trial
             </Button>
-
-            <p className="text-xs text-text-tertiary text-center">
-              Start free. No credit card required.
-            </p>
           </form>
         </div>
 

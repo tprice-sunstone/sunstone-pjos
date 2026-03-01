@@ -17,6 +17,7 @@ import {
 } from '@/components/clients';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import type { Client, ClientTag, ClientSegment } from '@/types';
+import SunnyTutorial from '@/components/SunnyTutorial';
 
 interface TagWithCount extends ClientTag {
   usage_count: number;
@@ -269,6 +270,14 @@ export default function ClientsPage() {
           onRefresh={fetchTags}
         />
       )}
+
+      <SunnyTutorial
+        pageKey="clients"
+        tips={[
+          { title: 'Clients are auto-created', body: 'When someone signs a waiver or makes a purchase, they\'re added to your client list automatically.' },
+          { title: 'Use tags to organize', body: 'Tag clients as VIP, birthday club, or anything else. Then use tags to send targeted broadcasts.' },
+        ]}
+      />
     </div>
   );
 }

@@ -89,6 +89,8 @@ function TenantThemeBridge({ children }: { children: React.ReactNode }) {
 
 function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { tenant, isLoading: tenantLoading, isOwner } = useTenant();
   const [isSunnyOpen, setIsSunnyOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
@@ -96,6 +98,13 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
   const closeSunny = useCallback(() => setIsSunnyOpen(false), []);
   const openMore = useCallback(() => setIsMoreOpen(true), []);
   const closeMore = useCallback(() => setIsMoreOpen(false), []);
+
+  // Redirect owners who haven't completed onboarding
+  useEffect(() => {
+    if (!tenantLoading && tenant && isOwner && !tenant.onboarding_completed) {
+      router.replace('/onboarding');
+    }
+  }, [tenantLoading, tenant, isOwner, router]);
 
   // Event mode — render children only, no nav chrome
   if (pathname.includes('/event-mode')) {

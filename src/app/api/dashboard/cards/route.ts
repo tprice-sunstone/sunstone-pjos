@@ -28,7 +28,7 @@ import type { DashboardCard } from '@/types';
 
 // Bump this version whenever card generation logic changes. Cached cards with
 // a different version are treated as stale and regenerated on next load.
-const CARD_CACHE_VERSION = 3;
+const CARD_CACHE_VERSION = 4;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -198,7 +198,7 @@ async function generateCards(
   try {
     const { data } = await db
       .from('tenants')
-      .select('created_at, theme_id, square_merchant_id, stripe_account_id, onboarding_completed, waiver_text, waiver_required')
+      .select('created_at, theme_id, square_merchant_id, stripe_account_id, onboarding_completed, waiver_text, waiver_required, onboarding_data')
       .eq('id', tenantId)
       .single();
     tenant = data;
@@ -233,6 +233,7 @@ async function generateCards(
   let upcomingEventsResult: { data: any[] | null } = { data: [] };
   let allEventsCountResult: { count: number | null } = { count: 0 };
   let inventoryCountResult: { count: number | null } = { count: 0 };
+  let taxProfilesCountResult: { count: number | null } = { count: 0 };
 
   try {
     [
@@ -248,6 +249,7 @@ async function generateCards(
       upcomingEventsResult,
       allEventsCountResult,
       inventoryCountResult,
+      taxProfilesCountResult,
     ] = await Promise.all([
       // Next event — use start of today (UTC) so events happening today aren't missed
       (() => {
@@ -349,6 +351,12 @@ async function generateCards(
         .select('id', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
         .eq('is_active', true),
+
+      // Tax profiles count (for Getting Started check)
+      db
+        .from('tax_profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId),
     ]);
   } catch (err) {
     console.error('Dashboard cards: parallel queries failed:', err);
@@ -356,12 +364,16 @@ async function generateCards(
   }
 
   // ── Getting Started Checklist (tenants < 14 days old) ─────────────────
-  if (tenantAgeDays < 14) {
+  const onboardingData = (tenant?.onboarding_data as Record<string, any>) || {};
+  const isDismissed = onboardingData.getting_started_dismissed === true;
+
+  if (tenantAgeDays < 14 && !isDismissed) {
     try {
       const hasEvents = (allEventsCountResult.count || 0) > 0;
       const hasInventory = (inventoryCountResult.count || 0) > 0;
       const hasPayment = !!(tenant?.square_merchant_id || tenant?.stripe_account_id);
       const hasTheme = tenant?.theme_id && tenant.theme_id !== 'rose-gold';
+      const hasTaxRate = (taxProfilesCountResult.count || 0) > 0;
 
       const steps = [
         {
@@ -382,6 +394,11 @@ async function generateCards(
         {
           label: 'Customize your theme',
           done: hasTheme,
+          href: '/dashboard/settings',
+        },
+        {
+          label: 'Set your tax rate',
+          done: hasTaxRate,
           href: '/dashboard/settings',
         },
       ];

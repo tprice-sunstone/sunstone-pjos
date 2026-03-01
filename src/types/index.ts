@@ -48,6 +48,8 @@ export interface Tenant {
   website: string | null;
   default_tax_rate: number;
   onboarding_completed: boolean;
+  onboarding_step: number;
+  onboarding_data: Record<string, any>;
   // Payment provider connections
   square_merchant_id: string | null;
   square_access_token: string | null;
@@ -589,6 +591,28 @@ export interface JumpRingResolution {
   jump_ring_cost_each: number;
   material_name: string;
   resolved: boolean;
+}
+
+// ============================================================================
+// Tutorial Progress
+// ============================================================================
+
+export type TutorialPageKey =
+  | 'events'
+  | 'inventory'
+  | 'pos'
+  | 'clients'
+  | 'settings'
+  | 'reports';
+
+export interface TutorialProgress {
+  id: string;
+  user_id: string;
+  tenant_id: string;
+  page_key: TutorialPageKey;
+  completed: boolean;
+  completed_at: string | null;
+  created_at: string;
 }
 
 // Jump Ring Confirmation — used in post-sale confirmation UI

@@ -1,8 +1,9 @@
 // ============================================================================
-// Signup Route — src/app/api/auth/signup/route.ts
+// Signup Route — src/app/api/signup/route.ts
 // ============================================================================
 // Creates tenant + tenant_member using service role (bypasses RLS).
-// Updated for Task 28: Sets 60-day Pro trial on new tenants.
+// Sets 60-day Pro trial on new tenants.
+// Stores first_name in auth user metadata.
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -10,7 +11,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, businessName } = await request.json();
+    const { userId, businessName, firstName } = await request.json();
 
     if (!userId || !businessName) {
       return NextResponse.json(
@@ -46,6 +47,10 @@ export async function POST(request: NextRequest) {
         subscription_status: 'trialing',
         trial_ends_at: trialEndsAt.toISOString(),
         platform_fee_percent: 1.5,
+        // Onboarding
+        onboarding_completed: false,
+        onboarding_step: 0,
+        onboarding_data: {},
       })
       .select('id')
       .single();
@@ -71,6 +76,16 @@ export async function POST(request: NextRequest) {
     if (memberError) {
       console.error('Member creation failed:', memberError);
       // Non-fatal — use-tenant hook will auto-repair
+    }
+
+    // 3. Store first_name in auth user metadata
+    if (firstName) {
+      const { error: metaError } = await supabase.auth.admin.updateUserById(userId, {
+        user_metadata: { first_name: firstName },
+      });
+      if (metaError) {
+        console.warn('Failed to set first_name metadata:', metaError.message);
+      }
     }
 
     return NextResponse.json({ tenantId: tenant.id });
