@@ -9,6 +9,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from 'react';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/hooks/use-tenant';
 import { getSubscriptionTier, getSunnyQuestionLimit } from '@/lib/subscription';
@@ -94,6 +95,7 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
   const [limitReached, setLimitReached] = useState(false);
   const [questionsUsed, setQuestionsUsed] = useState(0);
 
+  const pathname = usePathname();
   const { tenant } = useTenant();
   const effectiveTier = tenant ? getSubscriptionTier(tenant) : 'starter';
   const questionLimit = getSunnyQuestionLimit(effectiveTier);
@@ -169,7 +171,7 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
       const response = await fetch('/api/mentor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({ messages: apiMessages, currentPage: pathname }),
       });
 
       // Handle 429 — question limit reached

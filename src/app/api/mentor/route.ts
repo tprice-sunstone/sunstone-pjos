@@ -345,7 +345,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'app-getting-started',
     label: 'Getting Started with PJOS',
     data: PJOS_PLATFORM_GUIDE.gettingStarted,
-    keywords: ['get started', 'getting started', 'set up', 'setup', 'onboard', 'new account', 'just signed up', 'first time', 'how to start', 'where do i begin', 'new to the app', 'create account', 'profile', 'business profile', 'upload logo', 'brand color', 'accent color'],
+    keywords: ['get started', 'getting started', 'set up', 'setup', 'onboard', 'new account', 'just signed up', 'first time', 'how to start', 'where do i begin', 'new to the app', 'create account', 'profile', 'business profile', 'upload logo', 'brand color', 'accent color', 'theme', 'pick a theme', 'change theme', 'skip setup'],
   },
   {
     id: 'app-events',
@@ -432,11 +432,43 @@ const SUBSECTIONS: Subsection[] = [
     keywords: ['app problem', 'app issue', 'not working', 'can\'t connect', 'card reader not working', 'payment not working', 'square not working', 'stripe not working', 'inventory not updating', 'sms not sending', 'text not sending', 'qr not working', 'can\'t invite', 'reports not showing', 'app trouble', 'app broken', 'something wrong', 'app help', 'app error'],
     priority: 1,
   },
+  {
+    id: 'app-onboarding-kits',
+    label: 'Onboarding Kit Auto-Populate & Pricing Setup',
+    data: { starterKits: PJOS_PLATFORM_GUIDE.gettingStarted.starterKits, pricingOptions: PJOS_PLATFORM_GUIDE.gettingStarted.pricingOptions, onboardingFlow: PJOS_PLATFORM_GUIDE.gettingStarted.onboardingFlow },
+    keywords: ['kit', 'momentum kit', 'dream kit', 'legacy kit', 'onboarding', 'kit contents', 'what came in my kit', 'what chains', 'loaded my kit', 'auto populate', 'pricing setup', 'how to price', 'price my jewelry', 'by type', 'by metal', 'by markup', 'price later', 'set prices'],
+    priority: 1,
+  },
+  {
+    id: 'app-sunny-tips',
+    label: 'Sunny Tips & Dashboard Checklist',
+    data: { sunnyTips: PJOS_PLATFORM_GUIDE.sunnyTips, dashboardChecklist: PJOS_PLATFORM_GUIDE.dashboardChecklist },
+    keywords: ['sunny tips', 'tutorial', 'tips', 'getting started checklist', 'dashboard card', 'checklist', 'dismiss checklist', 'page tips', 'floating pill'],
+  },
 ];
 
 // ============================================================================
 // Select relevant subsections (top 4-5 by keyword score)
 // ============================================================================
+
+const PAGE_NAMES: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/dashboard/events': 'Events',
+  '/dashboard/events/event-mode': 'Event Mode POS',
+  '/dashboard/inventory': 'Inventory',
+  '/dashboard/pos': 'Store Mode POS',
+  '/dashboard/clients': 'Clients',
+  '/dashboard/queue': 'Queue',
+  '/dashboard/reports': 'Reports',
+  '/dashboard/settings': 'Settings',
+  '/dashboard/broadcasts': 'Broadcasts',
+  '/dashboard/templates': 'Templates',
+  '/onboarding': 'Onboarding',
+};
+
+function getPageName(pathname: string): string {
+  return PAGE_NAMES[pathname] || pathname.split('/').pop() || 'Dashboard';
+}
 
 function selectSubsections(userMessage: string, recentMessages: string[]): Subsection[] {
   const searchText = [userMessage, ...recentMessages.slice(-2)]
@@ -741,7 +773,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Parse
     const body = await request.json();
-    const { messages } = body as { messages: Array<{ role: 'user' | 'assistant'; content: string }> };
+    const { messages, currentPage } = body as { messages: Array<{ role: 'user' | 'assistant'; content: string }>; currentPage?: string };
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: 'Messages required' }, { status: 400 });
     }
@@ -814,7 +846,7 @@ ${biz.clientsText}
 IMPORTANT — ABOUT BUSINESS DATA ACCESS:
 You DO have access to this artist's inventory, events, queue, and client data — it is shown above. Use it when relevant. If the artist asks "can you see my inventory?" the answer is YES. Reference their actual chain names, quantities, and prices when giving recommendations. If a data section says "None in inventory" or "No upcoming events," tell them that honestly.
 
-GUIDELINES:
+${currentPage ? `CURRENT PAGE CONTEXT:\nThe artist is currently on the ${getPageName(currentPage)} page. If their question seems related to what they are looking at, tailor your answer to that context. For example, if they are on the Inventory page and ask "how do I add a chain," give inventory-specific guidance.\n` : ''}GUIDELINES:
 - Use SPECIFIC numbers from knowledge (joule values, prices, kit contents).
 - Bold key numbers/settings with markdown.
 - Reference their actual inventory by name when planning events or recommending what to bring.

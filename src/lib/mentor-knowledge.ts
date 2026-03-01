@@ -1525,24 +1525,87 @@ export const PJOS_PLATFORM_GUIDE = {
   // 9.1 Getting Started / Onboarding
   // ---------------------------------------------------------------------------
   gettingStarted: {
-    overview: 'When you first sign up for PJOS, you create your account, set up your business profile, and customize your branding. Everything lives under Settings in the sidebar.',
-    steps: [
-      '1. Create your account at sunstonepj.app and verify your email.',
-      '2. Once logged in, go to Settings in the sidebar.',
-      '3. Under Business Information, fill in your business name, business type, phone, and website.',
-      '4. Scroll to Branding — upload your logo and pick an accent color that matches your brand.',
-      '5. Set up a payment processor (Square or Stripe) under Payment Processing so you can take card payments.',
-      '6. Add at least one Tax Profile if your state requires sales tax.',
-      '7. Customize your Waiver Text so it fits your business.',
-      '8. Head to Inventory and add your chains, jump rings, charms, and connectors.',
-      '9. You are ready to create your first event or start selling in Store Mode!',
-    ],
+    overview: 'When you first sign up for PJOS, you go through a guided onboarding experience powered by Sunny. It walks you through naming your business, loading your starter kit inventory, setting prices, and picking a theme — all in one smooth flow.',
+    onboardingFlow: {
+      steps: [
+        '0. Welcome screen — greets you by first name with a letter-by-letter animation.',
+        '1. Business Name — confirms or edits the name you entered at signup.',
+        '2. Phone Number — optional, with SMS consent checkbox. Stored on your tenant record.',
+        '3. Experience Level — how long you have been doing permanent jewelry (just starting, <1 year, 1-3 years, 3+ years).',
+        '4. Kit Selection — pick your Sunstone starter kit (Momentum, Dream, or Legacy) or skip if you did not buy one. Selecting a kit auto-populates your inventory with the exact chains, jump rings, and connectors from that kit.',
+        '5. Pricing Setup — choose how to price your jewelry: by product type (flat price), by metal (silver vs gold), by markup percentage, or price later individually.',
+        '6. Theme Picker — choose from 9 visual themes that change colors, fonts, and feel throughout the app. Live preview as you tap.',
+        '7. Grand Reveal — summary of your setup with a "Start Exploring" button that takes you to the dashboard.',
+      ],
+      skipOption: 'You can skip setup at any time using the "Skip setup" link in the top right. Your progress is saved — you can resume later.',
+      resuming: 'If you close the browser or leave, the onboarding picks up where you left off.',
+    },
+    starterKits: {
+      momentum: {
+        price: '$2,399',
+        chains: ['Chloe (14/20 Yellow Gold-Filled)', 'Olivia (14/20 Yellow Gold-Filled)', 'Marlee (14/20 White Gold-Filled)', 'Lavina (Sterling Silver)', 'Ella (Sterling Silver)', 'Paisley (Sterling Silver)', 'Maria (14/20 Yellow Gold-Filled)'],
+        jumpRings: '25 Sterling Silver + 25 Gold-Filled',
+        connectors: 'Not included',
+        gas: '2x Argon Mini + 1x Argon Regulator',
+      },
+      dream: {
+        price: '$3,199',
+        chains: ['All 7 Momentum chains + Alessia (Sterling Silver) + Benedetta (Sterling Silver)'],
+        jumpRings: '50 Sterling Silver + 50 Gold-Filled',
+        connectors: 'Birthstone Connectors — Sterling Silver set + 14/20Y Gold-Filled set + Display Case',
+        gas: '2x Argon Mini + 1x Argon Regulator',
+      },
+      legacy: {
+        price: '$4,999',
+        chains: ['All 9 Dream chains + Charlie (14/20 Yellow Gold-Filled), Lucy (14/20 White Gold-Filled), Grace (14/20 Yellow Gold-Filled), Bryce (Sterling Silver), Hannah (14/20 Yellow Gold-Filled), Ruby (Sterling Silver)'],
+        jumpRings: '100 Sterling Silver + 100 Gold-Filled',
+        connectors: 'Birthstone Connectors — Sterling Silver set + 14/20Y Gold-Filled set + Display Case',
+        gas: '4x Argon Mini + 1x Argon Regulator',
+      },
+    },
+    pricingOptions: {
+      byType: 'Set a flat price for all pieces (e.g. $45 per bracelet/anklet). Simple and easy.',
+      byMetal: 'Different prices for silver vs gold-filled chains.',
+      byMarkup: 'Set a profit margin percentage over your cost. E.g. 50% margin = sell for 2x cost.',
+      individual: 'Skip and set prices individually in the Inventory page later.',
+    },
     tips: [
       'You can always come back to Settings to update anything.',
       'Your logo shows up on waivers, receipts, and your customer-facing pages.',
       'Pick an accent color that matches your brand — it shows throughout the app.',
     ],
-    trialNote: 'New accounts start with a 14-day Pro trial so you can explore all the features. After the trial, you can upgrade or continue on the Starter plan.',
+    trialNote: 'New accounts start with a 60-day Pro trial so you can explore all features. After the trial, you can upgrade or continue on the Starter plan.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.1b Sunny Tips (Per-Page Tutorials)
+  // ---------------------------------------------------------------------------
+  sunnyTips: {
+    overview: 'On each main page of PJOS, owners see a floating "Sunny\'s Tips" pill in the bottom right. Tapping it opens a guided walkthrough with 2-3 tips specific to that page. Once you tap "Got it" on the last tip, the pill disappears permanently for that page.',
+    pages: {
+      events: 'Tips about creating events, going live, QR codes.',
+      inventory: 'Tips about adding items, stock levels, chain pricing.',
+      pos: 'Tips about ringing up sales and checkout.',
+      clients: 'Tips about auto-created clients and using tags.',
+      settings: 'Tips about payment processors and tax rates.',
+      reports: 'Tips about date filters and CSV export.',
+    },
+    note: 'Only business owners see Sunny\'s Tips. Team members skip them.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.1c Dashboard Getting Started Checklist
+  // ---------------------------------------------------------------------------
+  dashboardChecklist: {
+    overview: 'The dashboard shows a Getting Started card with 5 checks. As you complete each one, it marks green.',
+    checks: [
+      '1. Payment processor connected (Square or Stripe)',
+      '2. First event created',
+      '3. Inventory added',
+      '4. First sale completed',
+      '5. Tax rate set',
+    ],
+    dismissing: 'You can dismiss the Getting Started card after completing all items or by tapping "Dismiss" in the card menu.',
   },
 
   // ---------------------------------------------------------------------------

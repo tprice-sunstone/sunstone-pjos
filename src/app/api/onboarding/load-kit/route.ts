@@ -19,76 +19,71 @@ interface KitDefinition {
   chains: ChainDef[];
   chainLength: number;
   jumpRings: { name: string; material: string; quantity: number }[];
-  connectors: { name: string; material: string; quantity: number }[];
+  connectors: { name: string; material: string }[];
 }
+
+// ============================================================================
+// Actual Sunstone starter kit chain names and materials
+// ============================================================================
+
+const MOMENTUM_CHAINS: ChainDef[] = [
+  { name: 'Chloe', material: '14/20 Yellow Gold-Filled' },
+  { name: 'Olivia', material: '14/20 Yellow Gold-Filled' },
+  { name: 'Marlee', material: '14/20 White Gold-Filled' },
+  { name: 'Lavina', material: 'Sterling Silver' },
+  { name: 'Ella', material: 'Sterling Silver' },
+  { name: 'Paisley', material: 'Sterling Silver' },
+  { name: 'Maria', material: '14/20 Yellow Gold-Filled' },
+];
+
+const DREAM_CHAINS: ChainDef[] = [
+  ...MOMENTUM_CHAINS,
+  { name: 'Alessia', material: 'Sterling Silver' },
+  { name: 'Benedetta', material: 'Sterling Silver' },
+];
+
+const LEGACY_CHAINS: ChainDef[] = [
+  ...DREAM_CHAINS,
+  { name: 'Charlie', material: '14/20 Yellow Gold-Filled' },
+  { name: 'Lucy', material: '14/20 White Gold-Filled' },
+  { name: 'Grace', material: '14/20 Yellow Gold-Filled' },
+  { name: 'Bryce', material: 'Sterling Silver' },
+  { name: 'Hannah', material: '14/20 Yellow Gold-Filled' },
+  { name: 'Ruby', material: 'Sterling Silver' },
+];
+
+const BS_CONNECTORS: { name: string; material: string }[] = [
+  { name: 'Birthstone Connectors \u2014 Sterling Silver', material: 'Sterling Silver' },
+  { name: 'Birthstone Connectors \u2014 14/20 Yellow Gold-Filled', material: '14/20 Yellow Gold-Filled' },
+];
 
 const KIT_DATA: Record<KitType, KitDefinition> = {
   momentum: {
-    chains: [
-      { name: 'Figaro', material: 'Sterling Silver' },
-      { name: 'Cable', material: 'Sterling Silver' },
-      { name: 'Paperclip', material: 'Sterling Silver' },
-      { name: 'Rope', material: 'Sterling Silver' },
-      { name: 'Figaro', material: '14K Gold-Filled' },
-      { name: 'Cable', material: '14K Gold-Filled' },
-      { name: 'Paperclip', material: '14K Gold-Filled' },
-    ],
+    chains: MOMENTUM_CHAINS,
     chainLength: 36,
     jumpRings: [
-      { name: 'Jump Rings - Sterling Silver', material: 'Sterling Silver', quantity: 25 },
-      { name: 'Jump Rings - 14K Gold-Filled', material: '14K Gold-Filled', quantity: 25 },
+      { name: 'Jump Rings \u2014 Sterling Silver', material: 'Sterling Silver', quantity: 25 },
+      { name: 'Jump Rings \u2014 Gold-Filled', material: '14/20 Yellow Gold-Filled', quantity: 25 },
     ],
     connectors: [],
   },
   dream: {
-    chains: [
-      { name: 'Figaro', material: 'Sterling Silver' },
-      { name: 'Cable', material: 'Sterling Silver' },
-      { name: 'Paperclip', material: 'Sterling Silver' },
-      { name: 'Rope', material: 'Sterling Silver' },
-      { name: 'Box', material: 'Sterling Silver' },
-      { name: 'Figaro', material: '14K Gold-Filled' },
-      { name: 'Cable', material: '14K Gold-Filled' },
-      { name: 'Paperclip', material: '14K Gold-Filled' },
-      { name: 'Rope', material: '14K Gold-Filled' },
-    ],
+    chains: DREAM_CHAINS,
     chainLength: 36,
     jumpRings: [
-      { name: 'Jump Rings - Sterling Silver', material: 'Sterling Silver', quantity: 50 },
-      { name: 'Jump Rings - 14K Gold-Filled', material: '14K Gold-Filled', quantity: 50 },
+      { name: 'Jump Rings \u2014 Sterling Silver', material: 'Sterling Silver', quantity: 50 },
+      { name: 'Jump Rings \u2014 Gold-Filled', material: '14/20 Yellow Gold-Filled', quantity: 50 },
     ],
-    connectors: [
-      { name: 'Connectors - Sterling Silver', material: 'Sterling Silver', quantity: 25 },
-      { name: 'Connectors - 14K Gold-Filled', material: '14K Gold-Filled', quantity: 25 },
-    ],
+    connectors: BS_CONNECTORS,
   },
   legacy: {
-    chains: [
-      { name: 'Figaro', material: 'Sterling Silver' },
-      { name: 'Cable', material: 'Sterling Silver' },
-      { name: 'Paperclip', material: 'Sterling Silver' },
-      { name: 'Rope', material: 'Sterling Silver' },
-      { name: 'Box', material: 'Sterling Silver' },
-      { name: 'Curb', material: 'Sterling Silver' },
-      { name: 'Satellite', material: 'Sterling Silver' },
-      { name: 'Figaro', material: '14K Gold-Filled' },
-      { name: 'Cable', material: '14K Gold-Filled' },
-      { name: 'Paperclip', material: '14K Gold-Filled' },
-      { name: 'Rope', material: '14K Gold-Filled' },
-      { name: 'Box', material: '14K Gold-Filled' },
-      { name: 'Curb', material: '14K Gold-Filled' },
-      { name: 'Satellite', material: '14K Gold-Filled' },
-      { name: 'Herringbone', material: '14K Gold-Filled' },
-    ],
+    chains: LEGACY_CHAINS,
     chainLength: 36,
     jumpRings: [
-      { name: 'Jump Rings - Sterling Silver', material: 'Sterling Silver', quantity: 100 },
-      { name: 'Jump Rings - 14K Gold-Filled', material: '14K Gold-Filled', quantity: 100 },
+      { name: 'Jump Rings \u2014 Sterling Silver', material: 'Sterling Silver', quantity: 100 },
+      { name: 'Jump Rings \u2014 Gold-Filled', material: '14/20 Yellow Gold-Filled', quantity: 100 },
     ],
-    connectors: [
-      { name: 'Connectors - Sterling Silver', material: 'Sterling Silver', quantity: 50 },
-      { name: 'Connectors - 14K Gold-Filled', material: '14K Gold-Filled', quantity: 50 },
-    ],
+    connectors: BS_CONNECTORS,
   },
 };
 
@@ -142,7 +137,7 @@ export async function POST(request: NextRequest) {
     for (const chain of kitDef.chains) {
       items.push({
         tenant_id: tenantId,
-        name: `${chain.name} - ${chain.material}`,
+        name: chain.name,
         type: 'chain',
         material: chain.material,
         unit: 'in',
@@ -174,7 +169,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Insert connectors (Dream/Legacy)
+    // Insert BS connectors (Dream/Legacy only)
     for (const conn of kitDef.connectors) {
       items.push({
         tenant_id: tenantId,
@@ -182,12 +177,12 @@ export async function POST(request: NextRequest) {
         type: 'connector',
         material: conn.material,
         unit: 'each',
-        quantity_on_hand: conn.quantity,
+        quantity_on_hand: 1,
         supplier: 'Sunstone',
         pricing_mode: 'per_product',
         cost_per_unit: 0,
         sell_price: 0,
-        reorder_threshold: 10,
+        reorder_threshold: 0,
         is_active: true,
       });
     }

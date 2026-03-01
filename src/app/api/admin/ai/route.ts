@@ -424,7 +424,7 @@ Subscription Tiers:
 - Starter (Free): 3% platform fee, 5 Sunny questions/month, 1 team member, basic POS and inventory
 - Pro ($129/month): 1.5% platform fee, unlimited Sunny, full reports, CRM, AI insights, 3 team members
 - Business ($279/month): 0% platform fee, everything in Pro, unlimited team members, priority support
-- Trial: 14-day Pro trial for new accounts, defaults to Starter after expiry
+- Trial: 60-day Pro trial for new accounts, defaults to Starter after expiry
 
 Revenue Model:
 - Platform fees on each sale (3%/1.5%/0% by tier) — tenants choose to pass to customer or absorb
@@ -454,7 +454,61 @@ SUNNY KNOWLEDGE GAP SYSTEM:
 - Gaps have topics: welding, equipment, business, products, marketing, troubleshooting, client_experience, other
 - Pending gaps need review — you can suggest answers for Tony to approve as mentor_knowledge_additions
 - High gap volume in a specific topic = knowledge base needs expansion in that area
-- Recurring gaps on the same question = high-priority addition needed`;
+- Recurring gaps on the same question = high-priority addition needed
+
+ADMIN DASHBOARD UI:
+The admin panel lives at /admin and uses an obsidian dark theme (#0F0F14 bg, #FF7A00 accent). It has a sidebar on desktop and bottom nav on mobile with a hamburger dropdown menu.
+
+Pages:
+- Overview (/admin): KPI cards (total tenants, this month revenue, platform fees, active events), quick stats, and platform health summary
+- Tenants (/admin/tenants): Searchable tenant list with sort by name/created/tier. Click a tenant to see their full profile (subscription, sales, events, inventory, team, Sunny usage). "Needs Attention" section at top shows flagged tenants (trial expiring, no events in 30+ days, no payment processor, zero sales but old account). Each suggestion has a "View" button to jump to that tenant's profile.
+- Revenue (/admin/revenue): Revenue analytics with charts, platform fee breakdown by tier, month-over-month comparisons, top tenants by revenue
+- Broadcast (/admin with modal): Send messages to tenants filtered by tier or status. Compose modal with recipient filters and message body.
+- Sunny Learning (/admin/sunny): View Sunny's knowledge gaps — questions she couldn't answer. Review pending gaps, approve/reject suggested answers, add new knowledge entries that get injected into Sunny's responses. Gap list shows question, topic, category, tenant, and date.
+
+Mobile Navigation:
+- Bottom nav bar with Overview, Tenants, Revenue, Sunny icons
+- Top header with hamburger menu dropdown containing "Tenant Dashboard" (go to /dashboard) and "Sign Out"
+
+ONBOARDING SYSTEM:
+New tenant signup flow: business name, owner name, email, phone, password → email verification → guided onboarding at /onboarding.
+
+Onboarding is an 8-step wizard:
+0. Welcome — personalized greeting with owner's first name
+1. Business Name — pre-filled from signup, editable
+2. Phone — phone number with SMS consent
+3. Experience — how long they've been doing PJ (just starting, <1yr, 1-3yr, 3+yr)
+4. Kit Selection — choose Sunstone starter kit (Momentum $249, Dream $399, Legacy $649) or skip
+5. Pricing — set product prices (by type, by metal, by markup, or individual)
+6. Theme Picker — choose from 9 visual themes with live preview
+7. Grand Reveal — summary and "Start Exploring" button
+
+Kit auto-populate: When an artist selects a kit, the system auto-creates inventory items matching their physical kit contents:
+- Momentum: 7 chains (Chloe, Olivia, Marlee, Lavina, Ella, Paisley, Maria), 25+25 jump rings
+- Dream: 9 chains (all Momentum + Alessia, Benedetta), 50+50 jump rings, birthstone connectors
+- Legacy: 15 chains (all Dream + Charlie, Lucy, Grace, Bryce, Hannah, Ruby), 100+100 jump rings, birthstone connectors
+
+Onboarding state is persisted: onboarding_step (integer) and onboarding_data (JSONB) on the tenants table. Artists resume where they left off if they close the browser.
+
+Owners who haven't completed onboarding are redirected from /dashboard to /onboarding. Team members skip onboarding entirely.
+
+SUNNY'S TIPS (Tutorial System):
+After onboarding, Sunny shows per-page tutorial tips via a floating pill in the bottom-right corner. Each dashboard page has 2-3 contextual tips. Once an owner completes the tips for a page, they don't appear again. Progress is tracked in the tutorial_progress table (user_id, tenant_id, page_key, completed).
+
+DASHBOARD GETTING STARTED CHECKLIST:
+The dashboard shows a "Getting Started" card with 5 checks:
+1. Connect a payment processor (Square or Stripe)
+2. Create your first event
+3. Add inventory items
+4. Make your first sale
+5. Set your tax rate
+The card can be dismissed (stored in onboarding_data.getting_started_dismissed). It only shows for owners who have completed onboarding.
+
+TRIAL SYSTEM:
+- New accounts get a 60-day Pro trial
+- Trial expiry date stored on tenant
+- After expiry, account downgrades to Starter (free) tier
+- Trial tenants approaching expiry are flagged in admin "Needs Attention"`;
 
     // Trim conversation
     const conversationMessages = messages.slice(-20);

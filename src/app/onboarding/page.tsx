@@ -27,7 +27,7 @@ const KITS = [
   {
     id: 'momentum',
     name: 'Momentum',
-    tagline: 'Great for beginners',
+    tagline: '$2,399 — 7 chains',
     chains: 7,
     jumpRings: 50,
     connectors: false,
@@ -35,7 +35,7 @@ const KITS = [
   {
     id: 'dream',
     name: 'Dream',
-    tagline: 'Most popular',
+    tagline: '$3,199 — 9 chains',
     chains: 9,
     jumpRings: 100,
     connectors: true,
@@ -43,7 +43,7 @@ const KITS = [
   {
     id: 'legacy',
     name: 'Legacy',
-    tagline: 'Full collection',
+    tagline: '$4,999 — 15 chains',
     chains: 15,
     jumpRings: 200,
     connectors: true,
