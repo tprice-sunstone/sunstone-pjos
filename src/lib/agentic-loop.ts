@@ -41,30 +41,42 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
   while (iterations < maxIterations) {
     iterations++;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: maxTokens,
-        stream: false,
-        system: systemPrompt,
-        messages: conversationMessages,
-        tools,
-      }),
-    });
+    let response;
+    try {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY!,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: maxTokens,
+          stream: false,
+          system: systemPrompt,
+          messages: conversationMessages,
+          tools,
+        }),
+      });
+    } catch (fetchErr: any) {
+      console.error('[AgenticLoop] Fetch error:', fetchErr);
+      throw new Error('AI service error: network failure');
+    }
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error('[AgenticLoop] Anthropic API error:', errText);
-      throw new Error('AI service error');
+      console.error('[AgenticLoop] Anthropic API error:', response.status, errText);
+      throw new Error(`AI service error: ${response.status}`);
     }
 
-    const result = await response.json();
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseErr) {
+      console.error('[AgenticLoop] JSON parse error:', parseErr);
+      throw new Error('AI service error: invalid response');
+    }
 
     if (result.stop_reason === 'tool_use') {
       // Append assistant message with full content (text + tool_use blocks)
@@ -86,10 +98,13 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
               is_error: toolOutput.isError || false,
             });
           } catch (err: any) {
+            console.error(`[AgenticLoop] Tool "${block.name}" threw:`, err);
             toolResults.push({
               type: 'tool_result',
               tool_use_id: block.id,
-              content: JSON.stringify({ error: err.message || 'Tool execution failed' }),
+              content: JSON.stringify({
+                error: `Tool error in ${block.name}: ${err.message || 'Unknown error'}. The tool failed — please tell the user what happened and suggest an alternative.`,
+              }),
               is_error: true,
             });
           }

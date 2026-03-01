@@ -1,7 +1,7 @@
 // ============================================================================
 // Sunny Tools — src/lib/sunny-tools.ts
 // ============================================================================
-// 19 agentic tools for Sunny (business mentor AI).
+// 28 agentic tools for Sunny (business mentor AI).
 // Each tool receives { serviceClient, tenantId, userId } context.
 // ============================================================================
 
@@ -279,6 +279,196 @@ export const SUNNY_TOOL_DEFINITIONS = [
       required: ['name', 'rate'],
     },
   },
+  // 20. update_inventory_item
+  {
+    name: 'update_inventory_item',
+    description: 'Update any field on an existing inventory item — cost per inch, sell price, name, material, length, active status. Can update multiple fields at once. ALWAYS confirm before executing.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        search_name: { type: 'string', description: 'Chain name to find (e.g. "Lincoln", "Bryce")' },
+        updates: {
+          type: 'object',
+          properties: {
+            cost_per_inch: { type: 'number', description: 'New cost per inch' },
+            sell_price: { type: 'number', description: 'New sell price (for per_product pricing)' },
+            sell_price_per_inch: { type: 'number', description: 'New sell price per inch (for per_inch pricing)' },
+            current_length_inches: { type: 'number', description: 'Set total inches (replaces, does not add)' },
+            material: { type: 'string', description: 'Update material type' },
+            is_active: { type: 'boolean', description: 'Activate or deactivate' },
+          },
+        },
+      },
+      required: ['search_name', 'updates'],
+    },
+  },
+  // 21. update_client
+  {
+    name: 'update_client',
+    description: 'Update client info — name, email, phone. ALWAYS confirm before executing.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_id: { type: 'string', description: 'Client UUID (if known)' },
+        client_name: { type: 'string', description: 'Search by name if no ID' },
+        updates: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'New full name (will be split into first/last)' },
+            email: { type: 'string' },
+            phone: { type: 'string' },
+          },
+        },
+      },
+      required: ['updates'],
+    },
+  },
+  // 22. update_event
+  {
+    name: 'update_event',
+    description: 'Update an existing event — name, date, time, location, type, status. ALWAYS confirm.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        event_id: { type: 'string', description: 'Event UUID (if known)' },
+        event_name: { type: 'string', description: 'Search by name if no ID' },
+        updates: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            start_time: { type: 'string', description: 'ISO 8601 start time' },
+            end_time: { type: 'string', description: 'ISO 8601 end time' },
+            location: { type: 'string' },
+            notes: { type: 'string' },
+            booth_fee: { type: 'number' },
+            max_capacity: { type: 'number' },
+          },
+        },
+      },
+      required: ['updates'],
+    },
+  },
+  // 23. delete_event
+  {
+    name: 'delete_event',
+    description: 'Delete or cancel an event. ALWAYS confirm with extra caution — ask "Are you sure?" before executing.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        event_id: { type: 'string', description: 'Event UUID (if known)' },
+        event_name: { type: 'string', description: 'Search by name if no ID' },
+        action: { type: 'string', enum: ['cancel', 'delete'], description: 'Cancel keeps the record, delete removes it' },
+      },
+      required: ['action'],
+    },
+  },
+  // 24. update_template
+  {
+    name: 'update_template',
+    description: 'Update an existing message template — name, body, subject, channel, category. ALWAYS confirm.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        template_name: { type: 'string', description: 'Search by template name' },
+        updates: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            body: { type: 'string' },
+            subject: { type: 'string' },
+            channel: { type: 'string', enum: ['sms', 'email'] },
+            category: { type: 'string' },
+          },
+        },
+      },
+      required: ['template_name', 'updates'],
+    },
+  },
+  // 25. create_template
+  {
+    name: 'create_template',
+    description: 'Create a new message template. ALWAYS show the full template content and confirm before creating.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        channel: { type: 'string', enum: ['sms', 'email'] },
+        category: { type: 'string', description: 'e.g. welcome, aftercare, follow-up, birthday, party, event, re-engagement' },
+        subject: { type: 'string', description: 'Email subject (email only)' },
+        body: { type: 'string', description: 'Template body text. Can include {{client_name}} and {{business_name}} variables.' },
+      },
+      required: ['name', 'channel', 'body'],
+    },
+  },
+  // 26. delete_inventory_item
+  {
+    name: 'delete_inventory_item',
+    description: 'Deactivate or permanently delete an inventory item. ALWAYS confirm with extra caution.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        search_name: { type: 'string', description: 'Item name to find' },
+        action: { type: 'string', enum: ['deactivate', 'delete'], description: 'Deactivate hides it, delete removes it permanently' },
+      },
+      required: ['search_name', 'action'],
+    },
+  },
+  // 27. create_workflow
+  {
+    name: 'create_workflow',
+    description: 'Create a new automated workflow with steps. Walk the artist through what trigger and steps they want. ALWAYS confirm the full workflow before creating.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        trigger_type: { type: 'string', enum: ['event_purchase', 'private_party_purchase', 'manual'], description: 'What triggers this workflow' },
+        steps: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              delay_hours: { type: 'number', description: 'Hours to wait before sending (0 = immediate)' },
+              channel: { type: 'string', enum: ['sms', 'email'] },
+              template_name: { type: 'string', description: 'Which template to send' },
+              description: { type: 'string' },
+            },
+          },
+        },
+      },
+      required: ['name', 'trigger_type', 'steps'],
+    },
+  },
+  // 28. update_workflow
+  {
+    name: 'update_workflow',
+    description: 'Update an existing workflow — rename, change steps, activate/deactivate. ALWAYS confirm.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        workflow_name: { type: 'string', description: 'Search by workflow name' },
+        updates: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            is_active: { type: 'boolean' },
+            steps: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  delay_hours: { type: 'number' },
+                  channel: { type: 'string', enum: ['sms', 'email'] },
+                  template_name: { type: 'string' },
+                  description: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+      required: ['workflow_name', 'updates'],
+    },
+  },
 ];
 
 // ============================================================================
@@ -306,6 +496,15 @@ export function getSunnyToolStatusLabel(name: string): string {
     update_settings: 'Updating settings...',
     get_settings: 'Fetching settings...',
     create_tax_profile: 'Creating tax profile...',
+    update_inventory_item: 'Updating inventory item...',
+    update_client: 'Updating client...',
+    update_event: 'Updating event...',
+    delete_event: 'Processing event...',
+    update_template: 'Updating template...',
+    create_template: 'Creating template...',
+    delete_inventory_item: 'Processing inventory item...',
+    create_workflow: 'Creating workflow...',
+    update_workflow: 'Updating workflow...',
   };
   return labels[name] || 'Working...';
 }
@@ -1156,6 +1355,420 @@ export async function executeSunnyTool(
 
         if (error) return { result: { error: error.message }, isError: true };
         return { result: { success: true, tax_profile: data } };
+      }
+
+      // ── 20. update_inventory_item ──
+      case 'update_inventory_item': {
+        // Find item by name
+        const { data: matches, error: searchErr } = await serviceClient
+          .from('inventory_items')
+          .select('id, name, type, material, quantity_on_hand, cost_per_unit, sell_price, sell_price_per_inch, unit, is_active')
+          .eq('tenant_id', tenantId)
+          .ilike('name', `%${input.search_name}%`);
+
+        if (searchErr) return { result: { error: searchErr.message }, isError: true };
+        if (!matches || matches.length === 0) return { result: { error: `No inventory item found matching "${input.search_name}"` }, isError: true };
+        if (matches.length > 1) {
+          return {
+            result: {
+              needs_clarification: true,
+              message: `Multiple items match "${input.search_name}". Which one?`,
+              matches: matches.map((m: any) => ({ id: m.id, name: m.name, type: m.type, material: m.material })),
+            },
+          };
+        }
+
+        const item = matches[0];
+        const dbUpdates: Record<string, any> = {};
+
+        if (input.updates.cost_per_inch !== undefined) dbUpdates.cost_per_unit = input.updates.cost_per_inch;
+        if (input.updates.sell_price !== undefined) dbUpdates.sell_price = input.updates.sell_price;
+        if (input.updates.sell_price_per_inch !== undefined) dbUpdates.sell_price_per_inch = input.updates.sell_price_per_inch;
+        if (input.updates.current_length_inches !== undefined) dbUpdates.quantity_on_hand = input.updates.current_length_inches;
+        if (input.updates.material !== undefined) dbUpdates.material = input.updates.material;
+        if (input.updates.is_active !== undefined) dbUpdates.is_active = input.updates.is_active;
+
+        if (Object.keys(dbUpdates).length === 0) return { result: { error: 'No valid updates provided' }, isError: true };
+
+        const { error: updateErr } = await serviceClient
+          .from('inventory_items')
+          .update(dbUpdates)
+          .eq('id', item.id)
+          .eq('tenant_id', tenantId);
+
+        if (updateErr) return { result: { error: updateErr.message }, isError: true };
+
+        return {
+          result: {
+            success: true,
+            item_name: item.name,
+            item_id: item.id,
+            updates_applied: input.updates,
+          },
+        };
+      }
+
+      // ── 21. update_client ──
+      case 'update_client': {
+        let clientId = input.client_id;
+
+        // Search by name if no ID
+        if (!clientId && input.client_name) {
+          const q = input.client_name;
+          const { data: matches } = await serviceClient
+            .from('clients')
+            .select('id, first_name, last_name, email, phone')
+            .eq('tenant_id', tenantId)
+            .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`)
+            .limit(5);
+
+          if (!matches || matches.length === 0) return { result: { error: `No client found matching "${input.client_name}"` }, isError: true };
+          if (matches.length > 1) {
+            return {
+              result: {
+                needs_clarification: true,
+                message: `Multiple clients match "${input.client_name}". Which one?`,
+                matches: matches.map((c: any) => ({
+                  id: c.id,
+                  name: `${c.first_name || ''} ${c.last_name || ''}`.trim(),
+                  email: c.email,
+                  phone: c.phone,
+                })),
+              },
+            };
+          }
+          clientId = matches[0].id;
+        }
+
+        if (!clientId) return { result: { error: 'Provide client_id or client_name to find the client' }, isError: true };
+
+        const dbUpdates: Record<string, any> = {};
+        if (input.updates.name) {
+          const parts = input.updates.name.trim().split(/\s+/);
+          dbUpdates.first_name = parts[0];
+          dbUpdates.last_name = parts.slice(1).join(' ') || null;
+        }
+        if (input.updates.email !== undefined) dbUpdates.email = input.updates.email;
+        if (input.updates.phone !== undefined) dbUpdates.phone = input.updates.phone;
+
+        if (Object.keys(dbUpdates).length === 0) return { result: { error: 'No valid updates provided' }, isError: true };
+
+        const { error } = await serviceClient
+          .from('clients')
+          .update(dbUpdates)
+          .eq('id', clientId)
+          .eq('tenant_id', tenantId);
+
+        if (error) return { result: { error: error.message }, isError: true };
+        return { result: { success: true, client_id: clientId, updates_applied: input.updates } };
+      }
+
+      // ── 22. update_event ──
+      case 'update_event': {
+        let eventId = input.event_id;
+
+        if (!eventId && input.event_name) {
+          const { data: matches } = await serviceClient
+            .from('events')
+            .select('id, name, start_time, location')
+            .eq('tenant_id', tenantId)
+            .ilike('name', `%${input.event_name}%`)
+            .limit(5);
+
+          if (!matches || matches.length === 0) return { result: { error: `No event found matching "${input.event_name}"` }, isError: true };
+          if (matches.length > 1) {
+            return {
+              result: {
+                needs_clarification: true,
+                message: `Multiple events match "${input.event_name}". Which one?`,
+                matches: matches.map((e: any) => ({ id: e.id, name: e.name, date: e.start_time, location: e.location })),
+              },
+            };
+          }
+          eventId = matches[0].id;
+        }
+
+        if (!eventId) return { result: { error: 'Provide event_id or event_name to find the event' }, isError: true };
+
+        const dbUpdates: Record<string, any> = {};
+        if (input.updates.name) dbUpdates.name = input.updates.name;
+        if (input.updates.start_time) dbUpdates.start_time = input.updates.start_time;
+        if (input.updates.end_time) dbUpdates.end_time = input.updates.end_time;
+        if (input.updates.location) dbUpdates.location = input.updates.location;
+        if (input.updates.notes) dbUpdates.notes = input.updates.notes;
+        if (input.updates.booth_fee !== undefined) dbUpdates.booth_fee = input.updates.booth_fee;
+        if (input.updates.max_capacity !== undefined) dbUpdates.max_capacity = input.updates.max_capacity;
+
+        if (Object.keys(dbUpdates).length === 0) return { result: { error: 'No valid updates provided' }, isError: true };
+
+        const { error } = await serviceClient
+          .from('events')
+          .update(dbUpdates)
+          .eq('id', eventId)
+          .eq('tenant_id', tenantId);
+
+        if (error) return { result: { error: error.message }, isError: true };
+        return { result: { success: true, event_id: eventId, updates_applied: input.updates } };
+      }
+
+      // ── 23. delete_event ──
+      case 'delete_event': {
+        let eventId = input.event_id;
+
+        if (!eventId && input.event_name) {
+          const { data: matches } = await serviceClient
+            .from('events')
+            .select('id, name, start_time')
+            .eq('tenant_id', tenantId)
+            .ilike('name', `%${input.event_name}%`)
+            .limit(5);
+
+          if (!matches || matches.length === 0) return { result: { error: `No event found matching "${input.event_name}"` }, isError: true };
+          if (matches.length > 1) {
+            return {
+              result: {
+                needs_clarification: true,
+                message: `Multiple events match "${input.event_name}". Which one?`,
+                matches: matches.map((e: any) => ({ id: e.id, name: e.name, date: e.start_time })),
+              },
+            };
+          }
+          eventId = matches[0].id;
+        }
+
+        if (!eventId) return { result: { error: 'Provide event_id or event_name to find the event' }, isError: true };
+
+        if (input.action === 'cancel') {
+          const { error } = await serviceClient
+            .from('events')
+            .update({ is_active: false })
+            .eq('id', eventId)
+            .eq('tenant_id', tenantId);
+          if (error) return { result: { error: error.message }, isError: true };
+          return { result: { success: true, action: 'cancelled', event_id: eventId } };
+        } else {
+          const { error } = await serviceClient
+            .from('events')
+            .delete()
+            .eq('id', eventId)
+            .eq('tenant_id', tenantId);
+          if (error) return { result: { error: error.message }, isError: true };
+          return { result: { success: true, action: 'deleted', event_id: eventId } };
+        }
+      }
+
+      // ── 24. update_template ──
+      case 'update_template': {
+        const { data: matches } = await serviceClient
+          .from('message_templates')
+          .select('id, name, body, subject, channel, category')
+          .eq('tenant_id', tenantId)
+          .ilike('name', `%${input.template_name}%`)
+          .limit(5);
+
+        if (!matches || matches.length === 0) return { result: { error: `No template found matching "${input.template_name}"` }, isError: true };
+        if (matches.length > 1) {
+          return {
+            result: {
+              needs_clarification: true,
+              message: `Multiple templates match "${input.template_name}". Which one?`,
+              matches: matches.map((t: any) => ({ id: t.id, name: t.name, channel: t.channel, category: t.category })),
+            },
+          };
+        }
+
+        const template = matches[0];
+        const dbUpdates: Record<string, any> = {};
+        if (input.updates.name) dbUpdates.name = input.updates.name;
+        if (input.updates.body) dbUpdates.body = input.updates.body;
+        if (input.updates.subject !== undefined) dbUpdates.subject = input.updates.subject;
+        if (input.updates.channel) dbUpdates.channel = input.updates.channel;
+        if (input.updates.category) dbUpdates.category = input.updates.category;
+
+        if (Object.keys(dbUpdates).length === 0) return { result: { error: 'No valid updates provided' }, isError: true };
+
+        const { error } = await serviceClient
+          .from('message_templates')
+          .update(dbUpdates)
+          .eq('id', template.id)
+          .eq('tenant_id', tenantId);
+
+        if (error) return { result: { error: error.message }, isError: true };
+        return { result: { success: true, template_name: template.name, updates_applied: input.updates } };
+      }
+
+      // ── 25. create_template ──
+      case 'create_template': {
+        const { data, error } = await serviceClient
+          .from('message_templates')
+          .insert({
+            tenant_id: tenantId,
+            name: input.name,
+            channel: input.channel,
+            category: input.category || 'general',
+            subject: input.subject || null,
+            body: input.body,
+          })
+          .select('id, name, channel, category')
+          .single();
+
+        if (error) {
+          if (error.code === '23505') return { result: { error: 'A template with that name already exists' }, isError: true };
+          return { result: { error: error.message }, isError: true };
+        }
+        return { result: { success: true, template: data } };
+      }
+
+      // ── 26. delete_inventory_item ──
+      case 'delete_inventory_item': {
+        const { data: matches } = await serviceClient
+          .from('inventory_items')
+          .select('id, name, type, material')
+          .eq('tenant_id', tenantId)
+          .ilike('name', `%${input.search_name}%`);
+
+        if (!matches || matches.length === 0) return { result: { error: `No inventory item found matching "${input.search_name}"` }, isError: true };
+        if (matches.length > 1) {
+          return {
+            result: {
+              needs_clarification: true,
+              message: `Multiple items match "${input.search_name}". Which one?`,
+              matches: matches.map((m: any) => ({ id: m.id, name: m.name, type: m.type, material: m.material })),
+            },
+          };
+        }
+
+        const item = matches[0];
+
+        if (input.action === 'deactivate') {
+          const { error } = await serviceClient
+            .from('inventory_items')
+            .update({ is_active: false })
+            .eq('id', item.id)
+            .eq('tenant_id', tenantId);
+          if (error) return { result: { error: error.message }, isError: true };
+          return { result: { success: true, action: 'deactivated', item_name: item.name } };
+        } else {
+          const { error } = await serviceClient
+            .from('inventory_items')
+            .delete()
+            .eq('id', item.id)
+            .eq('tenant_id', tenantId);
+          if (error) return { result: { error: error.message }, isError: true };
+          return { result: { success: true, action: 'deleted', item_name: item.name } };
+        }
+      }
+
+      // ── 27. create_workflow ──
+      case 'create_workflow': {
+        // Create workflow template
+        const { data: workflow, error: wfError } = await serviceClient
+          .from('workflow_templates')
+          .insert({
+            tenant_id: tenantId,
+            name: input.name,
+            trigger_type: input.trigger_type,
+            is_active: true,
+            created_by: userId,
+          })
+          .select('id, name')
+          .single();
+
+        if (wfError) return { result: { error: wfError.message }, isError: true };
+
+        // Create steps
+        const stepRows = (input.steps || []).map((step: any, i: number) => ({
+          workflow_id: workflow.id,
+          step_order: i + 1,
+          delay_hours: step.delay_hours || 0,
+          channel: step.channel,
+          template_name: step.template_name,
+          description: step.description || null,
+        }));
+
+        if (stepRows.length > 0) {
+          const { error: stepsError } = await serviceClient
+            .from('workflow_steps')
+            .insert(stepRows);
+          if (stepsError) return { result: { error: stepsError.message }, isError: true };
+        }
+
+        return {
+          result: {
+            success: true,
+            workflow: { id: workflow.id, name: workflow.name },
+            steps_created: stepRows.length,
+          },
+        };
+      }
+
+      // ── 28. update_workflow ──
+      case 'update_workflow': {
+        const { data: matches } = await serviceClient
+          .from('workflow_templates')
+          .select('id, name, is_active, trigger_type')
+          .eq('tenant_id', tenantId)
+          .ilike('name', `%${input.workflow_name}%`)
+          .limit(5);
+
+        if (!matches || matches.length === 0) return { result: { error: `No workflow found matching "${input.workflow_name}"` }, isError: true };
+        if (matches.length > 1) {
+          return {
+            result: {
+              needs_clarification: true,
+              message: `Multiple workflows match "${input.workflow_name}". Which one?`,
+              matches: matches.map((w: any) => ({ id: w.id, name: w.name, active: w.is_active })),
+            },
+          };
+        }
+
+        const workflow = matches[0];
+        const dbUpdates: Record<string, any> = {};
+        if (input.updates.name) dbUpdates.name = input.updates.name;
+        if (input.updates.is_active !== undefined) dbUpdates.is_active = input.updates.is_active;
+
+        if (Object.keys(dbUpdates).length > 0) {
+          const { error } = await serviceClient
+            .from('workflow_templates')
+            .update(dbUpdates)
+            .eq('id', workflow.id)
+            .eq('tenant_id', tenantId);
+          if (error) return { result: { error: error.message }, isError: true };
+        }
+
+        // Replace steps if provided
+        if (input.updates.steps && Array.isArray(input.updates.steps)) {
+          // Delete existing steps
+          await serviceClient
+            .from('workflow_steps')
+            .delete()
+            .eq('workflow_id', workflow.id);
+
+          // Insert new steps
+          const stepRows = input.updates.steps.map((step: any, i: number) => ({
+            workflow_id: workflow.id,
+            step_order: i + 1,
+            delay_hours: step.delay_hours || 0,
+            channel: step.channel,
+            template_name: step.template_name,
+            description: step.description || null,
+          }));
+
+          if (stepRows.length > 0) {
+            const { error: stepsError } = await serviceClient
+              .from('workflow_steps')
+              .insert(stepRows);
+            if (stepsError) return { result: { error: stepsError.message }, isError: true };
+          }
+        }
+
+        return {
+          result: {
+            success: true,
+            workflow_name: workflow.name,
+            updates_applied: input.updates,
+          },
+        };
       }
 
       default:
