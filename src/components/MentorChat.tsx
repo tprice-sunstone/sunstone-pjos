@@ -13,7 +13,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/hooks/use-tenant';
 import { getSubscriptionTier, getSunnyQuestionLimit } from '@/lib/subscription';
-import { getThemeById, DEFAULT_THEME_ID } from '@/lib/themes';
+import { DEFAULT_THEME_ID } from '@/lib/themes';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
 
 // Compute luminance from a hex color (0 = black, 1 = white)
@@ -69,17 +69,41 @@ const SUGGESTED_PROMPTS = [
 ];
 
 // ============================================================================
+// Per-theme assistant bubble styles — hardcoded hex values, NO CSS variables
+// ============================================================================
+
+interface BubbleTheme {
+  bg: string;
+  text: string;
+  bold: string;
+  link: string;
+  codeBg: string;
+  border: string;
+}
+
+const ASSISTANT_BUBBLE_STYLES: Record<string, BubbleTheme> = {
+  // Light themes — dark text on warm-tinted backgrounds
+  'rose-gold':   { bg: '#f5ede7', text: '#1a1a1a', bold: '#111111', link: '#2563EB', codeBg: 'rgba(0,0,0,0.06)', border: '#e8d5d0' },
+  'soft-blush':  { bg: '#f3edeb', text: '#1a1a1a', bold: '#111111', link: '#2563EB', codeBg: 'rgba(0,0,0,0.06)', border: '#e5d9d6' },
+  'warm-slate':  { bg: '#eae7e3', text: '#1a1a1a', bold: '#111111', link: '#2563EB', codeBg: 'rgba(0,0,0,0.06)', border: '#d8d4cf' },
+  'sage-linen':  { bg: '#e9ece6', text: '#1a1a1a', bold: '#111111', link: '#2563EB', codeBg: 'rgba(0,0,0,0.06)', border: '#d5dbd0' },
+  'french-blue': { bg: '#e8ecf2', text: '#1a1a1a', bold: '#111111', link: '#2563EB', codeBg: 'rgba(0,0,0,0.06)', border: '#d0d8e3' },
+  // Dark themes — light text on dark backgrounds
+  'midnight-gold': { bg: '#1e2530', text: '#e8e8e8', bold: '#f0f0f0', link: '#60A5FA', codeBg: 'rgba(255,255,255,0.1)', border: '#2d3648' },
+  'deep-plum':     { bg: '#2a1e32', text: '#e8e8e8', bold: '#f0f0f0', link: '#60A5FA', codeBg: 'rgba(255,255,255,0.1)', border: '#3d2f48' },
+  'forest-gold':   { bg: '#1a2820', text: '#e8e8e8', bold: '#f0f0f0', link: '#60A5FA', codeBg: 'rgba(255,255,255,0.1)', border: '#2c3f30' },
+  'deep-ocean':    { bg: '#1a2030', text: '#e8e8e8', bold: '#f0f0f0', link: '#60A5FA', codeBg: 'rgba(255,255,255,0.1)', border: '#2b3548' },
+};
+
+const FALLBACK_BUBBLE: BubbleTheme = {
+  bg: '#f0f0f0', text: '#1a1a1a', bold: '#111111', link: '#2563EB', codeBg: 'rgba(0,0,0,0.06)', border: '#d0d0d0',
+};
+
+// ============================================================================
 // Simple markdown renderer (no external dependency)
 // ============================================================================
 
-function renderMarkdown(text: string, isDark: boolean): string {
-  // Use hardcoded high-contrast colors based on theme mode to guarantee readability
-  const textColor = isDark ? '#E8E8E8' : '#1A1A1A';
-  const boldColor = isDark ? '#F0F0F0' : '#111111';
-  const linkColor = isDark ? '#60A5FA' : '#2563EB';
-  const codeColor = isDark ? '#E8E8E8' : '#1A1A1A';
-  const codeBg = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
-
+function renderMarkdown(text: string, t: BubbleTheme): string {
   let html = text.replace(/<!--[\s\S]*?-->/g, '');
   html = html
     .replace(/&/g, '&amp;')
@@ -87,33 +111,33 @@ function renderMarkdown(text: string, isDark: boolean): string {
     .replace(/>/g, '&gt;');
   // Inline code
   html = html.replace(/`([^`]+)`/g,
-    `<code style="background:${codeBg};color:${codeColor};padding:1px 5px;border-radius:3px;font-size:0.8em;">$1</code>`);
-  // Bold — explicit color
+    `<code style="background:${t.codeBg};color:${t.text};padding:1px 5px;border-radius:3px;font-size:0.8em;">$1</code>`);
+  // Bold
   html = html.replace(/\*\*(.+?)\*\*/g,
-    `<strong style="color:${boldColor};font-weight:600;">$1</strong>`);
+    `<strong style="color:${t.bold};font-weight:600;">$1</strong>`);
   // Italic
   html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,
-    `<em style="color:${textColor};">$1</em>`);
-  // Headings — hardcoded color
+    `<em style="color:${t.text};">$1</em>`);
+  // Headings
   html = html.replace(/^### (.+)$/gm,
-    `<h4 style="color:${boldColor};font-weight:600;font-size:0.875rem;margin:12px 0 4px;">$1</h4>`);
+    `<h4 style="color:${t.bold};font-weight:600;font-size:0.875rem;margin:12px 0 4px;">$1</h4>`);
   html = html.replace(/^## (.+)$/gm,
-    `<h3 style="color:${boldColor};font-weight:600;font-size:0.875rem;margin:12px 0 4px;">$1</h3>`);
-  // Ordered list items — hardcoded color
+    `<h3 style="color:${t.bold};font-weight:600;font-size:0.875rem;margin:12px 0 4px;">$1</h3>`);
+  // Ordered list items
   html = html.replace(/^(\d+)\.\s+(.+)$/gm,
-    `<li style="color:${textColor};margin-left:16px;list-style-type:decimal;font-size:0.875rem;line-height:1.625;">$2</li>`);
-  // Unordered list items — hardcoded color
+    `<li style="color:${t.text};margin-left:16px;list-style-type:decimal;font-size:0.875rem;line-height:1.625;">$2</li>`);
+  // Unordered list items
   html = html.replace(/^[-•]\s+(.+)$/gm,
-    `<li style="color:${textColor};margin-left:16px;list-style-type:disc;font-size:0.875rem;line-height:1.625;">$1</li>`);
-  // Links — hardcoded color
+    `<li style="color:${t.text};margin-left:16px;list-style-type:disc;font-size:0.875rem;line-height:1.625;">$1</li>`);
+  // Links
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
-    `<a href="$2" target="_blank" rel="noopener noreferrer" style="color:${linkColor};text-decoration:underline;">$1</a>`);
-  // Paragraphs — hardcoded color
+    `<a href="$2" target="_blank" rel="noopener noreferrer" style="color:${t.link};text-decoration:underline;">$1</a>`);
+  // Paragraphs
   html = html.replace(/\n\n/g,
-    `</p><p style="color:${textColor};font-size:0.875rem;line-height:1.625;margin-bottom:8px;">`);
+    `</p><p style="color:${t.text};font-size:0.875rem;line-height:1.625;margin-bottom:8px;">`);
   html = html.replace(/\n/g, '<br>');
   if (!html.startsWith('<')) {
-    html = `<p style="color:${textColor};font-size:0.875rem;line-height:1.625;margin-bottom:8px;">${html}</p>`;
+    html = `<p style="color:${t.text};font-size:0.875rem;line-height:1.625;margin-bottom:8px;">${html}</p>`;
   }
   return html;
 }
@@ -142,8 +166,9 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
   const isMetered = effectiveTier === 'starter' && questionLimit !== Infinity;
   const [userBubbleTextColor, setUserBubbleTextColor] = useState('#FFFFFF');
 
-  // Derive dark/light mode from theme definition — 100% reliable, no DOM timing issues
-  const isDark = getThemeById(tenant?.theme_id || DEFAULT_THEME_ID).mode === 'dark';
+  // Per-theme bubble colors — hardcoded hex, no CSS variables
+  const themeId = tenant?.theme_id || DEFAULT_THEME_ID;
+  const bubbleTheme = ASSISTANT_BUBBLE_STYLES[themeId] || FALLBACK_BUBBLE;
 
   // Compute user bubble text color from accent luminance
   useEffect(() => {
@@ -445,12 +470,12 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
           ) : (
             <>
               {messages.map(msg => (
-                <MessageBubble key={msg.id} message={msg} userBubbleTextColor={userBubbleTextColor} isDark={isDark} />
+                <MessageBubble key={msg.id} message={msg} userBubbleTextColor={userBubbleTextColor} bubbleTheme={bubbleTheme} />
               ))}
               {isLoading && messages[messages.length - 1]?.content === '' && (
                 messages[messages.length - 1]?.toolStatus
-                  ? <ToolStatusIndicator status={messages[messages.length - 1].toolStatus!} isDark={isDark} />
-                  : <TypingIndicator isDark={isDark} />
+                  ? <ToolStatusIndicator status={messages[messages.length - 1].toolStatus!} bubbleTheme={bubbleTheme} />
+                  : <TypingIndicator bubbleTheme={bubbleTheme} />
               )}
             </>
           )}
@@ -539,17 +564,8 @@ function EmptyState({ onSelectPrompt }: { onSelectPrompt: (text: string) => void
 // Message bubble
 // ============================================================================
 
-function MessageBubble({ message, userBubbleTextColor, isDark }: { message: ChatMessage; userBubbleTextColor: string; isDark: boolean }) {
+function MessageBubble({ message, userBubbleTextColor, bubbleTheme }: { message: ChatMessage; userBubbleTextColor: string; bubbleTheme: BubbleTheme }) {
   const isUser = message.role === 'user';
-
-  // Hardcoded assistant bubble styles for guaranteed contrast on all themes
-  const assistantBubbleStyle: React.CSSProperties = {
-    borderRadius: '16px 16px 16px 4px',
-    padding: '10px 14px',
-    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
-    color: isDark ? '#E8E8E8' : '#1A1A1A',
-    border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)',
-  };
 
   return (
     <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
@@ -564,9 +580,17 @@ function MessageBubble({ message, userBubbleTextColor, isDark }: { message: Chat
             </p>
           </div>
         ) : (
-          <div style={assistantBubbleStyle}>
+          <div
+            style={{
+              borderRadius: '16px 16px 16px 4px',
+              padding: '10px 14px',
+              backgroundColor: bubbleTheme.bg,
+              color: bubbleTheme.text,
+              border: `1px solid ${bubbleTheme.border}`,
+            }}
+          >
             <div
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content, isDark) }}
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content, bubbleTheme) }}
             />
             {message.isStreaming && message.content && (
               <span className="inline-block w-1.5 h-4 bg-accent-500 ml-0.5 animate-pulse rounded-sm" />
@@ -587,16 +611,16 @@ function MessageBubble({ message, userBubbleTextColor, isDark }: { message: Chat
 // Typing indicator
 // ============================================================================
 
-function TypingIndicator({ isDark }: { isDark: boolean }) {
-  const dotColor = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)';
+function TypingIndicator({ bubbleTheme }: { bubbleTheme: BubbleTheme }) {
+  const dotColor = getLuminance(bubbleTheme.bg) > 0.5 ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.4)';
   return (
     <div className="flex justify-start">
       <div
         style={{
           borderRadius: '16px 16px 16px 4px',
           padding: '12px 16px',
-          backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
-          border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)',
+          backgroundColor: bubbleTheme.bg,
+          border: `1px solid ${bubbleTheme.border}`,
         }}
       >
         <div className="flex gap-1.5 items-center">
@@ -609,15 +633,16 @@ function TypingIndicator({ isDark }: { isDark: boolean }) {
   );
 }
 
-function ToolStatusIndicator({ status, isDark }: { status: string; isDark: boolean }) {
+function ToolStatusIndicator({ status, bubbleTheme }: { status: string; bubbleTheme: BubbleTheme }) {
+  const statusColor = getLuminance(bubbleTheme.bg) > 0.5 ? '#555555' : '#B0B0B0';
   return (
     <div className="flex justify-start">
       <div
         style={{
           borderRadius: '16px 16px 16px 4px',
           padding: '12px 16px',
-          backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
-          border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.08)',
+          backgroundColor: bubbleTheme.bg,
+          border: `1px solid ${bubbleTheme.border}`,
         }}
       >
         <div className="flex items-center gap-2">
@@ -625,7 +650,7 @@ function ToolStatusIndicator({ status, isDark }: { status: string; isDark: boole
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent-500" />
           </span>
-          <span className="text-xs" style={{ color: isDark ? '#B0B0B0' : '#555555' }}>{status}</span>
+          <span className="text-xs" style={{ color: statusColor }}>{status}</span>
         </div>
       </div>
     </div>

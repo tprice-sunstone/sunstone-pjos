@@ -9,6 +9,7 @@ interface SpotlightProduct {
   price: string | null;
   productType: string;
   url: string;
+  excluded?: boolean;
 }
 
 interface SpotlightConfig {
@@ -20,6 +21,7 @@ interface SpotlightConfig {
 interface SpotlightData {
   config: SpotlightConfig;
   configUpdatedAt: string | null;
+  excludedHandles: string[];
   catalog: {
     products: SpotlightProduct[];
     discountCount: number;
@@ -32,7 +34,10 @@ export default function SpotlightPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [togglingHandle, setTogglingHandle] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [catalogFilter, setCatalogFilter] = useState<'all' | 'excluded'>('all');
+  const [catalogSearch, setCatalogSearch] = useState('');
 
   // Form state
   const [selectedHandle, setSelectedHandle] = useState<string>('');
@@ -115,6 +120,37 @@ export default function SpotlightPage() {
       setMessage({ type: 'error', text: err.message || 'Sync failed' });
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleToggleExclusion(handle: string, currentlyExcluded: boolean) {
+    setTogglingHandle(handle);
+    try {
+      const res = await fetch('/api/admin/spotlight', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ handle, excluded: !currentlyExcluded }),
+      });
+      if (!res.ok) throw new Error('Failed to update');
+      // Update local state immediately for responsiveness
+      if (data?.catalog) {
+        setData({
+          ...data,
+          excludedHandles: !currentlyExcluded
+            ? [...(data.excludedHandles || []), handle]
+            : (data.excludedHandles || []).filter((h) => h !== handle),
+          catalog: {
+            ...data.catalog,
+            products: data.catalog.products.map((p) =>
+              p.handle === handle ? { ...p, excluded: !currentlyExcluded } : p
+            ),
+          },
+        });
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to update exclusion' });
+    } finally {
+      setTogglingHandle(null);
     }
   }
 
@@ -326,34 +362,106 @@ export default function SpotlightPage() {
         )}
       </div>
 
-      {/* Product List Preview */}
-      {products.length > 0 && (
-        <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] uppercase tracking-wide">
-            Catalog ({products.length} products)
-          </h2>
-          <div className="divide-y divide-[var(--border-subtle)]">
-            {products.map((p) => (
-              <div key={p.handle} className="flex items-center gap-3 py-2.5">
-                {p.imageUrl ? (
-                  <img src={p.imageUrl} alt={p.title} className="w-8 h-8 rounded object-cover" />
-                ) : (
-                  <div className="w-8 h-8 rounded bg-[var(--surface-subtle)] flex items-center justify-center">
-                    <span className="text-[10px] text-[var(--text-tertiary)]">?</span>
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-[var(--text-primary)] truncate">{p.title}</p>
-                </div>
-                <span className="text-xs text-[var(--text-tertiary)]">{p.productType}</span>
-                <span className="text-xs font-medium text-[var(--text-secondary)]">
-                  {p.price ? `$${p.price}` : '-'}
+      {/* Product List with Exclusion Toggles */}
+      {products.length > 0 && (() => {
+        const excludedCount = products.filter((p) => p.excluded).length;
+        const filtered = products.filter((p) => {
+          if (catalogFilter === 'excluded' && !p.excluded) return false;
+          if (catalogSearch) {
+            const q = catalogSearch.toLowerCase();
+            return p.title.toLowerCase().includes(q) || p.productType?.toLowerCase().includes(q) || p.handle.toLowerCase().includes(q);
+          }
+          return true;
+        });
+
+        return (
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)] uppercase tracking-wide">
+                Catalog ({products.length} products)
+              </h2>
+              {excludedCount > 0 && (
+                <span className="text-xs font-medium text-amber-600 bg-amber-500/10 px-2 py-1 rounded-full">
+                  {excludedCount} excluded
                 </span>
+              )}
+            </div>
+
+            {/* Search + Filter */}
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={catalogSearch}
+                onChange={(e) => setCatalogSearch(e.target.value)}
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-accent-500/30"
+              />
+              <div className="flex gap-1">
+                {(['all', 'excluded'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setCatalogFilter(tab)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                      catalogFilter === tab
+                        ? 'border-accent-500 bg-accent-500/10 text-accent-600'
+                        : 'border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]'
+                    }`}
+                  >
+                    {tab === 'all' ? 'All' : 'Excluded'}
+                  </button>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Product rows */}
+            <div className="divide-y divide-[var(--border-subtle)]">
+              {filtered.map((p) => (
+                <div
+                  key={p.handle}
+                  className={`flex items-center gap-3 py-2.5 ${p.excluded ? 'opacity-50' : ''}`}
+                >
+                  {p.imageUrl ? (
+                    <img src={p.imageUrl} alt={p.title} className="w-8 h-8 rounded object-cover" />
+                  ) : (
+                    <div className="w-8 h-8 rounded bg-[var(--surface-subtle)] flex items-center justify-center">
+                      <span className="text-[10px] text-[var(--text-tertiary)]">?</span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-[var(--text-primary)] truncate">
+                      {p.title}
+                      {p.excluded && (
+                        <span className="ml-2 text-[10px] font-medium text-amber-600 uppercase">excluded</span>
+                      )}
+                    </p>
+                  </div>
+                  <span className="text-xs text-[var(--text-tertiary)]">{p.productType}</span>
+                  <span className="text-xs font-medium text-[var(--text-secondary)]">
+                    {p.price ? `$${p.price}` : '-'}
+                  </span>
+                  <button
+                    onClick={() => handleToggleExclusion(p.handle, !!p.excluded)}
+                    disabled={togglingHandle === p.handle}
+                    className={`ml-1 px-2.5 py-1 text-[11px] font-medium rounded-md border transition-colors disabled:opacity-50 ${
+                      p.excluded
+                        ? 'border-green-500/30 text-green-600 hover:bg-green-500/10'
+                        : 'border-red-500/30 text-red-600 hover:bg-red-500/10'
+                    }`}
+                    title={p.excluded ? 'Include in spotlight rotation' : 'Exclude from spotlight rotation'}
+                  >
+                    {togglingHandle === p.handle ? '...' : p.excluded ? 'Include' : 'Exclude'}
+                  </button>
+                </div>
+              ))}
+              {filtered.length === 0 && (
+                <p className="py-4 text-center text-sm text-[var(--text-tertiary)]">
+                  {catalogSearch ? 'No products match your search' : 'No excluded products'}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

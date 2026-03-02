@@ -1,9 +1,10 @@
 // ============================================================================
 // Admin Spotlight API — src/app/api/admin/spotlight/route.ts
 // ============================================================================
-// GET: Returns current spotlight config + cached Shopify catalog
-// PUT: Updates spotlight config (pin product, set duration, reset to rotation)
-// POST: Triggers a manual Shopify catalog sync
+// GET:   Returns current spotlight config + cached Shopify catalog + exclusions
+// PUT:   Updates spotlight config (pin product, set duration, reset to rotation)
+// POST:  Triggers a manual Shopify catalog sync
+// PATCH: Toggle a product's exclusion from spotlight rotation
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -16,19 +17,21 @@ export async function GET() {
     await verifyPlatformAdmin();
     const db = await createServiceRoleClient();
 
-    // Fetch spotlight config
-    const { data: config } = await db
-      .from('platform_config')
-      .select('value, updated_at')
-      .eq('key', 'sunstone_spotlight')
-      .single();
+    // Fetch spotlight config + exclusions in parallel
+    const [configResult, exclusionsResult] = await Promise.all([
+      db.from('platform_config').select('value, updated_at').eq('key', 'sunstone_spotlight').single(),
+      db.from('platform_config').select('value').eq('key', 'spotlight_exclusions').single(),
+    ]);
+
+    const excludedHandles: string[] = (exclusionsResult.data?.value as string[]) || [];
 
     // Fetch cached catalog
     const catalog = await getCachedCatalog();
 
     return NextResponse.json({
-      config: config?.value || { mode: 'rotate' },
-      configUpdatedAt: config?.updated_at || null,
+      config: configResult.data?.value || { mode: 'rotate' },
+      configUpdatedAt: configResult.data?.updated_at || null,
+      excludedHandles,
       catalog: catalog
         ? {
             products: catalog.products.map((p) => ({
@@ -38,6 +41,7 @@ export async function GET() {
               price: p.variants[0]?.price || null,
               productType: p.productType,
               url: p.url,
+              excluded: excludedHandles.includes(p.handle),
             })),
             discountCount: catalog.discounts.length,
             syncedAt: catalog.syncedAt,
@@ -167,5 +171,49 @@ export async function POST() {
     }
     console.error('[Admin Spotlight] POST (sync) error:', err);
     return NextResponse.json({ error: err.message || 'Sync failed' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    await verifyPlatformAdmin();
+    const db = await createServiceRoleClient();
+    const { handle, excluded } = await request.json();
+
+    if (!handle || typeof excluded !== 'boolean') {
+      return NextResponse.json({ error: 'handle (string) and excluded (boolean) required' }, { status: 400 });
+    }
+
+    // Read current exclusions
+    const { data: existing } = await db
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'spotlight_exclusions')
+      .single();
+
+    let handles: string[] = (existing?.value as string[]) || [];
+
+    if (excluded) {
+      if (!handles.includes(handle)) handles.push(handle);
+    } else {
+      handles = handles.filter((h) => h !== handle);
+    }
+
+    await db.from('platform_config').upsert(
+      {
+        key: 'spotlight_exclusions',
+        value: handles,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'key' }
+    );
+
+    return NextResponse.json({ success: true, excludedHandles: handles });
+  } catch (err: any) {
+    if (err?.status === 401 || err?.status === 403) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+    console.error('[Admin Spotlight] PATCH error:', err);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

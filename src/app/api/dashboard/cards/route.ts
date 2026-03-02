@@ -924,8 +924,27 @@ async function getSunstoneSpotlight(
   const catalog = await getCachedCatalog();
   if (!catalog || catalog.products.length === 0) return null;
 
-  // Step 2a: If any product has a compareAtPrice > price, feature it as a sale item
-  const saleProduct = catalog.products.find((p) =>
+  // Load spotlight exclusions
+  let excludedHandles: string[] = [];
+  try {
+    const { data: excl } = await db
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'spotlight_exclusions')
+      .single();
+    excludedHandles = (excl?.value as string[]) || [];
+  } catch {
+    // No exclusions set — use all products
+  }
+
+  const eligible = excludedHandles.length > 0
+    ? catalog.products.filter((p) => !excludedHandles.includes(p.handle))
+    : catalog.products;
+
+  if (eligible.length === 0) return null;
+
+  // Step 2a: If any eligible product has a compareAtPrice > price, feature it as a sale item
+  const saleProduct = eligible.find((p) =>
     p.variants.some((v) => v.compareAtPrice && parseFloat(v.compareAtPrice) > parseFloat(v.price))
   );
 
@@ -933,10 +952,10 @@ async function getSunstoneSpotlight(
     return formatShopifySpotlight(saleProduct, 'On Sale', true);
   }
 
-  // Step 2b: Weekly rotation through all products
+  // Step 2b: Weekly rotation through eligible products
   const weekNumber = getISOWeek(new Date());
-  const index = weekNumber % catalog.products.length;
-  const product = catalog.products[index];
+  const index = weekNumber % eligible.length;
+  const product = eligible[index];
 
   return formatShopifySpotlight(product, null, false);
 }
