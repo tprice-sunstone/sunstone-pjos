@@ -2270,18 +2270,27 @@ export async function executeSunnyTool(
         const scored = allProducts.map((p: any) => {
           let score = 0;
           const title = (p.title || '').toLowerCase();
+          const handle = (p.handle || '').toLowerCase();
           const desc = (p.description || '').toLowerCase();
           const pType = (p.productType || '').toLowerCase();
           const tags = (p.tags || []).map((t: string) => t.toLowerCase());
-          const allText = `${title} ${desc} ${pType} ${tags.join(' ')}`;
 
           // Exact title match is highest priority
           if (title === searchQuery) score += 100;
+          // Title starts with query (e.g. "chloe" matches "chloe permanent jewelry chain")
+          else if (title.startsWith(searchQuery)) score += 70;
+          // Handle starts with query (handles are often just the chain name)
+          else if (handle.startsWith(searchQuery)) score += 65;
           // Title contains full query
           else if (title.includes(searchQuery)) score += 50;
-          // Each search term found in title
+          // Handle contains full query
+          else if (handle.includes(searchQuery)) score += 40;
+          // Each search term found in title/handle
           for (const term of searchTerms) {
+            if (title.startsWith(term)) score += 30;
+            if (handle.startsWith(term)) score += 25;
             if (title.includes(term)) score += 20;
+            if (handle.includes(term)) score += 15;
             if (pType.includes(term)) score += 15;
             if (tags.some((t: string) => t.includes(term))) score += 10;
             if (desc.includes(term)) score += 5;

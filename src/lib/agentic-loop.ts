@@ -158,10 +158,22 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
     return { fullResponseText, toolStatusEvents };
   }
 
-  // Safety cap reached — return whatever we have
-  console.warn(`[AgenticLoop] Safety cap reached after ${maxIterations} iterations`);
+  // Safety cap reached — give a graceful partial-completion message
+  const toolCallCount = toolStatusEvents.length;
+  console.warn(`[AgenticLoop] Safety cap reached after ${maxIterations} iterations, ${toolCallCount} tool call(s) completed`);
+
+  // Check if there's a text response from the last iteration we can use
+  const lastMsg = conversationMessages[conversationMessages.length - 1];
+  const lastText = lastMsg?.role === 'assistant'
+    ? (lastMsg.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
+    : '';
+
+  const fallbackText = toolCallCount > 0
+    ? `I've completed ${toolCallCount} step(s) so far. Want me to continue with the rest?`
+    : "I've been working on your request but it's taking more steps than expected. Want me to continue?";
+
   return {
-    fullResponseText: "I've been working on your request but hit my processing limit. Could you try rephrasing or breaking it into smaller steps?",
+    fullResponseText: lastText || fallbackText,
     toolStatusEvents,
   };
 }

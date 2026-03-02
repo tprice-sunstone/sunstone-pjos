@@ -1,8 +1,8 @@
 // src/app/api/mentor/route.ts
 // POST endpoint for Sunny mentor chat with agentic tool execution
 
-// Vercel function timeout — agentic loop needs 2+ Anthropic API calls + tool execution
-export const maxDuration = 60;
+// Vercel function timeout — agentic loop needs up to 15 iterations for bulk operations
+export const maxDuration = 120;
 // ============================================================================
 // V4: Tenant data enrichment + anti-hallucination hardening
 // - Queries actual inventory items (chain names, quantities, prices)
@@ -862,6 +862,30 @@ When a new artist wants to set up their inventory, guide them step by step:
 5. Confirm before creating each item
 Group by metal type when possible (e.g. "Let's start with your gold fill chains, then silver").
 
+⚠️ STARTER KIT REFERENCE (MEMORIZE THIS):
+When an artist says "add my Dream kit", "add starter kit chains", or mentions any kit by name:
+- Supplier: ALWAYS "Sunstone Welders" — kits only come from Sunstone. DO NOT ask.
+- Quantity per chain: ALWAYS 36 inches (3 feet) — standard for ALL kits. DO NOT ask.
+- DO NOT ask what supplier. DO NOT ask quantity. DO NOT ask units. You KNOW this.
+- Only ask for: reorder point and pricing strategy (markup multiplier, flat prices by product type, or "set later")
+- Search the catalog with search_sunstone_catalog for each chain name to get current cost_per_inch pricing
+- For any chain where the catalog doesn't return a price, use $2.50/inch as default and TELL the artist which ones you estimated
+
+MOMENTUM KIT ($2,399) — 7 chains:
+  Chloe (14/20 Yellow Gold-Filled), Olivia (14/20 Yellow Gold-Filled), Maria (14/20 Yellow Gold-Filled),
+  Marlee (14/20 White Gold-Filled),
+  Lavina (Sterling Silver), Ella (Sterling Silver), Paisley (Sterling Silver)
+
+DREAM KIT ($3,199 — HERO, most recommended) — 9 chains:
+  All 7 Momentum chains PLUS: Alessia (Sterling Silver), Benedetta (Sterling Silver)
+
+LEGACY KIT ($4,999 — BEST) — 15 chains:
+  All 9 Dream chains PLUS: Charlie (14/20 Yellow Gold-Filled), Grace (14/20 Yellow Gold-Filled),
+  Hannah (14/20 Yellow Gold-Filled), Lucy (14/20 White Gold-Filled),
+  Bryce (Sterling Silver), Ruby (Sterling Silver)
+
+When adding kit chains to inventory, add ALL chains for the selected kit in sequence. Do not stop partway through. Present one confirmation summary with ALL chains, their materials, and pricing, then execute all the adds.
+
 ⚠️ PRODUCT TYPE DEFAULT LENGTHS:
 Standard lengths used to calculate flat product prices from per-inch cost:
 - Bracelet: 7 inches
@@ -974,7 +998,7 @@ You can also edit clients, events, templates, workflows, and inventory items. Yo
 CATALOG SEARCH: Use search_sunstone_catalog for ALL product questions. Search by name, metal type, category, or keyword. The tool searches 281+ products from the live Shopify catalog cached in the database.
 CONFIRMATION REQUIRED: For send_message, send_bulk_message, and any update/delete tool, describe what you'll do and ask to confirm before executing. For destructive actions (delete_event, delete_inventory_item), ask "Are you sure?" with extra caution.
 INVENTORY UPDATES: When updating inventory (cost, price, length), use the update_inventory_item tool and search by name. REMINDER: Chain quantities are ALWAYS in inches. When an artist provides cost and markup, auto-calculate all product type prices (bracelet, anklet, ring, necklace) and include them in the update_inventory_item call. When updating multiple items, call the tool once per item.
-ADDING INVENTORY: When adding inventory, ALL required fields must be provided: name, material, supplier, cost_per_inch, quantity, reorder_point. If any are missing, ask the artist before creating. Do NOT create partial items.
+ADDING INVENTORY: When adding inventory, ALL required fields must be provided: name, material, supplier, cost_per_inch, quantity, reorder_point. If any are missing, ask the artist before creating. Do NOT create partial items. EXCEPTION: For starter kit chains, you already know supplier (Sunstone Welders) and quantity (36 inches) — only ask for reorder point and pricing strategy.
 MARKUP BY METAL TYPE: When an artist provides markup by metal type (e.g. "2.5x on all gold fill"), look up all chains of that metal, calculate per-product prices for each, and present a summary table before executing. Then call update_inventory_item once per chain.
 After a tool executes, summarize the result naturally. If a tool errors, explain simply and suggest what the artist can do instead.`;
 
@@ -991,7 +1015,7 @@ After a tool executes, summarize the result naturally. If a tool errors, explain
         messages: messages.slice(-10),
         tools: SUNNY_TOOL_DEFINITIONS,
         executeTool: (name, input) => executeSunnyTool(name, input, toolCtx),
-        maxIterations: 8,
+        maxIterations: 15,
         getToolStatusLabel: getSunnyToolStatusLabel,
       });
       console.log(`[Mentor] Agentic loop completed: ${agenticResult.toolStatusEvents.length} tool(s) used, response length: ${agenticResult.fullResponseText.length}`);
