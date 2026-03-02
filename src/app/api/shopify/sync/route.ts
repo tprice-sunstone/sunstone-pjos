@@ -9,19 +9,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
-import { fetchAllProducts, fetchActiveDiscounts } from '@/lib/shopify';
-import type { SunstoneProduct, ShopifyDiscount } from '@/lib/shopify';
+import { fetchAllProducts } from '@/lib/shopify';
+import type { SunstoneProduct } from '@/lib/shopify';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   // ── Step 1: Env var check ──────────────────────────────────────────────
   const domain = process.env.SHOPIFY_STORE_DOMAIN;
-  const token = process.env.SHOPIFY_ADMIN_TOKEN;
+  const token = process.env.SHOPIFY_STOREFRONT_TOKEN;
 
   console.log('[Shopify Sync] ── Starting sync ──');
   console.log('[Shopify Sync] SHOPIFY_STORE_DOMAIN:', domain ? `"${domain}"` : 'NOT SET');
-  console.log('[Shopify Sync] SHOPIFY_ADMIN_TOKEN:', token ? `set (${token.length} chars)` : 'NOT SET');
+  console.log('[Shopify Sync] SHOPIFY_STOREFRONT_TOKEN:', token ? `set (${token.length} chars)` : 'NOT SET');
 
   if (!domain || !token) {
     return NextResponse.json(
@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
         error: 'Shopify environment variables not configured',
         diagnostics: {
           SHOPIFY_STORE_DOMAIN: domain ? 'set' : 'MISSING',
-          SHOPIFY_ADMIN_TOKEN: token ? 'set' : 'MISSING',
+          SHOPIFY_STOREFRONT_TOKEN: token ? 'set' : 'MISSING',
         },
-        hint: 'Set SHOPIFY_STORE_DOMAIN (e.g., "your-store.myshopify.com") and SHOPIFY_ADMIN_TOKEN in your environment variables.',
+        hint: 'Set SHOPIFY_STORE_DOMAIN (e.g., "your-store.myshopify.com") and SHOPIFY_STOREFRONT_TOKEN in your environment variables.',
       },
       { status: 500 }
     );
@@ -65,9 +65,7 @@ export async function GET(request: NextRequest) {
 
     // ── Step 3: Fetch products from Shopify ────────────────────────────
     let products: SunstoneProduct[] = [];
-    let discounts: ShopifyDiscount[] = [];
     let productError: string | null = null;
-    let discountError: string | null = null;
 
     try {
       console.log('[Shopify Sync] Fetching products...');
@@ -82,25 +80,20 @@ export async function GET(request: NextRequest) {
           detail: productError,
           diagnostics: {
             SHOPIFY_STORE_DOMAIN: domain,
-            SHOPIFY_ADMIN_TOKEN: `set (${token.length} chars)`,
-            apiUrl: `https://${domain}/admin/api/2025-01/graphql.json`,
+            SHOPIFY_STOREFRONT_TOKEN: `set (${token.length} chars)`,
+            apiUrl: `https://${domain}/api/2025-01/graphql.json`,
             elapsedMs: Date.now() - startTime,
           },
-          hint: 'Check Vercel function logs for detailed Shopify API response. Common causes: wrong store domain, invalid/expired token, API version sunset, missing read_products scope.',
+          hint: 'Check Vercel function logs for detailed Shopify API response. Common causes: wrong store domain, invalid/expired token, API version sunset.',
         },
         { status: 502 }
       );
     }
 
-    // ── Step 4: Fetch discounts (non-critical) ─────────────────────────
-    try {
-      console.log('[Shopify Sync] Fetching discounts...');
-      discounts = await fetchActiveDiscounts();
-      console.log(`[Shopify Sync] Discounts fetched: ${discounts.length}`);
-    } catch (err: any) {
-      discountError = err.message || String(err);
-      console.warn('[Shopify Sync] Discount fetch failed (non-critical):', discountError);
-    }
+    // Sale items detected via compareAtPrice on variants (no separate discount fetch needed)
+    const saleCount = products.filter((p) =>
+      p.variants.some((v) => v.compareAtPrice && parseFloat(v.compareAtPrice) > parseFloat(v.price))
+    ).length;
 
     // ── Step 5: Write to cache ─────────────────────────────────────────
     const now = new Date();
@@ -120,7 +113,7 @@ export async function GET(request: NextRequest) {
 
       const { error: insertError } = await db.from('sunstone_catalog_cache').insert({
         products,
-        discounts,
+        discounts: [],
         synced_at: now.toISOString(),
         expires_at: expiresAt.toISOString(),
       });
@@ -148,11 +141,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       status: 'synced',
       productCount: products.length,
-      discountCount: discounts.length,
+      saleItemCount: saleCount,
       syncedAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
       elapsedMs: elapsed,
-      ...(discountError ? { discountWarning: discountError } : {}),
     });
   } catch (err: any) {
     console.error('[Shopify Sync] Unexpected error:', err);

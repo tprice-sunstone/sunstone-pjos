@@ -1,7 +1,7 @@
 // ============================================================================
-// Shopify Admin API Client — src/lib/shopify.ts
+// Shopify Storefront API Client — src/lib/shopify.ts
 // ============================================================================
-// Connects to the Sunstone Shopify store (Admin API) via GraphQL.
+// Connects to the Sunstone Shopify store (Storefront API) via GraphQL.
 // Powers: dashboard product cards, Sunny product knowledge, admin spotlight.
 // ============================================================================
 
@@ -23,8 +23,8 @@ export interface SunstoneProduct {
   variants: {
     title: string;
     price: string;
-    sku: string;
-    inventoryQuantity: number;
+    compareAtPrice: string | null;
+    availableForSale: boolean;
   }[];
   collections: string[];
   url: string;
@@ -51,18 +51,18 @@ export interface CachedCatalog {
 
 const SHOPIFY_API_VERSION = '2025-01';
 
-async function shopifyAdminQuery(query: string, variables?: Record<string, any>) {
+async function shopifyStorefrontQuery(query: string, variables?: Record<string, any>) {
   const domain = process.env.SHOPIFY_STORE_DOMAIN;
-  const token = process.env.SHOPIFY_ADMIN_TOKEN;
+  const token = process.env.SHOPIFY_STOREFRONT_TOKEN;
 
   console.log('[Shopify] ENV check — SHOPIFY_STORE_DOMAIN:', domain ? `"${domain}"` : 'MISSING');
-  console.log('[Shopify] ENV check — SHOPIFY_ADMIN_TOKEN:', token ? `set (${token.length} chars, starts with "${token.slice(0, 6)}...")` : 'MISSING');
+  console.log('[Shopify] ENV check — SHOPIFY_STOREFRONT_TOKEN:', token ? `set (${token.length} chars, starts with "${token.slice(0, 6)}...")` : 'MISSING');
 
   if (!domain || !token) {
-    throw new Error('Shopify environment variables not configured (SHOPIFY_STORE_DOMAIN, SHOPIFY_ADMIN_TOKEN)');
+    throw new Error('Shopify environment variables not configured (SHOPIFY_STORE_DOMAIN, SHOPIFY_STOREFRONT_TOKEN)');
   }
 
-  const url = `https://${domain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
+  const url = `https://${domain}/api/${SHOPIFY_API_VERSION}/graphql.json`;
   console.log('[Shopify] Request URL:', url);
   console.log('[Shopify] Query preview:', query.slice(0, 120).replace(/\s+/g, ' ').trim() + '...');
 
@@ -72,7 +72,7 @@ async function shopifyAdminQuery(query: string, variables?: Record<string, any>)
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': token,
+        'X-Shopify-Storefront-Access-Token': token,
       },
       body: JSON.stringify({ query, variables }),
     });
@@ -120,7 +120,7 @@ export async function fetchAllProducts(): Promise<SunstoneProduct[]> {
     page++;
     const afterClause = cursor ? `, after: "${cursor}"` : '';
     const query = `{
-      products(first: 50, query: "status:active"${afterClause}) {
+      products(first: 50${afterClause}) {
         pageInfo { hasNextPage }
         edges {
           cursor
@@ -131,20 +131,32 @@ export async function fetchAllProducts(): Promise<SunstoneProduct[]> {
             handle
             productType
             tags
-            featuredImage {
-              url
-              altText
-            }
-            variants(first: 20) {
+            images(first: 3) {
               edges {
                 node {
-                  title
-                  price
-                  sku
+                  url
+                  altText
                 }
               }
             }
-            collections(first: 10) {
+            variants(first: 10) {
+              edges {
+                node {
+                  id
+                  title
+                  price {
+                    amount
+                    currencyCode
+                  }
+                  compareAtPrice {
+                    amount
+                    currencyCode
+                  }
+                  availableForSale
+                }
+              }
+            }
+            collections(first: 5) {
               edges {
                 node {
                   title
@@ -158,12 +170,13 @@ export async function fetchAllProducts(): Promise<SunstoneProduct[]> {
     }`;
 
     console.log(`[Shopify] Fetching products page ${page}${cursor ? ` (cursor: ${cursor.slice(0, 20)}...)` : ''}`);
-    const data = await shopifyAdminQuery(query);
+    const data = await shopifyStorefrontQuery(query);
     const edges = data.products.edges;
     console.log(`[Shopify] Page ${page}: ${edges.length} products returned`);
 
     for (const edge of edges) {
       const node = edge.node;
+      const firstImage = node.images?.edges?.[0]?.node;
 
       products.push({
         id: node.id,
@@ -172,13 +185,13 @@ export async function fetchAllProducts(): Promise<SunstoneProduct[]> {
         handle: node.handle,
         productType: node.productType || '',
         tags: node.tags || [],
-        imageUrl: node.featuredImage?.url || null,
-        imageAlt: node.featuredImage?.altText || null,
+        imageUrl: firstImage?.url || null,
+        imageAlt: firstImage?.altText || null,
         variants: (node.variants?.edges || []).map((v: any) => ({
           title: v.node.title,
-          price: v.node.price,
-          sku: v.node.sku || '',
-          inventoryQuantity: 0, // No longer queried — use Inventory API if needed
+          price: v.node.price?.amount || '0',
+          compareAtPrice: v.node.compareAtPrice?.amount || null,
+          availableForSale: v.node.availableForSale ?? true,
         })),
         collections: (node.collections?.edges || []).map((c: any) => c.node.handle),
         url: `https://permanentjewelry.sunstonewelders.com/products/${node.handle}`,
@@ -203,7 +216,7 @@ export async function fetchAllProducts(): Promise<SunstoneProduct[]> {
 
 export async function fetchProductsByCollection(collectionHandle: string): Promise<SunstoneProduct[]> {
   const query = `{
-    collectionByHandle(handle: "${collectionHandle}") {
+    collection(handle: "${collectionHandle}") {
       products(first: 100) {
         edges {
           node {
@@ -213,20 +226,32 @@ export async function fetchProductsByCollection(collectionHandle: string): Promi
             handle
             productType
             tags
-            featuredImage {
-              url
-              altText
-            }
-            variants(first: 20) {
+            images(first: 3) {
               edges {
                 node {
-                  title
-                  price
-                  sku
+                  url
+                  altText
                 }
               }
             }
-            collections(first: 10) {
+            variants(first: 10) {
+              edges {
+                node {
+                  id
+                  title
+                  price {
+                    amount
+                    currencyCode
+                  }
+                  compareAtPrice {
+                    amount
+                    currencyCode
+                  }
+                  availableForSale
+                }
+              }
+            }
+            collections(first: 5) {
               edges {
                 node {
                   title
@@ -240,11 +265,12 @@ export async function fetchProductsByCollection(collectionHandle: string): Promi
     }
   }`;
 
-  const data = await shopifyAdminQuery(query);
-  const edges = data.collectionByHandle?.products?.edges || [];
+  const data = await shopifyStorefrontQuery(query);
+  const edges = data.collection?.products?.edges || [];
 
   return edges.map((edge: any) => {
     const node = edge.node;
+    const firstImage = node.images?.edges?.[0]?.node;
     return {
       id: node.id,
       title: node.title,
@@ -252,73 +278,18 @@ export async function fetchProductsByCollection(collectionHandle: string): Promi
       handle: node.handle,
       productType: node.productType || '',
       tags: node.tags || [],
-      imageUrl: node.featuredImage?.url || null,
-      imageAlt: node.featuredImage?.altText || null,
+      imageUrl: firstImage?.url || null,
+      imageAlt: firstImage?.altText || null,
       variants: (node.variants?.edges || []).map((v: any) => ({
         title: v.node.title,
-        price: v.node.price,
-        sku: v.node.sku || '',
-        inventoryQuantity: 0,
+        price: v.node.price?.amount || '0',
+        compareAtPrice: v.node.compareAtPrice?.amount || null,
+        availableForSale: v.node.availableForSale ?? true,
       })),
       collections: (node.collections?.edges || []).map((c: any) => c.node.handle),
       url: `https://permanentjewelry.sunstonewelders.com/products/${node.handle}`,
     };
   });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Fetch Active Discounts
-// ─────────────────────────────────────────────────────────────────────────────
-
-export async function fetchActiveDiscounts(): Promise<ShopifyDiscount[]> {
-  const query = `{
-    automaticDiscountNodes(first: 20, query: "status:active") {
-      edges {
-        node {
-          id
-          automaticDiscount {
-            ... on DiscountAutomaticBasic {
-              title
-              status
-              startsAt
-              endsAt
-              summary
-            }
-            ... on DiscountAutomaticBxgy {
-              title
-              status
-              startsAt
-              endsAt
-              summary
-            }
-          }
-        }
-      }
-    }
-  }`;
-
-  try {
-    const data = await shopifyAdminQuery(query);
-    const edges = data.automaticDiscountNodes?.edges || [];
-
-    return edges
-      .map((edge: any) => {
-        const d = edge.node.automaticDiscount;
-        if (!d) return null;
-        return {
-          id: edge.node.id,
-          title: d.title || '',
-          status: d.status || '',
-          startsAt: d.startsAt || null,
-          endsAt: d.endsAt || null,
-          summary: d.summary || '',
-        };
-      })
-      .filter(Boolean) as ShopifyDiscount[];
-  } catch {
-    // Discount scopes may not be available — return empty
-    return [];
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -363,7 +334,7 @@ export async function getCachedCatalog(): Promise<CachedCatalog | null> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function formatCatalogForPrompt(catalog: CachedCatalog): string {
-  const { products, discounts } = catalog;
+  const { products } = catalog;
   if (products.length === 0) return '';
 
   // Group products by type
@@ -377,6 +348,9 @@ export function formatCatalogForPrompt(catalog: CachedCatalog): string {
   const lines: string[] = ['## Sunstone Product Catalog (Current)\n'];
   let tokenEstimate = 0;
   const TOKEN_LIMIT = 2000;
+
+  // Collect sale items (compareAtPrice > price)
+  const saleItems: { product: SunstoneProduct; salePrice: string; originalPrice: string }[] = [];
 
   for (const [type, prods] of Object.entries(groups)) {
     lines.push(`### ${type}`);
@@ -395,20 +369,25 @@ export function formatCatalogForPrompt(catalog: CachedCatalog): string {
 
       lines.push(line);
       tokenEstimate += lineTokens;
+
+      // Check if any variant is on sale
+      for (const v of p.variants) {
+        if (v.compareAtPrice && parseFloat(v.compareAtPrice) > parseFloat(v.price)) {
+          saleItems.push({ product: p, salePrice: v.price, originalPrice: v.compareAtPrice });
+          break;
+        }
+      }
     }
     lines.push('');
 
     if (tokenEstimate > TOKEN_LIMIT) break;
   }
 
-  // Active discounts
-  if (discounts.length > 0) {
-    lines.push('### Current Promotions');
-    for (const d of discounts) {
-      const endStr = d.endsAt
-        ? ` through ${new Date(d.endsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
-        : '';
-      lines.push(`- ${d.title}${d.summary ? `: ${d.summary}` : ''}${endStr}`);
+  // Sale items detected via compareAtPrice
+  if (saleItems.length > 0) {
+    lines.push('### Items Currently On Sale');
+    for (const { product, salePrice, originalPrice } of saleItems) {
+      lines.push(`- ${product.title} — $${salePrice} (was $${originalPrice})`);
     }
     lines.push('');
   }

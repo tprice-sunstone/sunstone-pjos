@@ -23,7 +23,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
-import { getCachedCatalog, type SunstoneProduct, type ShopifyDiscount } from '@/lib/shopify';
+import { getCachedCatalog, type SunstoneProduct } from '@/lib/shopify';
 import type { DashboardCard } from '@/types';
 
 // Bump this version whenever card generation logic changes. Cached cards with
@@ -458,14 +458,15 @@ async function generateCards(
   let catalogSummary: string | null = null;
   if (shopifyCatalog && shopifyCatalog.products.length > 0) {
     const summaryParts: string[] = [];
-    // Active promotions
-    const activePromos = shopifyCatalog.discounts.filter((d) => {
-      if (d.status !== 'ACTIVE') return false;
-      if (d.endsAt && new Date(d.endsAt) <= new Date()) return false;
-      return true;
-    });
-    if (activePromos.length > 0) {
-      summaryParts.push(`Active promotions: ${activePromos.map((d) => `${d.title}${d.summary ? ` (${d.summary})` : ''}`).join(', ')}`);
+    // Detect sale items via compareAtPrice on variants
+    const saleProducts = shopifyCatalog.products.filter((p) =>
+      p.variants.some((v) => v.compareAtPrice && parseFloat(v.compareAtPrice) > parseFloat(v.price))
+    );
+    if (saleProducts.length > 0) {
+      summaryParts.push(`Items on sale: ${saleProducts.slice(0, 5).map((p) => {
+        const v = p.variants.find((v) => v.compareAtPrice && parseFloat(v.compareAtPrice) > parseFloat(v.price));
+        return `${p.title} ($${v?.price || '?'}, was $${v?.compareAtPrice || '?'})`;
+      }).join(', ')}`);
     }
     // Top 3 products (variety)
     const topProducts = shopifyCatalog.products.slice(0, 3);
@@ -923,19 +924,13 @@ async function getSunstoneSpotlight(
   const catalog = await getCachedCatalog();
   if (!catalog || catalog.products.length === 0) return null;
 
-  // Step 2a: If there's an active discount, feature a product from that discount
-  const activeDiscount = catalog.discounts.find((d) => {
-    if (d.status !== 'ACTIVE') return false;
-    if (d.endsAt && new Date(d.endsAt) <= new Date()) return false;
-    return true;
-  });
+  // Step 2a: If any product has a compareAtPrice > price, feature it as a sale item
+  const saleProduct = catalog.products.find((p) =>
+    p.variants.some((v) => v.compareAtPrice && parseFloat(v.compareAtPrice) > parseFloat(v.price))
+  );
 
-  if (activeDiscount) {
-    // Try to find a product matching the discount title/keywords
-    const discountProduct = findDiscountProduct(catalog.products, activeDiscount);
-    if (discountProduct) {
-      return formatShopifySpotlight(discountProduct, activeDiscount.title, true);
-    }
+  if (saleProduct) {
+    return formatShopifySpotlight(saleProduct, 'On Sale', true);
   }
 
   // Step 2b: Weekly rotation through all products
@@ -955,33 +950,6 @@ async function findShopifyProduct(handle: string): Promise<Record<string, unknow
   if (!product) return null;
 
   return formatShopifySpotlight(product, null, false);
-}
-
-/** Try to find a product related to an active discount */
-function findDiscountProduct(
-  products: SunstoneProduct[],
-  discount: ShopifyDiscount
-): SunstoneProduct | null {
-  const titleWords = discount.title.toLowerCase().split(/\s+/);
-
-  // Score each product by keyword overlap with discount title
-  let best: SunstoneProduct | null = null;
-  let bestScore = 0;
-
-  for (const p of products) {
-    const productText = `${p.title} ${p.productType} ${p.tags.join(' ')} ${p.collections.join(' ')}`.toLowerCase();
-    let score = 0;
-    for (const word of titleWords) {
-      if (word.length >= 3 && productText.includes(word)) score++;
-    }
-    if (score > bestScore) {
-      bestScore = score;
-      best = p;
-    }
-  }
-
-  // Only return if there's reasonable keyword overlap
-  return bestScore >= 1 ? best : products[0] || null;
 }
 
 /** Format a Shopify product into a spotlight card data object */
