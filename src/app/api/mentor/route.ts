@@ -606,7 +606,7 @@ async function fetchTenantContext(serviceClient: any, tenantId: string) {
       // ACTUAL inventory items (chains, jump rings, charms, connectors)
       serviceClient
         .from('inventory_items')
-        .select('name, type, material, quantity_on_hand, sell_price, unit, is_active')
+        .select('name, type, material, quantity_on_hand, sell_price, cost_per_unit, supplier, reorder_threshold, unit, is_active')
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
         .order('type')
@@ -656,9 +656,13 @@ async function fetchTenantContext(serviceClient: any, tenantId: string) {
     const formatItem = (i: any) => {
       const qty = Number(i.quantity_on_hand) || 0;
       const price = Number(i.sell_price) || 0;
+      const costPerUnit = Number(i.cost_per_unit) || 0;
       const unit = i.unit === 'ft' ? 'ft' : i.unit === 'each' ? 'ea' : i.unit;
       const mat = i.material ? ` (${i.material})` : '';
-      return `${i.name}${mat}: ${qty}${unit} on hand, $${price.toFixed(2)} sell price`;
+      const sup = i.supplier ? `, supplier: ${i.supplier}` : '';
+      const costStr = costPerUnit > 0 ? `, $${costPerUnit.toFixed(2)}/in cost` : '';
+      const reorder = i.reorder_threshold ? `, reorder at ${i.reorder_threshold}${unit}` : '';
+      return `${i.name}${mat}: ${qty}${unit} on hand${costStr}, $${price.toFixed(2)} sell price${sup}${reorder}`;
     };
 
     const inventoryText = [
@@ -830,6 +834,42 @@ The company is called Sunstone or Sunstone Welders. NEVER say "Sunstone Supply" 
 Chains use per-product flat pricing. Each chain stores separate prices for bracelet, anklet, ring, and necklace (necklace is per-inch). When an artist says "2.5x markup", calculate the flat price for each product type using: default_length × cost_per_inch × markup. Standard default lengths: bracelet 7", anklet 10", ring 2.5", necklace priced per inch. Set the flat product price, not a per-inch sell price.
 When adding or updating inventory with pricing, calculate ALL product type prices automatically using standard lengths (bracelet 7in, anklet 10in, ring 2.5in, necklace per-inch). Present the full breakdown in your confirmation. Don't make the artist ask separately for each product type.
 
+⚠️ INVENTORY REQUIRED FIELDS:
+Every inventory item MUST have these 7 fields before creation:
+1. name — chain/item name (e.g. "Chloe", "Lincoln")
+2. material — metal type (e.g. "14K Gold Fill", "Sterling Silver", "Stainless Steel")
+3. supplier — where they buy it (e.g. "Sunstone Welders", "Stuller", "Rio Grande")
+4. cost_per_inch — what the artist pays per inch
+5. quantity — how much they have on hand (in inches for chain)
+6. reorder_point — when to reorder (e.g. 120 inches)
+7. type — chain, jump_ring, charm, or connector (defaults to "chain")
+If the artist provides some but not all, ask for the missing ones BEFORE creating the item. Do NOT create an item with missing required fields.
+
+⚠️ TIERED PRICING BY METAL TYPE:
+When an artist says "I want 2.5x markup on all my gold fill chains":
+1. Look up ALL chains in their inventory where material contains "gold fill" (or the specified metal)
+2. For EACH matching chain, calculate per-product-type prices: bracelet = default_inches × cost_per_inch × markup, anklet = default_inches × cost_per_inch × markup, ring = default_inches × cost_per_inch × markup, necklace = cost_per_inch × markup (per inch)
+3. Present a summary table showing all chains and their calculated prices BEFORE executing
+4. After confirmation, call update_inventory_item once per chain with the calculated prices
+Example: Chloe (14K GF) costs $4.20/in, 2.5x markup → bracelet $73.50, anklet $105.00, ring $26.25, necklace $10.50/in
+
+⚠️ ONBOARDING INVENTORY SETUP:
+When a new artist wants to set up their inventory, guide them step by step:
+1. Ask what chains they have — get names and materials
+2. For each chain, ask: supplier, cost per inch, quantity on hand, reorder point
+3. Ask about their markup strategy — do they want a flat markup across all chains, or different markups by metal type?
+4. Calculate and present all product type prices in a summary table
+5. Confirm before creating each item
+Group by metal type when possible (e.g. "Let's start with your gold fill chains, then silver").
+
+⚠️ PRODUCT TYPE DEFAULT LENGTHS:
+Standard lengths used to calculate flat product prices from per-inch cost:
+- Bracelet: 7 inches
+- Anklet: 10 inches
+- Ring: 2.5 inches
+- Necklace: priced per inch (no default length)
+These are defaults — check the tenant's product_types table for custom lengths. Some artists use different defaults (e.g. 7.5" bracelet). The add_inventory and update_inventory_item tools will automatically use custom lengths from the product_types table when available.
+
 ⚠️ CONVERSATION AWARENESS:
 Pay close attention to what the artist has already told you in this conversation. Never ask for information they've already provided. If they said the cost is $4.20 three messages ago, use $4.20 — don't ask again.
 
@@ -911,6 +951,8 @@ You have tools to read and modify the artist's business data. Use them when aske
 You can also edit clients, events, templates, workflows, and inventory items. You can create new templates and workflows. You can cancel or delete events and deactivate inventory.
 CONFIRMATION REQUIRED: For send_message, send_bulk_message, and any update/delete tool, describe what you'll do and ask to confirm before executing. For destructive actions (delete_event, delete_inventory_item), ask "Are you sure?" with extra caution.
 INVENTORY UPDATES: When updating inventory (cost, price, length), use the update_inventory_item tool and search by name. REMINDER: Chain quantities are ALWAYS in inches. When an artist provides cost and markup, auto-calculate all product type prices (bracelet, anklet, ring, necklace) and include them in the update_inventory_item call. When updating multiple items, call the tool once per item.
+ADDING INVENTORY: When adding inventory, ALL required fields must be provided: name, material, supplier, cost_per_inch, quantity, reorder_point. If any are missing, ask the artist before creating. Do NOT create partial items.
+MARKUP BY METAL TYPE: When an artist provides markup by metal type (e.g. "2.5x on all gold fill"), look up all chains of that metal, calculate per-product prices for each, and present a summary table before executing. Then call update_inventory_item once per chain.
 After a tool executes, summarize the result naturally. If a tool errors, explain simply and suggest what the artist can do instead.`;
 
     // 7. Call Anthropic via agentic loop (tools + non-streaming)
