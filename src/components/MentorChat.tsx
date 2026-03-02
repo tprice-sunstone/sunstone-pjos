@@ -15,17 +15,18 @@ import { useTenant } from '@/hooks/use-tenant';
 import { getSubscriptionTier, getSunnyQuestionLimit } from '@/lib/subscription';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
 
-// Hardcoded dark theme list — everything else is light
-const DARK_THEMES = ['midnight-gold', 'deep-plum', 'forest-gold', 'deep-ocean'];
+// Compute luminance from a hex color (0 = black, 1 = white)
+function getLuminance(hex: string): number {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
 
 // Compute contrast text color based on background luminance
 function getContrastTextColor(bgHex: string): string {
-  const hex = bgHex.replace('#', '');
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.55 ? '#1A1A1A' : '#FFFFFF';
+  return getLuminance(bgHex) > 0.55 ? '#1A1A1A' : '#FFFFFF';
 }
 
 // ============================================================================
@@ -138,12 +139,19 @@ export default function MentorChat({ isOpen, onClose }: MentorChatProps) {
   const effectiveTier = tenant ? getSubscriptionTier(tenant) : 'starter';
   const questionLimit = getSunnyQuestionLimit(effectiveTier);
   const isMetered = effectiveTier === 'starter' && questionLimit !== Infinity;
-  const isDark = DARK_THEMES.includes(tenant?.theme_id || '');
+  const [isDark, setIsDark] = useState(false);
   const [userBubbleTextColor, setUserBubbleTextColor] = useState('#FFFFFF');
 
-  // Compute user bubble text color from accent luminance
+  // Compute isDark + user bubble text color from actual CSS variable values
   useEffect(() => {
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-500').trim();
+    const styles = getComputedStyle(document.documentElement);
+    // Detect dark/light from the chat panel background (--surface-base)
+    const surfaceBg = styles.getPropertyValue('--surface-base').trim();
+    if (surfaceBg) {
+      setIsDark(getLuminance(surfaceBg) < 0.5);
+    }
+    // User bubble contrast from accent color
+    const accent = styles.getPropertyValue('--accent-500').trim();
     if (accent) setUserBubbleTextColor(getContrastTextColor(accent));
   }, [tenant?.theme_id]);
 
