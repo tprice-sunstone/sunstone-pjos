@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
           diagnostics: {
             SHOPIFY_STORE_DOMAIN: domain,
             SHOPIFY_STOREFRONT_TOKEN: `set (${token.length} chars)`,
-            apiUrl: `https://${domain}/api/2025-01/graphql.json`,
+            apiUrl: `https://${domain}/api/2024-01/graphql.json`,
             elapsedMs: Date.now() - startTime,
           },
           hint: 'Check Vercel function logs for detailed Shopify API response. Common causes: wrong store domain, invalid/expired token, API version sunset.',

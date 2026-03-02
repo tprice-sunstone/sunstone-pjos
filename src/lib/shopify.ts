@@ -26,22 +26,12 @@ export interface SunstoneProduct {
     compareAtPrice: string | null;
     availableForSale: boolean;
   }[];
-  collections: string[];
   url: string;
-}
-
-export interface ShopifyDiscount {
-  id: string;
-  title: string;
-  status: string;
-  startsAt: string | null;
-  endsAt: string | null;
-  summary: string;
 }
 
 export interface CachedCatalog {
   products: SunstoneProduct[];
-  discounts: ShopifyDiscount[];
+  discounts: any[];
   syncedAt: string;
 }
 
@@ -49,7 +39,7 @@ export interface CachedCatalog {
 // GraphQL Helper
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SHOPIFY_API_VERSION = '2025-01';
+const SHOPIFY_API_VERSION = '2024-01';
 
 async function shopifyStorefrontQuery(query: string, variables?: Record<string, any>) {
   const domain = process.env.SHOPIFY_STORE_DOMAIN;
@@ -156,14 +146,6 @@ export async function fetchAllProducts(): Promise<SunstoneProduct[]> {
                 }
               }
             }
-            collections(first: 5) {
-              edges {
-                node {
-                  title
-                  handle
-                }
-              }
-            }
           }
         }
       }
@@ -193,7 +175,6 @@ export async function fetchAllProducts(): Promise<SunstoneProduct[]> {
           compareAtPrice: v.node.compareAtPrice?.amount || null,
           availableForSale: v.node.availableForSale ?? true,
         })),
-        collections: (node.collections?.edges || []).map((c: any) => c.node.handle),
         url: `https://permanentjewelry.sunstonewelders.com/products/${node.handle}`,
       });
     }
@@ -251,14 +232,6 @@ export async function fetchProductsByCollection(collectionHandle: string): Promi
                 }
               }
             }
-            collections(first: 5) {
-              edges {
-                node {
-                  title
-                  handle
-                }
-              }
-            }
           }
         }
       }
@@ -286,7 +259,6 @@ export async function fetchProductsByCollection(collectionHandle: string): Promi
         compareAtPrice: v.node.compareAtPrice?.amount || null,
         availableForSale: v.node.availableForSale ?? true,
       })),
-      collections: (node.collections?.edges || []).map((c: any) => c.node.handle),
       url: `https://permanentjewelry.sunstonewelders.com/products/${node.handle}`,
     };
   });
@@ -320,7 +292,7 @@ export async function getCachedCatalog(): Promise<CachedCatalog | null> {
     // Return cached data even if stale — better than nothing
     return {
       products: (cache.products as SunstoneProduct[]) || [],
-      discounts: (cache.discounts as ShopifyDiscount[]) || [],
+      discounts: (cache.discounts as any[]) || [],
       syncedAt: cache.synced_at,
     };
   } catch {
