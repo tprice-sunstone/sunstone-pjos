@@ -20,9 +20,11 @@ interface SupplierDropdownProps {
   tenantId: string;
   value: string | null;          // supplier_id
   onChange: (id: string | null) => void;
+  /** Fallback: resolve a saved supplier name to its ID when the dropdown loads */
+  initialName?: string | null;
 }
 
-export default function SupplierDropdown({ tenantId, value, onChange }: SupplierDropdownProps) {
+export default function SupplierDropdown({ tenantId, value, onChange, initialName }: SupplierDropdownProps) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -102,6 +104,16 @@ export default function SupplierDropdown({ tenantId, value, onChange }: Supplier
       setAddSaving(false);
     }
   };
+
+  // Auto-resolve: if value is null but we have a saved name, match by name
+  useEffect(() => {
+    if (!value && initialName && suppliers.length > 0) {
+      const match = suppliers.find(
+        (s) => s.name.toLowerCase() === initialName.toLowerCase()
+      );
+      if (match) onChange(match.id);
+    }
+  }, [suppliers, value, initialName, onChange]);
 
   return (
     <div className="space-y-2">

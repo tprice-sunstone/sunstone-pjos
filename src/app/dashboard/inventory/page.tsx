@@ -821,6 +821,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
               <MaterialDropdown
                   tenantId={tenant.id}
                   value={materialId}
+                  initialName={editingItem?.material}
                   onChange={(id) => {
                     setMaterialId(id);
                     // Also update materialsList when a new one is created
@@ -835,6 +836,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
             <SupplierDropdown
               tenantId={tenant.id}
               value={supplierId}
+              initialName={editingItem?.supplier}
               onChange={(id) => setSupplierId(id)}
             />
 

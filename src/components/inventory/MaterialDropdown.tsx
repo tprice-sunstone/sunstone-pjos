@@ -17,6 +17,8 @@ interface MaterialDropdownProps {
   onChange: (materialId: string | null) => void;
   /** Called when a new material is created, so parent can refresh if needed */
   onMaterialCreated?: (material: Material) => void;
+  /** Fallback: resolve a saved material name to its ID when the dropdown loads */
+  initialName?: string | null;
 }
 
 export default function MaterialDropdown({
@@ -24,6 +26,7 @@ export default function MaterialDropdown({
   value,
   onChange,
   onMaterialCreated,
+  initialName,
 }: MaterialDropdownProps) {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +99,16 @@ export default function MaterialDropdown({
       setNewShortName('');
     }
   };
+
+  // Auto-resolve: if value is null but we have a saved name, match by name
+  useEffect(() => {
+    if (!value && initialName && materials.length > 0) {
+      const match = materials.find(
+        (m) => m.name.toLowerCase() === initialName.toLowerCase()
+      );
+      if (match) onChange(match.id);
+    }
+  }, [materials, value, initialName, onChange]);
 
   const selectedMaterial = materials.find((m) => m.id === value);
 
