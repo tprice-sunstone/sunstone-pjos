@@ -50,25 +50,47 @@ const OBSIDIAN_VARS: Record<string, string> = {
 };
 
 // ============================================================================
-// Nav Items (5 tabs matching the spec)
+// Role hierarchy for nav filtering
 // ============================================================================
 
-const navItems = [
+const ROLE_LEVEL: Record<string, number> = {
+  super_admin: 4,
+  admin: 3,
+  support: 2,
+  viewer: 1,
+};
+
+// ============================================================================
+// Nav Items (6 tabs — Team visible only to super_admin)
+// ============================================================================
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  exact?: boolean;
+  badge?: boolean;
+  requiredRole?: string;
+}
+
+const allNavItems: NavItem[] = [
   { href: '/admin', label: 'Overview', icon: OverviewIcon, exact: true },
   { href: '/admin/tenants', label: 'Tenants', icon: TenantsIcon },
-  { href: '/admin/revenue', label: 'Revenue', icon: RevenueIcon },
-  { href: '/admin/spotlight', label: 'Spotlight', icon: SpotlightIcon },
+  { href: '/admin/revenue', label: 'Revenue', icon: RevenueIcon, requiredRole: 'admin' },
+  { href: '/admin/spotlight', label: 'Spotlight', icon: SpotlightIcon, requiredRole: 'admin' },
   { href: '/admin/mentor', label: 'Learning', icon: SunnyIcon, badge: true },
+  { href: '/admin/team', label: 'Team', icon: TeamIcon, requiredRole: 'super_admin' },
 ];
 
-// Bottom tab layout: Tenants, Revenue, [Overview center], Spotlight, Learning
-const bottomTabs = [
-  { href: '/admin/tenants', label: 'Tenants', icon: TenantsIcon },
-  { href: '/admin/revenue', label: 'Revenue', icon: RevenueIcon },
-  // Overview is rendered separately as center button
-  { href: '/admin/spotlight', label: 'Spotlight', icon: SpotlightIcon },
-  { href: '/admin/mentor', label: 'Learning', icon: SunnyIcon, badge: true },
-];
+function filterNavByRole(items: NavItem[], role: string): NavItem[] {
+  const userLevel = ROLE_LEVEL[role] ?? 0;
+  return items.filter(item => {
+    if (!item.requiredRole) return true;
+    return userLevel >= (ROLE_LEVEL[item.requiredRole] ?? 0);
+  });
+}
+
+// Bottom tab layout is derived from allNavItems at render time, filtered by role
 
 // ============================================================================
 // Shell
@@ -76,9 +98,11 @@ const bottomTabs = [
 
 export function AdminShell({
   userEmail,
+  adminRole = 'super_admin',
   children,
 }: {
   userEmail: string;
+  adminRole?: string;
   children: React.ReactNode;
 }) {
   const [isAtlasOpen, setIsAtlasOpen] = useState(false);
@@ -91,7 +115,7 @@ export function AdminShell({
       style={{ ...OBSIDIAN_VARS, backgroundColor: '#0F0F12' } as React.CSSProperties}
     >
       {/* Desktop Sidebar */}
-      <DesktopSidebar userEmail={userEmail} />
+      <DesktopSidebar userEmail={userEmail} adminRole={adminRole} />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
@@ -110,7 +134,7 @@ export function AdminShell({
         </main>
 
         {/* Mobile bottom nav */}
-        <PhoneBottomNav />
+        <PhoneBottomNav adminRole={adminRole} />
       </div>
 
       {/* Atlas AI Chat — controlled externally */}
@@ -169,11 +193,12 @@ function usePendingGapCount() {
 // Desktop Sidebar — Obsidian styled
 // ============================================================================
 
-function DesktopSidebar({ userEmail }: { userEmail: string }) {
+function DesktopSidebar({ userEmail, adminRole }: { userEmail: string; adminRole: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
   const pendingGapCount = usePendingGapCount();
+  const navItems = filterNavByRole(allNavItems, adminRole);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -354,22 +379,38 @@ function MobileHeader({ onAtlasOpen }: { onAtlasOpen: () => void }) {
 // Phone Bottom Nav — 5 tabs with center Overview button
 // ============================================================================
 
-function PhoneBottomNav() {
+function PhoneBottomNav({ adminRole }: { adminRole: string }) {
   const pathname = usePathname();
   const pendingGapCount = usePendingGapCount();
 
   const isOverviewActive = pathname === '/admin';
+
+  // Filter bottom tabs by role (exclude Overview — it's the center button)
+  const filteredItems = filterNavByRole(allNavItems, adminRole).filter(
+    item => item.href !== '/admin' && item.href !== '/admin/team'
+  );
+  // Split into left (before center) and right (after center)
+  const leftTabs = filteredItems.slice(0, 2);
+  const rightTabs = filteredItems.slice(2);
 
   return (
     <nav
       className="lg:hidden flex items-end justify-around shrink-0 px-2"
       style={{ backgroundColor: '#18181F', borderTop: '1px solid #2A2A35' }}
     >
-      {/* Tenants */}
-      <BottomTab href="/admin/tenants" label="Tenants" icon={TenantsIcon} />
-
-      {/* Revenue */}
-      <BottomTab href="/admin/revenue" label="Revenue" icon={RevenueIcon} />
+      {leftTabs.map(item => (
+        <div key={item.href} className="relative">
+          <BottomTab href={item.href} label={item.label} icon={item.icon} />
+          {item.badge && pendingGapCount > 0 && (
+            <span
+              className="absolute -top-0.5 right-1 px-1 min-w-[14px] h-[14px] text-[8px] font-bold rounded-full flex items-center justify-center"
+              style={{ backgroundColor: '#FF7A00', color: '#FFFFFF' }}
+            >
+              {pendingGapCount}
+            </span>
+          )}
+        </div>
+      ))}
 
       {/* Overview — raised center button */}
       <div className="flex flex-col items-center justify-end pb-1.5 -mt-3">
@@ -392,21 +433,19 @@ function PhoneBottomNav() {
         </span>
       </div>
 
-      {/* Spotlight */}
-      <BottomTab href="/admin/spotlight" label="Spotlight" icon={SpotlightIcon} />
-
-      {/* Learning */}
-      <div className="relative">
-        <BottomTab href="/admin/mentor" label="Learning" icon={SunnyIcon} />
-        {pendingGapCount > 0 && (
-          <span
-            className="absolute -top-0.5 right-1 px-1 min-w-[14px] h-[14px] text-[8px] font-bold rounded-full flex items-center justify-center"
-            style={{ backgroundColor: '#FF7A00', color: '#FFFFFF' }}
-          >
-            {pendingGapCount}
-          </span>
-        )}
-      </div>
+      {rightTabs.map(item => (
+        <div key={item.href} className="relative">
+          <BottomTab href={item.href} label={item.label} icon={item.icon} />
+          {item.badge && pendingGapCount > 0 && (
+            <span
+              className="absolute -top-0.5 right-1 px-1 min-w-[14px] h-[14px] text-[8px] font-bold rounded-full flex items-center justify-center"
+              style={{ backgroundColor: '#FF7A00', color: '#FFFFFF' }}
+            >
+              {pendingGapCount}
+            </span>
+          )}
+        </div>
+      ))}
     </nav>
   );
 }
@@ -442,6 +481,14 @@ function BottomTab({
 // ============================================================================
 // Icons (inline SVG)
 // ============================================================================
+
+function TeamIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+    </svg>
+  );
+}
 
 function OverviewIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (

@@ -38,13 +38,25 @@ export default function SpotlightPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [catalogFilter, setCatalogFilter] = useState<'all' | 'excluded'>('all');
   const [catalogSearch, setCatalogSearch] = useState('');
+  const [accessDenied, setAccessDenied] = useState(false);
 
   // Form state
   const [selectedHandle, setSelectedHandle] = useState<string>('');
   const [durationDays, setDurationDays] = useState<number>(7);
 
   useEffect(() => {
-    fetchData();
+    // Client-side role gate
+    fetch('/api/admin/check')
+      .then(r => r.json())
+      .then(d => {
+        if (d.role === 'support' || d.role === 'viewer') {
+          setAccessDenied(true);
+          setLoading(false);
+        } else {
+          fetchData();
+        }
+      })
+      .catch(() => fetchData());
   }, []);
 
   async function fetchData() {
@@ -152,6 +164,20 @@ export default function SpotlightPage() {
     } finally {
       setTogglingHandle(null);
     }
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="text-4xl mb-4">🔒</div>
+        <h1 className="text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
+          Access Restricted
+        </h1>
+        <p className="text-sm text-[var(--text-secondary)] mt-2">
+          You don&apos;t have permission to manage the spotlight. Contact a super admin for access.
+        </p>
+      </div>
+    );
   }
 
   if (loading) {

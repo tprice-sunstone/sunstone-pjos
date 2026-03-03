@@ -7,18 +7,23 @@ import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/se
 export interface PlatformAdmin {
   id: string;
   email: string;
+  role: string;
 }
+
+export const ROLE_HIERARCHY: Record<string, number> = {
+  super_admin: 4,
+  admin: 3,
+  support: 2,
+  viewer: 1,
+};
+
+export const VALID_ROLES = ['super_admin', 'admin', 'support', 'viewer'];
 
 /**
  * Verify the current request is from a platform admin.
- * Returns the admin user on success, or throws a Response-ready error.
- *
- * Usage in API routes:
- *   const admin = await verifyPlatformAdmin();
- *   // if we get here, they're a verified platform admin
+ * Returns the admin user (with role) on success, or throws a Response-ready error.
  */
 export async function verifyPlatformAdmin(): Promise<PlatformAdmin> {
-  // Step 1: Get the authenticated user via cookie-based session
   const supabase = await createServerSupabase();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -26,11 +31,10 @@ export async function verifyPlatformAdmin(): Promise<PlatformAdmin> {
     throw new AdminAuthError('Not authenticated', 401);
   }
 
-  // Step 2: Check platform_admins table via service role (bypasses RLS)
   const serviceClient = await createServiceRoleClient();
   const { data: adminRecord, error: adminError } = await serviceClient
     .from('platform_admins')
-    .select('user_id')
+    .select('user_id, role')
     .eq('user_id', user.id)
     .single();
 
@@ -41,7 +45,24 @@ export async function verifyPlatformAdmin(): Promise<PlatformAdmin> {
   return {
     id: user.id,
     email: user.email || '',
+    role: adminRecord.role || 'super_admin',
   };
+}
+
+/**
+ * Verify the current user has at least the given minimum role.
+ * Throws 403 if insufficient permissions.
+ */
+export async function verifyAdminRole(minimumRole: string): Promise<PlatformAdmin> {
+  const admin = await verifyPlatformAdmin();
+  const userLevel = ROLE_HIERARCHY[admin.role] ?? 0;
+  const requiredLevel = ROLE_HIERARCHY[minimumRole] ?? 0;
+
+  if (userLevel < requiredLevel) {
+    throw new AdminAuthError('Insufficient permissions', 403);
+  }
+
+  return admin;
 }
 
 /**

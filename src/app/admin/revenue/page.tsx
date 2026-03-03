@@ -20,9 +20,21 @@ export default function AdminRevenuePage() {
   const [data, setData] = useState<RevenueData | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
+  const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
-    loadRevenue();
+    // Client-side role gate
+    fetch('/api/admin/check')
+      .then(r => r.json())
+      .then(d => {
+        if (d.role === 'support' || d.role === 'viewer') {
+          setAccessDenied(true);
+          setLoading(false);
+        } else {
+          loadRevenue();
+        }
+      })
+      .catch(() => loadRevenue());
   }, []);
 
   async function loadRevenue() {
@@ -46,6 +58,20 @@ export default function AdminRevenuePage() {
     cutoff.setDate(cutoff.getDate() - days);
     const cutoffStr = cutoff.toISOString().substring(0, 10);
     return data.daily.filter(d => d.date >= cutoffStr);
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="text-4xl mb-4">🔒</div>
+        <h1 className="text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: 'var(--font-display, Georgia)' }}>
+          Access Restricted
+        </h1>
+        <p className="text-sm text-[var(--text-secondary)] mt-2">
+          You don&apos;t have permission to view revenue data. Contact a super admin for access.
+        </p>
+      </div>
+    );
   }
 
   if (loading) {

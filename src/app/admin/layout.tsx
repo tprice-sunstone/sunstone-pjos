@@ -25,7 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const serviceClient = await createServiceRoleClient();
   const { data: adminRecord } = await serviceClient
     .from('platform_admins')
-    .select('user_id')
+    .select('user_id, role')
     .eq('user_id', user.id)
     .single();
 
@@ -33,5 +33,5 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect('/dashboard');
   }
 
-  return <AdminShell userEmail={user.email || ''}>{children}</AdminShell>;
+  return <AdminShell userEmail={user.email || ''} adminRole={adminRecord.role || 'super_admin'}>{children}</AdminShell>;
 }
