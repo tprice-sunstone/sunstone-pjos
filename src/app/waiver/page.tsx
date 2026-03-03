@@ -66,16 +66,23 @@ function WaiverPageInner() {
     load();
   }, [tenantSlug]);
 
+  // Is this a demo/preview page (no tenant slug)?
+  const isPreview = !tenantSlug;
+
   // ── Apply tenant brand color ───────────────────────────────────────────
 
   useEffect(() => {
+    if (isPreview) {
+      applyAccentColor(DEFAULT_BRAND_COLOR);
+      return;
+    }
     const color = tenant?.brand_color;
     if (color && isValidHexColor(color)) {
       applyAccentColor(color);
     } else {
       applyAccentColor(DEFAULT_BRAND_COLOR);
     }
-  }, [tenant?.brand_color]);
+  }, [tenant?.brand_color, isPreview]);
 
   // ── Canvas drawing ─────────────────────────────────────────────────────
 
@@ -293,19 +300,9 @@ function WaiverPageInner() {
     }
   };
 
-  // ── Render: invalid link ───────────────────────────────────────────────
+  // ── Render: loading (only when tenant slug is provided but not yet loaded) ──
 
-  if (!tenantSlug) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--surface-base)]">
-        <p className="text-[var(--text-tertiary)]">Invalid link</p>
-      </div>
-    );
-  }
-
-  // ── Render: loading ────────────────────────────────────────────────────
-
-  if (!tenant) {
+  if (!isPreview && !tenant) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--surface-base)]">
         <p className="text-[var(--text-tertiary)]">Loading...</p>
@@ -313,8 +310,10 @@ function WaiverPageInner() {
     );
   }
 
-  const brandColor = tenant.brand_color || DEFAULT_BRAND_COLOR;
+  const brandColor = tenant?.brand_color || DEFAULT_BRAND_COLOR;
   const hasEvent = !!form.event_id;
+  const displayName = tenant?.name || 'Sunstone Studio';
+  const displayLogo = tenant?.logo_url;
 
   // ── Render: main page ──────────────────────────────────────────────────
 
@@ -323,10 +322,10 @@ function WaiverPageInner() {
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          {tenant.logo_url && !logoError ? (
+          {displayLogo && !logoError ? (
             <img
-              src={tenant.logo_url}
-              alt={tenant.name}
+              src={displayLogo}
+              alt={displayName}
               className="w-14 h-14 rounded-2xl mx-auto mb-3 object-cover"
               onError={() => setLogoError(true)}
             />
@@ -335,11 +334,11 @@ function WaiverPageInner() {
               className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center text-white text-2xl font-bold"
               style={{ backgroundColor: brandColor }}
             >
-              {tenant.name.charAt(0)}
+              {displayName.charAt(0)}
             </div>
           )}
           <h1 className="text-2xl font-bold text-[var(--text-primary)] font-display">
-            {tenant.name}
+            {displayName}
           </h1>
           <p className="text-[var(--text-secondary)] text-sm mt-1">Waiver & Check-in</p>
         </div>
@@ -409,10 +408,10 @@ function WaiverPageInner() {
               )}
 
               {/* Waiver text */}
-              {tenant.waiver_text && (
+              {(tenant?.waiver_text || isPreview) && (
                 <div className="bg-[var(--surface-base)] rounded-lg p-4 max-h-48 overflow-y-auto">
                   <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">
-                    {tenant.waiver_text}
+                    {tenant?.waiver_text || 'I acknowledge the risks associated with permanent jewelry services, including but not limited to minor skin irritation. I confirm that I have no metal allergies that would prevent this service. I agree to follow all aftercare instructions provided.'}
                   </p>
                 </div>
               )}
@@ -421,6 +420,7 @@ function WaiverPageInner() {
                 variant="primary"
                 className="w-full"
                 onClick={() => {
+                  if (isPreview) return setError('This is a preview. Scan a QR code at a participating business to check in.');
                   if (!form.name) return setError('Please enter your name');
                   if (!smsConsent) return setError('Please agree to the SMS consent to continue');
                   setError('');
