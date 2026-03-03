@@ -12,10 +12,9 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useSearchParams } from 'next/navigation';
 import { Button, Input, Select, Card, CardContent } from '@/components/ui';
-import { applyAccentColor, isValidHexColor } from '@/lib/theme';
+import { applyTheme } from '@/lib/theme';
+import { getThemeById, DEFAULT_THEME_ID } from '@/lib/themes';
 import type { Tenant, Event } from '@/types';
-
-const DEFAULT_BRAND_COLOR = '#ee7743';
 
 function WaiverPageInner() {
   const params = useSearchParams();
@@ -69,20 +68,13 @@ function WaiverPageInner() {
   // Is this a demo/preview page (no tenant slug)?
   const isPreview = !tenantSlug;
 
-  // ── Apply tenant brand color ───────────────────────────────────────────
+  // ── Apply tenant theme ────────────────────────────────────────────────
 
   useEffect(() => {
-    if (isPreview) {
-      applyAccentColor(DEFAULT_BRAND_COLOR);
-      return;
-    }
-    const color = tenant?.brand_color;
-    if (color && isValidHexColor(color)) {
-      applyAccentColor(color);
-    } else {
-      applyAccentColor(DEFAULT_BRAND_COLOR);
-    }
-  }, [tenant?.brand_color, isPreview]);
+    const themeId = tenant?.theme_id || DEFAULT_THEME_ID;
+    const theme = getThemeById(themeId);
+    applyTheme(theme);
+  }, [tenant?.theme_id]);
 
   // ── Canvas drawing ─────────────────────────────────────────────────────
 
@@ -310,7 +302,6 @@ function WaiverPageInner() {
     );
   }
 
-  const brandColor = tenant?.brand_color || DEFAULT_BRAND_COLOR;
   const hasEvent = !!form.event_id;
   const displayName = tenant?.name || 'Sunstone Studio';
   const displayLogo = tenant?.logo_url;
@@ -331,8 +322,7 @@ function WaiverPageInner() {
             />
           ) : (
             <div
-              className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center text-white text-2xl font-bold"
-              style={{ backgroundColor: brandColor }}
+              className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center text-[var(--text-on-accent)] text-2xl font-bold bg-[var(--accent-primary)]"
             >
               {displayName.charAt(0)}
             </div>
@@ -426,7 +416,6 @@ function WaiverPageInner() {
                   setError('');
                   setStep('sign');
                 }}
-                style={{ backgroundColor: brandColor }}
               >
                 Continue to Sign
               </Button>
@@ -468,7 +457,6 @@ function WaiverPageInner() {
                   className="flex-1"
                   loading={signing}
                   onClick={submitWaiver}
-                  style={{ backgroundColor: brandColor }}
                 >
                   {signing ? 'Submitting...' : 'Submit Waiver'}
                 </Button>
