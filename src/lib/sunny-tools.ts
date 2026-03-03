@@ -2263,8 +2263,23 @@ export async function executeSunnyTool(
         const typeFilter = (input.product_type || '').toLowerCase().trim();
         const maxResults = Math.min(input.limit || 10, 25);
 
-        // Split query into individual search terms for broader matching
-        const searchTerms = searchQuery.split(/\s+/).filter(Boolean);
+        // Chain name aliases (same product, different spellings across Sunstone materials)
+        const CHAIN_ALIASES: Record<string, string[]> = {
+          'lavina': ['lavinia'],
+          'lavinia': ['lavina'],
+        };
+
+        // Split query into individual search terms + expand aliases for broader matching
+        const rawTerms = searchQuery.split(/\s+/).filter(Boolean);
+        const searchTerms: string[] = [];
+        for (const term of rawTerms) {
+          searchTerms.push(term);
+          const aliases = CHAIN_ALIASES[term];
+          if (aliases) searchTerms.push(...aliases);
+        }
+        // Also expand full query aliases (for single-word searches like "lavina")
+        const queryAliases = CHAIN_ALIASES[searchQuery];
+        const expandedQueries = queryAliases ? [searchQuery, ...queryAliases] : [searchQuery];
 
         // Score and filter products
         const scored = allProducts.map((p: any) => {
@@ -2275,16 +2290,14 @@ export async function executeSunnyTool(
           const pType = (p.productType || '').toLowerCase();
           const tags = (p.tags || []).map((t: string) => t.toLowerCase());
 
-          // Exact title match is highest priority
-          if (title === searchQuery) score += 100;
-          // Title starts with query (e.g. "chloe" matches "chloe permanent jewelry chain")
-          else if (title.startsWith(searchQuery)) score += 70;
-          // Handle starts with query (handles are often just the chain name)
-          else if (handle.startsWith(searchQuery)) score += 65;
-          // Title contains full query
-          else if (title.includes(searchQuery)) score += 50;
-          // Handle contains full query
-          else if (handle.includes(searchQuery)) score += 40;
+          // Exact title match is highest priority (check aliases too)
+          for (const eq of expandedQueries) {
+            if (title === eq) { score += 100; break; }
+            else if (title.startsWith(eq)) { score = Math.max(score, 70); }
+            else if (handle.startsWith(eq)) { score = Math.max(score, 65); }
+            else if (title.includes(eq)) { score = Math.max(score, 50); }
+            else if (handle.includes(eq)) { score = Math.max(score, 40); }
+          }
           // Each search term found in title/handle
           for (const term of searchTerms) {
             if (title.startsWith(term)) score += 30;
