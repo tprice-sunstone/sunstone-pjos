@@ -1,28 +1,72 @@
 // src/app/page.tsx
-// Root route — redirects based on auth status and platform admin flag
+// Root route — shows landing page for visitors, redirects logged-in users
 
-import { redirect } from 'next/navigation';
-import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
+import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
+import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server'
+import LandingPageClient from './landing-client'
 
-export default async function Home() {
-  const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+export const metadata: Metadata = {
+  title: 'Sunstone Studio — The Operating System for Permanent Jewelry Artists',
+  description: 'POS, inventory, AI mentor, CRM, digital waivers, reports — everything a permanent jewelry artist needs in one beautiful platform. Built by Sunstone Welders. Start your free 60-day trial.',
+  keywords: [
+    'permanent jewelry software',
+    'permanent jewelry POS',
+    'permanent jewelry business',
+    'PJ business tools',
+    'Sunstone Studio',
+    'Sunstone Welders',
+    'permanent jewelry inventory',
+    'permanent jewelry CRM',
+    'event POS',
+    'jewelry business management',
+    'Sunny AI mentor',
+    'permanent jewelry starter kit',
+  ],
+  openGraph: {
+    title: 'Sunstone Studio — Your Entire PJ Business. One Beautiful Platform.',
+    description: 'POS, inventory, AI mentor, CRM, waivers, reports — built specifically for permanent jewelry artists by the pioneers of PJ.',
+    url: 'https://sunstonepj.app',
+    siteName: 'Sunstone Studio',
+    type: 'website',
+    images: [
+      {
+        url: '/landing/hero-dashboard.png',
+        width: 1200,
+        height: 630,
+        alt: 'Sunstone Studio dashboard showing AI-powered business insights',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Sunstone Studio — Your Entire PJ Business. One Beautiful Platform.',
+    description: 'POS, inventory, AI mentor, CRM, waivers, reports — built for permanent jewelry artists.',
+    images: ['/landing/hero-dashboard.png'],
+  },
+  robots: { index: true, follow: true },
+  alternates: { canonical: 'https://sunstonepj.app' },
+}
 
-  if (!user) {
-    redirect('/auth/login');
+export default async function LandingPage() {
+  const supabase = await createServerSupabase()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (user) {
+    // Preserve existing admin redirect behavior
+    const serviceClient = await createServiceRoleClient()
+    const { data: adminRecord } = await serviceClient
+      .from('platform_admins')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (adminRecord) {
+      redirect('/admin')
+    }
+
+    redirect('/dashboard')
   }
 
-  // Check if this user is a platform admin
-  const serviceClient = await createServiceRoleClient();
-  const { data: adminRecord } = await serviceClient
-    .from('platform_admins')
-    .select('user_id')
-    .eq('user_id', user.id)
-    .single();
-
-  if (adminRecord) {
-    redirect('/admin');
-  }
-
-  redirect('/dashboard');
+  return <LandingPageClient />
 }
