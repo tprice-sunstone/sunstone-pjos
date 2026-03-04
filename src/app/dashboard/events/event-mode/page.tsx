@@ -320,6 +320,7 @@ function EventModePageInner() {
 
   const completeSale = async (resolutions: JumpRingResolution[]) => {
     if (!tenant || !eventId || !cart.payment_method) return;
+    if (cart.items.length === 0) { toast.error('Cart is empty'); return; }
     setProcessing(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -332,59 +333,77 @@ function EventModePageInner() {
         total: cart.total, paymentMethod: cart.payment_method, saleDate: new Date().toISOString(), clientId,
       };
 
-      const { data: sale, error: saleErr } = await supabase.from('sales').insert({
-        tenant_id: tenant.id, event_id: eventId, client_id: clientId,
-        subtotal: cart.subtotal, discount_amount: cart.discount_amount, tax_amount: cart.tax_amount,
-        tip_amount: cart.tip_amount, platform_fee_amount: cart.platform_fee_amount, total: cart.total,
-        payment_method: cart.payment_method, payment_status: 'completed',
-        platform_fee_rate: PLATFORM_FEE_RATES[tenant.subscription_tier], fee_handling: tenant.fee_handling,
-        status: 'completed', receipt_email: receiptEmail || null, receipt_phone: receiptPhone || null,
-        notes: cart.notes, completed_by: user?.id,
-      }).select().single();
-      if (saleErr || !sale) throw saleErr || new Error('Failed to create sale');
-
-      saleData.saleId = sale.id;
-
-      // Build sale items with jump_ring_cost
+      // Build sale items with jump_ring_cost for RPC
       const saleItems = cart.items.map((item: any) => {
-        const resolution = resolutions.find((r) => r.cart_item_id === item.id);
+        const resolution = resolutions.find((r: JumpRingResolution) => r.cart_item_id === item.id);
         const jumpRingCost = resolution
           ? resolution.jump_ring_cost_each * resolution.jump_rings_needed
           : 0;
         return {
-          sale_id: sale.id, tenant_id: tenant.id, inventory_item_id: item.inventory_item_id, name: item.name,
-          quantity: item.quantity, unit_price: item.unit_price, discount_type: item.discount_type, discount_value: item.discount_value,
-          line_total: item.line_total, product_type_id: item.product_type_id || null, product_type_name: item.product_type_name || null,
-          inches_used: item.inches_used || null, jump_ring_cost: jumpRingCost,
+          inventory_item_id: item.inventory_item_id || null,
+          name: item.name,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          discount_type: item.discount_type || null,
+          discount_value: item.discount_value || 0,
+          line_total: item.line_total,
+          product_type_id: item.product_type_id || null,
+          product_type_name: item.product_type_name || null,
+          inches_used: item.inches_used || null,
+          jump_ring_cost: jumpRingCost,
         };
       });
-      await supabase.from('sale_items').insert(saleItems);
 
-      // Inventory deduction + movements (chain inch-based deduction — NOT jump rings)
+      // Build atomic inventory deductions with movement logging
+      const deductions: { item_id: string; amount: number; log_movement: boolean; notes: string | null; performed_by: string | null }[] = [];
       for (const item of cart.items as any[]) {
         if (!item.inventory_item_id) continue;
-        const inv = inventory.find((i) => i.id === item.inventory_item_id); if (!inv) continue;
+        const inv = inventory.find((i) => i.id === item.inventory_item_id);
+        if (!inv) continue;
         let deduct: number; let movementNotes: string;
         if (inv.type === 'chain' && item.inches_used) {
           deduct = item.inches_used * item.quantity;
           movementNotes = `${item.product_type_name || 'Chain'} (${item.inches_used} in)`;
         } else { deduct = item.quantity; movementNotes = ''; }
-
-        await supabase.from('inventory_movements').insert({
-          tenant_id: tenant.id, inventory_item_id: item.inventory_item_id, movement_type: 'sale',
-          quantity: -deduct, reference_id: sale.id, notes: movementNotes || null, performed_by: user?.id,
+        deductions.push({
+          item_id: item.inventory_item_id,
+          amount: deduct,
+          log_movement: true,
+          notes: movementNotes || null,
+          performed_by: user?.id || null,
         });
-        await supabase.from('inventory_items').update({ quantity_on_hand: inv.quantity_on_hand - deduct }).eq('id', item.inventory_item_id);
       }
 
-      // ── Mark queue entry as served ──
-      if (activeQueueEntry) {
-        await supabase.from('queue_entries').update({
-          status: 'served',
-          served_at: new Date().toISOString(),
-        }).eq('id', activeQueueEntry.id);
-        setActiveQueueEntry(null);
-      }
+      // Single transactional RPC — sale + items + inventory + queue all-or-nothing
+      const { data: saleId, error: rpcError } = await supabase.rpc('create_sale_transaction', {
+        p_tenant_id: tenant.id,
+        p_event_id: eventId,
+        p_client_id: clientId || null,
+        p_subtotal: cart.subtotal,
+        p_discount_amount: cart.discount_amount,
+        p_tax_amount: cart.tax_amount,
+        p_tip_amount: cart.tip_amount,
+        p_platform_fee_amount: cart.platform_fee_amount,
+        p_total: cart.total,
+        p_payment_method: cart.payment_method,
+        p_payment_status: 'completed',
+        p_payment_provider: null,
+        p_platform_fee_rate: PLATFORM_FEE_RATES[tenant.subscription_tier],
+        p_fee_handling: tenant.fee_handling || null,
+        p_status: 'completed',
+        p_receipt_email: receiptEmail || null,
+        p_receipt_phone: receiptPhone || null,
+        p_notes: cart.notes || null,
+        p_completed_by: user?.id || null,
+        p_items: saleItems,
+        p_inventory_deductions: deductions,
+        p_queue_entry_id: activeQueueEntry?.id || null,
+      });
+      if (rpcError) throw rpcError;
+      if (!saleId) throw new Error('Failed to create sale');
+
+      saleData.saleId = saleId;
+      if (activeQueueEntry) setActiveQueueEntry(null);
 
       setTodaySales((s) => ({ count: s.count + 1, total: s.total + cart.total }));
       toast.success(`Sale completed — $${cart.total.toFixed(2)}`);
@@ -425,17 +444,17 @@ function EventModePageInner() {
       const { data: { user } } = await supabase.auth.getUser();
       for (const resolution of resolutions) {
         if (!resolution.jump_ring_inventory_id || resolution.jump_rings_needed <= 0) continue;
-        const jr = inventory.find((i) => i.id === resolution.jump_ring_inventory_id);
-        if (!jr) continue;
 
-        await supabase.from('inventory_movements').insert({
-          tenant_id: tenant.id, inventory_item_id: resolution.jump_ring_inventory_id, movement_type: 'sale',
-          quantity: -resolution.jump_rings_needed, reference_id: completedSale.saleId,
-          notes: `Deducted for ${resolution.material_name} sale`, performed_by: user?.id,
+        // Atomic decrement with movement logging — no race condition
+        await supabase.rpc('decrement_inventory', {
+          p_item_id: resolution.jump_ring_inventory_id,
+          p_amount: resolution.jump_rings_needed,
+          p_tenant_id: tenant.id,
+          p_movement_type: 'sale',
+          p_reference_id: completedSale.saleId,
+          p_notes: `Deducted for ${resolution.material_name} sale`,
+          p_performed_by: user?.id || null,
         });
-        await supabase.from('inventory_items')
-          .update({ quantity_on_hand: Math.max(0, jr.quantity_on_hand - resolution.jump_rings_needed) })
-          .eq('id', resolution.jump_ring_inventory_id);
       }
       // Refresh inventory
       const { data: refreshed } = await supabase.from('inventory_items').select('*').eq('tenant_id', tenant.id).eq('is_active', true).order('type').order('name');

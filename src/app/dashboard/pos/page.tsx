@@ -211,54 +211,72 @@ export default function StoreModePage() {
 
   const completeSale = async () => {
     if (!tenant || !cart.payment_method) return;
+    if (cart.items.length === 0) { toast.error('Cart is empty'); return; }
     setProcessing(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const isCardPayment = cart.payment_method === 'card_present' || cart.payment_method === 'card_not_present';
       const provider = isCardPayment ? (tenant.default_payment_processor || 'stripe') : null;
       const isSquare = provider === 'square';
-      const { data: sale, error: saleErr } = await supabase.from('sales').insert({
-        tenant_id: tenant.id, event_id: null, client_id: cart.client_id,
-        subtotal: cart.subtotal, discount_amount: cart.discount_amount, tax_amount: cart.tax_amount,
-        tip_amount: cart.tip_amount,
-        platform_fee_amount: isSquare ? 0 : cart.platform_fee_amount,
-        total: cart.total,
-        payment_method: cart.payment_method, payment_status: 'completed',
-        payment_provider: provider,
-        platform_fee_rate: isSquare ? 0 : PLATFORM_FEE_RATES[tenant.subscription_tier],
-        fee_handling: tenant.fee_handling,
-        status: 'completed', receipt_email: receiptEmail || null, receipt_phone: receiptPhone || null,
-        notes: cart.notes || 'Store sale', completed_by: user?.id,
-      }).select().single();
-      if (saleErr || !sale) throw saleErr || new Error('Failed to create sale');
 
+      // Build sale items for RPC
       const saleItems = cart.items.map((item) => ({
-        sale_id: sale.id, tenant_id: tenant.id, inventory_item_id: item.inventory_item_id, name: item.name,
-        quantity: item.quantity, unit_price: item.unit_price, discount_type: item.discount_type, discount_value: item.discount_value,
-        line_total: item.line_total, product_type_id: item.product_type_id || null, product_type_name: item.product_type_name || null,
+        inventory_item_id: item.inventory_item_id || null,
+        name: item.name,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        discount_type: item.discount_type || null,
+        discount_value: item.discount_value || 0,
+        line_total: item.line_total,
+        product_type_id: item.product_type_id || null,
+        product_type_name: item.product_type_name || null,
         inches_used: item.inches_used || null,
+        jump_ring_cost: null,
       }));
-      await supabase.from('sale_items').insert(saleItems);
 
+      // Build atomic inventory deductions
+      const deductions: { item_id: string; amount: number; log_movement: boolean }[] = [];
       for (const item of cart.items) {
         if (!item.inventory_item_id) continue;
-        const inv = inventory.find((i) => i.id === item.inventory_item_id); if (!inv) continue;
+        const inv = inventory.find((i) => i.id === item.inventory_item_id);
+        if (!inv) continue;
         const deduct = inv.type === 'chain' && item.inches_used ? item.inches_used : item.quantity;
-        await supabase.from('inventory_items').update({ quantity_on_hand: Math.max(0, inv.quantity_on_hand - deduct) }).eq('id', inv.id);
+        deductions.push({ item_id: item.inventory_item_id, amount: deduct, log_movement: false });
       }
 
-      // Mark queue entry as served (if started from check-in strip)
-      if (activeQueueEntry) {
-        await supabase
-          .from('queue_entries')
-          .update({ status: 'served', served_at: new Date().toISOString() })
-          .eq('id', activeQueueEntry.id);
-        setActiveQueueEntry(null);
-      }
+      // Single transactional RPC — sale + items + inventory + queue all-or-nothing
+      const { data: saleId, error: rpcError } = await supabase.rpc('create_sale_transaction', {
+        p_tenant_id: tenant.id,
+        p_event_id: null,
+        p_client_id: cart.client_id || null,
+        p_subtotal: cart.subtotal,
+        p_discount_amount: cart.discount_amount,
+        p_tax_amount: cart.tax_amount,
+        p_tip_amount: cart.tip_amount,
+        p_platform_fee_amount: isSquare ? 0 : cart.platform_fee_amount,
+        p_total: cart.total,
+        p_payment_method: cart.payment_method,
+        p_payment_status: 'completed',
+        p_payment_provider: provider,
+        p_platform_fee_rate: isSquare ? 0 : PLATFORM_FEE_RATES[tenant.subscription_tier],
+        p_fee_handling: tenant.fee_handling || null,
+        p_status: 'completed',
+        p_receipt_email: receiptEmail || null,
+        p_receipt_phone: receiptPhone || null,
+        p_notes: cart.notes || 'Store sale',
+        p_completed_by: user?.id || null,
+        p_items: saleItems,
+        p_inventory_deductions: deductions,
+        p_queue_entry_id: activeQueueEntry?.id || null,
+      });
+      if (rpcError) throw rpcError;
+      if (!saleId) throw new Error('Failed to create sale');
+
+      if (activeQueueEntry) setActiveQueueEntry(null);
 
       // Save completed sale data for confirmation screen
       const saleData: CompletedSaleData = {
-        saleId: sale.id,
+        saleId,
         saleDate: new Date().toISOString(),
         items: cart.items.map((item: any) => ({
           name: item.name, quantity: item.quantity, unitPrice: item.unit_price, lineTotal: item.line_total,
@@ -271,7 +289,7 @@ export default function StoreModePage() {
         paymentMethod: cart.payment_method || 'Unknown',
       };
 
-      setTodaySales((p) => ({ count: p.count + 1, total: p.total + Number(sale.total) }));
+      setTodaySales((p) => ({ count: p.count + 1, total: p.total + cart.total }));
       setCompletedSale(saleData);
       cart.reset(); setStep('confirmation'); setShowCart(false);
       setEmailSent(false); setSmsSent(false); setEmailError(''); setSmsError('');
@@ -303,7 +321,7 @@ export default function StoreModePage() {
         }).then(async (r) => {
           if (r.ok) {
             setEmailSent(true);
-            if (sale.id) await supabase.from('sales').update({ receipt_sent_at: new Date().toISOString() }).eq('id', sale.id);
+            if (saleId) await supabase.from('sales').update({ receipt_sent_at: new Date().toISOString() }).eq('id', saleId);
           }
         }).catch(() => {});
       }
@@ -325,7 +343,7 @@ export default function StoreModePage() {
         }).then(async (r) => {
           if (r.ok) {
             setSmsSent(true);
-            if (sale.id) await supabase.from('sales').update({ receipt_sent_at: new Date().toISOString() }).eq('id', sale.id);
+            if (saleId) await supabase.from('sales').update({ receipt_sent_at: new Date().toISOString() }).eq('id', saleId);
           }
         }).catch(() => {});
       }

@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
 
         const response = await squareClient.paymentsApi.createPayment({
           sourceId: source_id,
-          idempotencyKey: idempotency_key || crypto.randomUUID(),
+          idempotencyKey: `sq_${sale_id}`,
           amountMoney: { amount: BigInt(totalCents), currency: 'USD' },
           tipMoney: tipCents ? { amount: BigInt(tipCents), currency: 'USD' } : undefined,
           locationId: tenant.square_location_id,
@@ -134,16 +134,21 @@ export async function POST(request: NextRequest) {
       try {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-        const paymentIntent = await stripe.paymentIntents.create({
-          amount: totalCents,
-          currency: 'usd',
-          payment_method: source_id,
-          confirm: true,
-          transfer_data: {
-            destination: tenant.stripe_account_id,
+        const paymentIntent = await stripe.paymentIntents.create(
+          {
+            amount: totalCents,
+            currency: 'usd',
+            payment_method: source_id,
+            confirm: true,
+            transfer_data: {
+              destination: tenant.stripe_account_id,
+            },
+            application_fee_amount: platformFeeCents || 0,
           },
-          application_fee_amount: platformFeeCents || 0,
-        });
+          {
+            idempotencyKey: `pi_${sale_id}`,
+          }
+        );
 
         paymentId = paymentIntent.id;
         paymentStatus = paymentIntent.status;
