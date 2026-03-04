@@ -11,6 +11,7 @@
 
 import { TipScreen } from './TipScreen';
 import { PaymentScreen } from './PaymentScreen';
+import type { GiftCardData } from './PaymentScreen';
 import { ReceiptScreen } from './ReceiptScreen';
 import { JumpRingStep } from './JumpRingStep';
 import type { CompletedSaleData } from './ReceiptScreen';
@@ -52,6 +53,8 @@ interface CheckoutFlowProps {
   onPaymentCompleted?: (saleId: string) => void;
   receiptPhone?: string;
   mode?: 'event' | 'store';
+  // Gift card
+  onGiftCardApplied?: (data: GiftCardData | null) => void;
   // Step navigation
   onContinueToPayment: () => void;
   // Jump ring step (Event Mode only)
@@ -99,6 +102,7 @@ export function CheckoutFlow({
   onPaymentCompleted,
   receiptPhone,
   mode,
+  onGiftCardApplied,
   onContinueToPayment,
   jumpRingData,
   onJumpRingConfirm,
@@ -157,6 +161,7 @@ export function CheckoutFlow({
         receiptPhone={receiptPhone}
         tenantName={tenantName}
         mode={mode}
+        onGiftCardApplied={onGiftCardApplied}
       />
     );
   } else if (step === 'jump_ring' && jumpRingData && onJumpRingConfirm && onJumpRingSkip) {

@@ -22,7 +22,7 @@ import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/ui/Moda
 import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
 import { ProductSelector, QueueBadge, CheckoutFlow, PendingPayments, GiftCardModal } from '@/components/pos';
-import type { CompletedSaleData, CheckoutStep } from '@/components/pos';
+import type { CompletedSaleData, CheckoutStep, GiftCardData } from '@/components/pos';
 import SunnyTutorial from '@/components/SunnyTutorial';
 import type {
   InventoryItem,
@@ -59,6 +59,7 @@ export default function StoreModePage() {
 
   // Gift card state
   const [showGiftCardModal, setShowGiftCardModal] = useState(false);
+  const [giftCardData, setGiftCardData] = useState<GiftCardData | null>(null);
 
   // Queue/check-in state
   const [activeQueueEntry, setActiveQueueEntry] = useState<any | null>(null);
@@ -279,6 +280,23 @@ export default function StoreModePage() {
     if (!tenant) return;
     if (activeQueueEntry) setActiveQueueEntry(null);
 
+    // Redeem gift card if applied
+    if (giftCardData) {
+      try {
+        await fetch(`/api/gift-cards/${giftCardData.giftCardId}/redeem`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ saleId, amount: giftCardData.amountApplied }),
+        });
+        await supabase.from('sales').update({
+          gift_card_id: giftCardData.giftCardId,
+          gift_card_amount_applied: giftCardData.amountApplied,
+        }).eq('id', saleId);
+      } catch (err) {
+        console.error('[GiftCard] Redeem failed:', err);
+      }
+    }
+
     const saleData: CompletedSaleData = {
       saleId,
       saleDate: new Date().toISOString(),
@@ -362,6 +380,23 @@ export default function StoreModePage() {
       });
       if (rpcError) throw rpcError;
       if (!saleId) throw new Error('Failed to create sale');
+
+      // Redeem gift card if applied
+      if (giftCardData) {
+        try {
+          await fetch(`/api/gift-cards/${giftCardData.giftCardId}/redeem`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ saleId, amount: giftCardData.amountApplied }),
+          });
+          await supabase.from('sales').update({
+            gift_card_id: giftCardData.giftCardId,
+            gift_card_amount_applied: giftCardData.amountApplied,
+          }).eq('id', saleId);
+        } catch (err) {
+          console.error('[GiftCard] Redeem failed:', err);
+        }
+      }
 
       if (activeQueueEntry) setActiveQueueEntry(null);
 
@@ -611,6 +646,7 @@ export default function StoreModePage() {
               onPaymentCompleted={handlePaymentCompleted}
               receiptPhone={receiptPhone}
               mode="store"
+              onGiftCardApplied={(data) => setGiftCardData(data)}
               onContinueToPayment={() => setStep('payment')}
               completedSale={completedSale}
               receiptConfig={receiptConfig}
@@ -630,6 +666,7 @@ export default function StoreModePage() {
                 setReceiptEmail(''); setReceiptPhone('');
                 setEmailSent(false); setSmsSent(false);
                 setEmailError(''); setSmsError('');
+                setGiftCardData(null);
                 setQueueRefresh((n) => n + 1);
               }}
             />

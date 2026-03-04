@@ -24,7 +24,7 @@ import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
 import JumpRingPickerModal from '@/components/JumpRingPickerModal';
 import { ProductSelector, QueueBadge, CheckoutFlow, PendingPayments, GiftCardModal } from '@/components/pos';
-import type { CompletedSaleData, CheckoutStep } from '@/components/pos';
+import type { CompletedSaleData, CheckoutStep, GiftCardData } from '@/components/pos';
 import type { QueueEntry } from '@/components/MiniQueueStrip';
 import type {
   InventoryItem, Event, TaxProfile, ProductType, ChainProductPrice, JumpRingResolution, CartItem,
@@ -133,6 +133,7 @@ function EventModePageInner() {
   const [showFullScreenQR, setShowFullScreenQR] = useState(false);
   const [showCart, setShowCart] = useState(false);
   const [showGiftCardModal, setShowGiftCardModal] = useState(false);
+  const [giftCardData, setGiftCardData] = useState<GiftCardData | null>(null);
 
   // Receipt / confirmation
   const [completedSale, setCompletedSale] = useState<CompletedSaleData | null>(null);
@@ -351,6 +352,23 @@ function EventModePageInner() {
     if (!tenant) return;
     if (activeQueueEntry) setActiveQueueEntry(null);
 
+    // Redeem gift card if applied
+    if (giftCardData) {
+      try {
+        await fetch(`/api/gift-cards/${giftCardData.giftCardId}/redeem`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ saleId, amount: giftCardData.amountApplied }),
+        });
+        await supabase.from('sales').update({
+          gift_card_id: giftCardData.giftCardId,
+          gift_card_amount_applied: giftCardData.amountApplied,
+        }).eq('id', saleId);
+      } catch (err) {
+        console.error('[GiftCard] Redeem failed:', err);
+      }
+    }
+
     const saleData: CompletedSaleData = {
       saleId, saleDate: new Date().toISOString(),
       items: cart.items.length > 0 ? cart.items.map((i: any) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unit_price, lineTotal: i.line_total })) : [{ name: 'Payment', quantity: 1, unitPrice: 0, lineTotal: 0 }],
@@ -485,6 +503,23 @@ function EventModePageInner() {
       if (rpcError) throw rpcError;
       if (!saleId) throw new Error('Failed to create sale');
 
+      // Redeem gift card if applied
+      if (giftCardData) {
+        try {
+          await fetch(`/api/gift-cards/${giftCardData.giftCardId}/redeem`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ saleId, amount: giftCardData.amountApplied }),
+          });
+          await supabase.from('sales').update({
+            gift_card_id: giftCardData.giftCardId,
+            gift_card_amount_applied: giftCardData.amountApplied,
+          }).eq('id', saleId);
+        } catch (err) {
+          console.error('[GiftCard] Redeem failed:', err);
+        }
+      }
+
       saleData.saleId = saleId;
       if (activeQueueEntry) setActiveQueueEntry(null);
 
@@ -584,6 +619,7 @@ function EventModePageInner() {
     setStep('items'); setCompletedSale(null); setReceiptEmail(''); setReceiptPhone('');
     setEmailSent(false); setSmsSent(false); setEmailError(''); setSmsError('');
     setJumpRingResolutions([]); setPendingJumpRingResolutions([]); setActiveQueueEntry(null);
+    setGiftCardData(null);
     setQueueRefresh((n) => n + 1);
   };
 
@@ -765,6 +801,7 @@ function EventModePageInner() {
               onPaymentCompleted={handlePaymentCompleted}
               receiptPhone={receiptPhone}
               mode="event"
+              onGiftCardApplied={(data) => setGiftCardData(data)}
               onContinueToPayment={() => setStep('payment')}
               jumpRingData={pendingJumpRingResolutions.length > 0 ? {
                 saleTotal: completedSale?.total ?? 0,

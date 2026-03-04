@@ -5,6 +5,7 @@
 // Two clear paths:
 //   1. "Charge Customer" — Stripe Checkout via QR code or text link
 //   2. "Record External Payment" — cash, venmo, external card reader
+// Plus: "Apply Gift Card" — partial or full gift card redemption
 // ============================================================================
 
 'use client';
@@ -14,8 +15,16 @@ import QRCodeLib from 'qrcode';
 import type { PaymentMethod } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import { GiftCardRedeemModal } from '@/components/pos/GiftCardRedeemModal';
+import { formatGiftCardCode } from '@/lib/gift-cards';
 
 // ── Types ──
+
+export interface GiftCardData {
+  giftCardId: string;
+  amountApplied: number;
+  remainingDue: number;
+  code: string;
+}
 
 interface PaymentScreenProps {
   selectedMethod: PaymentMethod | null;
@@ -38,12 +47,8 @@ interface PaymentScreenProps {
   receiptPhone?: string;
   tenantName?: string;
   mode?: 'event' | 'store';
-  onGiftCardApplied?: (result: {
-    giftCardId: string;
-    amountApplied: number;
-    remainingDue: number;
-    code: string;
-  }) => void;
+  // Gift card callback — tells parent to store gift card data for post-sale redemption
+  onGiftCardApplied?: (data: GiftCardData | null) => void;
 }
 
 type PaymentPath = null | 'charge' | 'external';
@@ -114,6 +119,7 @@ export function PaymentScreen({
 }: PaymentScreenProps) {
   const [path, setPath] = useState<PaymentPath>(null);
   const [showGiftCardRedeem, setShowGiftCardRedeem] = useState(false);
+  const [appliedGiftCard, setAppliedGiftCard] = useState<GiftCardData | null>(null);
   const [chargeMethod, setChargeMethod] = useState<ChargeMethod>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -149,19 +155,21 @@ export function PaymentScreen({
       }
 
       // Create Stripe Checkout session
+      // When a gift card is partially applied, send a single line item for the remainder
+      const stripeLineItems = appliedGiftCard
+        ? [{ name: `Balance due (gift card ${formatGiftCardCode(appliedGiftCard.code)} applied)`, unit_price: appliedGiftCard.remainingDue, quantity: 1 }]
+        : items.map((i) => ({ name: i.name, unit_price: i.unitPrice, quantity: i.quantity }));
+
       const res = await fetch('/api/stripe/payment-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           saleId,
           tenantId,
-          lineItems: items.map((i) => ({
-            name: i.name,
-            unit_price: i.unitPrice,
-            quantity: i.quantity,
-          })),
-          tipAmount,
-          taxAmount,
+          lineItems: stripeLineItems,
+          // When gift card is applied, tax/tip are already baked into the single line item
+          tipAmount: appliedGiftCard ? 0 : tipAmount,
+          taxAmount: appliedGiftCard ? 0 : taxAmount,
           mode: mode || 'event',
         }),
       });
@@ -250,6 +258,27 @@ export function PaymentScreen({
     setCheckoutUrl(null);
     setQrDataUrl(null);
     setSmsSent(false);
+  };
+
+  // ── Gift card applied ──
+
+  const effectiveTotal = appliedGiftCard ? appliedGiftCard.remainingDue : total;
+
+  const handleGiftCardApplied = (result: GiftCardData) => {
+    setAppliedGiftCard(result);
+    onGiftCardApplied?.(result);
+
+    if (result.remainingDue <= 0) {
+      // Full coverage — complete sale with 'gift_card' payment method
+      onSelectMethod('gift_card' as PaymentMethod);
+      // Small delay to ensure state propagates before completeSale reads it
+      setTimeout(() => onCompleteSale(), 50);
+    }
+  };
+
+  const removeGiftCard = () => {
+    setAppliedGiftCard(null);
+    onGiftCardApplied?.(null);
   };
 
   // ============================================================
@@ -460,13 +489,30 @@ export function PaymentScreen({
                 )}
               </div>
 
+              {/* Gift card applied */}
+              {appliedGiftCard && (
+                <div className="border-t border-[var(--border-subtle)] pt-2 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[var(--accent-primary)] font-medium flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                      </svg>
+                      Gift Card ({formatGiftCardCode(appliedGiftCard.code)})
+                    </span>
+                    <span className="text-[var(--accent-primary)] font-medium">
+                      -${appliedGiftCard.amountApplied.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Grand total */}
               <div className="border-t-2 border-[var(--text-primary)] pt-3 flex items-baseline justify-between">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-tertiary)]">
-                  Total
+                  {appliedGiftCard ? 'Remaining Due' : 'Total'}
                 </span>
                 <span className="text-[24px] font-bold text-[var(--text-primary)] tracking-tight leading-none">
-                  ${total.toFixed(2)}
+                  ${effectiveTotal.toFixed(2)}
                 </span>
               </div>
             </div>
@@ -570,7 +616,7 @@ export function PaymentScreen({
             )}
 
             {/* ── Gift Card ── */}
-            {path === null && (
+            {path === null && !appliedGiftCard && (
               <button
                 onClick={() => setShowGiftCardRedeem(true)}
                 className="w-full rounded-xl p-3 text-left transition-all border border-dashed border-[var(--border-default)] hover:border-[var(--border-strong)] min-h-[48px] flex items-center gap-3"
@@ -583,6 +629,31 @@ export function PaymentScreen({
                   <p className="text-xs text-[var(--text-tertiary)]">Redeem a gift card code</p>
                 </div>
               </button>
+            )}
+
+            {/* ── Gift Card Applied Banner ── */}
+            {appliedGiftCard && appliedGiftCard.remainingDue > 0 && path === null && (
+              <div className="rounded-xl p-3 border border-[var(--accent-primary)] bg-[color-mix(in_srgb,var(--accent-primary)_8%,white)] flex items-center justify-between min-h-[48px]">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-[var(--accent-primary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">
+                      Gift card applied: -${appliedGiftCard.amountApplied.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-[var(--text-tertiary)]">
+                      Collect ${appliedGiftCard.remainingDue.toFixed(2)} remaining
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={removeGiftCard}
+                  className="text-xs text-[var(--text-tertiary)] hover:text-red-600 px-2 py-1 rounded min-h-[32px]"
+                >
+                  Remove
+                </button>
+              </div>
             )}
 
             {/* ── PATH 2: Record External Payment ── */}
@@ -639,7 +710,7 @@ export function PaymentScreen({
                         className="w-full h-14 rounded-xl font-semibold text-base transition-all active:scale-[0.97] shadow-sm disabled:opacity-60 min-h-[48px]"
                         style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
                       >
-                        {processing ? 'Processing...' : `Record Sale — $${total.toFixed(2)}`}
+                        {processing ? 'Processing...' : `Record Sale — $${effectiveTotal.toFixed(2)}`}
                       </button>
                     )}
 
@@ -663,7 +734,7 @@ export function PaymentScreen({
           orderTotal={total}
           onApply={(result) => {
             setShowGiftCardRedeem(false);
-            onGiftCardApplied?.(result);
+            handleGiftCardApplied(result);
           }}
         />
       </div>
