@@ -23,7 +23,7 @@ import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/ui/Moda
 import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
 import JumpRingPickerModal from '@/components/JumpRingPickerModal';
-import { ProductSelector, QueueBadge, CheckoutFlow, PendingPayments } from '@/components/pos';
+import { ProductSelector, QueueBadge, CheckoutFlow, PendingPayments, GiftCardModal } from '@/components/pos';
 import type { CompletedSaleData, CheckoutStep } from '@/components/pos';
 import type { QueueEntry } from '@/components/MiniQueueStrip';
 import type {
@@ -132,6 +132,7 @@ function EventModePageInner() {
   const [showQR, setShowQR] = useState(false);
   const [showFullScreenQR, setShowFullScreenQR] = useState(false);
   const [showCart, setShowCart] = useState(false);
+  const [showGiftCardModal, setShowGiftCardModal] = useState(false);
 
   // Receipt / confirmation
   const [completedSale, setCompletedSale] = useState<CompletedSaleData | null>(null);
@@ -628,6 +629,14 @@ function EventModePageInner() {
             />
           )}
 
+          <button onClick={() => setShowGiftCardModal(true)}
+            className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
+            aria-label="Sell gift card"
+            title="Sell Gift Card">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
+          </button>
           <button onClick={() => setShowQR(true)}
             className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
             aria-label="Show QR code">
@@ -842,6 +851,20 @@ function EventModePageInner() {
         jumpRingInventory={jumpRingInventory}
         lowStockWarnings={pendingJumpRingLowStockWarnings}
       />
+
+      {/* ── Gift Card Modal ── */}
+      {tenant && (
+        <GiftCardModal
+          isOpen={showGiftCardModal}
+          onClose={() => setShowGiftCardModal(false)}
+          tenantId={tenant.id}
+          tenantName={tenant.name}
+          stripeConnected={!!tenant.stripe_account_id}
+          onGiftCardSold={() => {
+            toast.success('Gift card sold!');
+          }}
+        />
+      )}
     </div>
   );
 }

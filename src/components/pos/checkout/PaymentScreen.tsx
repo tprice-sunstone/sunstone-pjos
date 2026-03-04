@@ -13,6 +13,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import QRCodeLib from 'qrcode';
 import type { PaymentMethod } from '@/types';
 import { createClient } from '@/lib/supabase/client';
+import { GiftCardRedeemModal } from '@/components/pos/GiftCardRedeemModal';
 
 // ── Types ──
 
@@ -37,6 +38,12 @@ interface PaymentScreenProps {
   receiptPhone?: string;
   tenantName?: string;
   mode?: 'event' | 'store';
+  onGiftCardApplied?: (result: {
+    giftCardId: string;
+    amountApplied: number;
+    remainingDue: number;
+    code: string;
+  }) => void;
 }
 
 type PaymentPath = null | 'charge' | 'external';
@@ -103,8 +110,10 @@ export function PaymentScreen({
   receiptPhone: initialPhone,
   tenantName,
   mode,
+  onGiftCardApplied,
 }: PaymentScreenProps) {
   const [path, setPath] = useState<PaymentPath>(null);
+  const [showGiftCardRedeem, setShowGiftCardRedeem] = useState(false);
   const [chargeMethod, setChargeMethod] = useState<ChargeMethod>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -560,6 +569,22 @@ export function PaymentScreen({
               </>
             )}
 
+            {/* ── Gift Card ── */}
+            {path === null && (
+              <button
+                onClick={() => setShowGiftCardRedeem(true)}
+                className="w-full rounded-xl p-3 text-left transition-all border border-dashed border-[var(--border-default)] hover:border-[var(--border-strong)] min-h-[48px] flex items-center gap-3"
+              >
+                <svg className="w-5 h-5 text-[var(--text-tertiary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                </svg>
+                <div>
+                  <div className="text-sm font-medium text-[var(--text-primary)]">Apply Gift Card</div>
+                  <p className="text-xs text-[var(--text-tertiary)]">Redeem a gift card code</p>
+                </div>
+              </button>
+            )}
+
             {/* ── PATH 2: Record External Payment ── */}
             {path !== 'charge' && (
               <div className="space-y-3">
@@ -630,6 +655,17 @@ export function PaymentScreen({
             )}
           </div>
         </div>
+
+        {/* Gift Card Redeem Modal */}
+        <GiftCardRedeemModal
+          isOpen={showGiftCardRedeem}
+          onClose={() => setShowGiftCardRedeem(false)}
+          orderTotal={total}
+          onApply={(result) => {
+            setShowGiftCardRedeem(false);
+            onGiftCardApplied?.(result);
+          }}
+        />
       </div>
     </div>
   );

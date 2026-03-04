@@ -448,6 +448,13 @@ const SUBSECTIONS: Subsection[] = [
     keywords: ['sunny', 'ai mentor', 'chat', 'ask question', 'question limit', 'how to use sunny', 'what can sunny do', 'sunny help', 'mentor chat', 'ai help'],
   },
   {
+    id: 'app-gift-cards',
+    label: 'Gift Cards',
+    data: PJOS_PLATFORM_GUIDE.giftCards,
+    keywords: ['gift card', 'gift certificate', 'voucher', 'redeem', 'gift code', 'sell gift', 'buy gift', 'gift card code', 'gift balance', 'gift card balance', 'apply gift card'],
+    priority: 1,
+  },
+  {
     id: 'app-troubleshooting',
     label: 'App Troubleshooting',
     data: PJOS_PLATFORM_GUIDE.platformTroubleshooting,

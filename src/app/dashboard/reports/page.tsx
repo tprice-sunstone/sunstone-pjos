@@ -84,6 +84,7 @@ const paymentMethodLabels: Record<string, string> = {
   cash: 'Cash',
   venmo: 'Venmo / Zelle',
   card_external: 'External Card',
+  gift_card: 'Gift Card',
   // Legacy values for older sales
   card_present: 'Card',
   card_not_present: 'Card (Remote)',

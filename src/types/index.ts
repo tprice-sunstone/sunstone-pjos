@@ -12,7 +12,7 @@ export type BusinessType = 'permanent_jewelry' | 'salon_spa' | 'boutique' | 'pop
 export type InventoryType = 'chain' | 'jump_ring' | 'charm' | 'connector' | 'other';
 export type InventoryUnit = 'ft' | 'in' | 'each' | 'pack';
 export type MovementType = 'restock' | 'sale' | 'waste' | 'adjustment';
-export type PaymentMethod = 'stripe_link' | 'cash' | 'venmo' | 'card_external';
+export type PaymentMethod = 'stripe_link' | 'cash' | 'venmo' | 'card_external' | 'gift_card';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
 export type QueueStatus = 'waiting' | 'notified' | 'served' | 'no_show';
 export type SaleStatus = 'draft' | 'completed' | 'voided';
@@ -691,4 +691,51 @@ export interface JumpRingConfirmation {
   auto_deducted: boolean;
   default_count: number;
   actual_count: number;
+}
+
+// ============================================================================
+// Gift Cards
+// ============================================================================
+
+export type GiftCardStatus = 'active' | 'fully_redeemed' | 'expired' | 'cancelled';
+export type GiftCardDeliveryMethod = 'sms' | 'email' | 'print' | 'none';
+
+export interface GiftCard {
+  id: string;
+  tenant_id: string;
+  code: string;
+  amount: number;
+  remaining_balance: number;
+  status: GiftCardStatus;
+  purchaser_name: string | null;
+  purchaser_email: string | null;
+  purchaser_phone: string | null;
+  recipient_name: string;
+  recipient_email: string | null;
+  recipient_phone: string | null;
+  personal_message: string | null;
+  delivery_method: GiftCardDeliveryMethod;
+  delivered_at: string | null;
+  payment_method: string | null;
+  sale_id: string | null;
+  purchased_at: string;
+  expires_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  redemptions?: GiftCardRedemption[];
+  redemption_count?: number;
+  total_redeemed?: number;
+}
+
+export interface GiftCardRedemption {
+  id: string;
+  gift_card_id: string;
+  sale_id: string;
+  tenant_id: string;
+  amount: number;
+  redeemed_at: string;
+  redeemed_by: string | null;
+  created_at: string;
 }

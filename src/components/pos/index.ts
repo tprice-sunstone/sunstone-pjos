@@ -7,4 +7,6 @@ export { AddOnsSection } from './AddOnsSection';
 export { QueueBadge } from './QueueBadge';
 export { CheckoutFlow } from './checkout';
 export { PendingPayments } from './PendingPayments';
+export { GiftCardModal } from './GiftCardModal';
+export { GiftCardRedeemModal } from './GiftCardRedeemModal';
 export type { CompletedSaleData, CheckoutStep } from './checkout';

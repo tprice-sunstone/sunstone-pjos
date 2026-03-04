@@ -2050,6 +2050,56 @@ export const PJOS_PLATFORM_GUIDE = {
     },
     generalTip: 'For any issue you cannot resolve, contact Sunstone support at 385-999-5240 by call or text. They can also help with account-specific issues.',
   },
+
+  // ---------------------------------------------------------------------------
+  // 9.15 Gift Cards
+  // ---------------------------------------------------------------------------
+  giftCards: {
+    overview: 'Sunstone Studio includes a built-in digital gift card system. Sell gift cards directly from the POS, deliver them via text or email, and redeem them at checkout. Gift cards are great for events where a customer wants to buy a gift for someone who is not present — it drives repeat visits and new client acquisition.',
+    selling: {
+      steps: [
+        '1. In the POS (Store Mode or Event Mode), tap the gift card icon in the header bar.',
+        '2. Choose a preset amount ($25, $50, $75, $100, $150) or enter a custom amount.',
+        '3. Enter the recipient\'s name (required) and phone or email.',
+        '4. Optionally add who it\'s from and a personal message.',
+        '5. Choose delivery: Text, Email, Print/Tell, or None.',
+        '6. Tap "Record External Payment" to complete the gift card sale.',
+        '7. The recipient gets a text or email with their gift card code (e.g., ABCD-EFGH).',
+      ],
+      tips: [
+        'Gift cards make great impulse purchases at events — have signage ready.',
+        'The purchaser pays you directly (cash, Venmo, card) — then you create the gift card.',
+        'Print/Tell delivery means you write the code down for the customer. No notification is sent.',
+      ],
+    },
+    redeeming: {
+      steps: [
+        '1. During checkout, tap "Apply Gift Card" on the payment screen.',
+        '2. Enter the 8-character code (with or without the dash).',
+        '3. Tap "Look Up" to verify the card and see the balance.',
+        '4. If the gift card covers the full amount, tap "Apply Full Amount" and the sale completes.',
+        '5. If partial, the gift card amount is applied and you collect the remaining balance via another payment method.',
+      ],
+      partialRedemption: 'Gift cards support partial use. If a $100 card is used on a $60 order, $40 stays on the card for future use.',
+    },
+    managing: {
+      overview: 'The Gift Cards page (in the sidebar) shows all cards you have sold with their status, balance, and history.',
+      features: [
+        'View summary stats: total sold, outstanding balance, fully redeemed, this month\'s revenue.',
+        'Search by code, recipient, or purchaser name.',
+        'Filter by status (Active, Redeemed, Expired, Cancelled).',
+        'View full redemption history for any card.',
+        'Resend the gift card notification (text or email).',
+        'Cancel a gift card if needed.',
+      ],
+    },
+    bestPractices: [
+      'Promote gift cards at events with signage: "Can\'t stay? Grab a gift card!"',
+      'Gift cards bring new clients — the recipient has to visit you to redeem.',
+      'Track your outstanding balance to understand your gift card liability.',
+      'Resend the notification if a recipient says they lost the code.',
+    ],
+  },
 };
 
 // =============================================================================

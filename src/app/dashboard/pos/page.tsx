@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
-import { ProductSelector, QueueBadge, CheckoutFlow, PendingPayments } from '@/components/pos';
+import { ProductSelector, QueueBadge, CheckoutFlow, PendingPayments, GiftCardModal } from '@/components/pos';
 import type { CompletedSaleData, CheckoutStep } from '@/components/pos';
 import SunnyTutorial from '@/components/SunnyTutorial';
 import type {
@@ -56,6 +56,9 @@ export default function StoreModePage() {
   // QR code state
   const [showQR, setShowQR] = useState(false);
   const [showFullScreenQR, setShowFullScreenQR] = useState(false);
+
+  // Gift card state
+  const [showGiftCardModal, setShowGiftCardModal] = useState(false);
 
   // Queue/check-in state
   const [activeQueueEntry, setActiveQueueEntry] = useState<any | null>(null);
@@ -478,6 +481,17 @@ export default function StoreModePage() {
             refreshTrigger={queueRefresh}
           />
 
+          {/* Sell Gift Card button */}
+          <button
+            onClick={() => setShowGiftCardModal(true)}
+            className="p-2 rounded-lg hover:bg-[var(--surface-raised)] text-[var(--text-tertiary)] min-h-[44px] min-w-[44px] flex items-center justify-center"
+            title="Sell Gift Card"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
+          </button>
+
           {/* QR Code button */}
           <button
             onClick={() => setShowQR(true)}
@@ -708,6 +722,20 @@ export default function StoreModePage() {
           tenantName={tenant.name}
           eventName="Scan to sign waiver & check in"
           onClose={() => setShowFullScreenQR(false)}
+        />
+      )}
+
+      {/* ── Gift Card Modal ── */}
+      {tenant && (
+        <GiftCardModal
+          isOpen={showGiftCardModal}
+          onClose={() => setShowGiftCardModal(false)}
+          tenantId={tenant.id}
+          tenantName={tenant.name}
+          stripeConnected={!!tenant.stripe_account_id}
+          onGiftCardSold={() => {
+            toast.success('Gift card sold!');
+          }}
         />
       )}
 
