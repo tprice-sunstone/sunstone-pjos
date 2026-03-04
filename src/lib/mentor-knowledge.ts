@@ -807,13 +807,30 @@ export const BUSINESS_STRATEGY_KNOWLEDGE = {
   // Payment Processing
   // ---------------------------------------------------------------------------
   paymentProcessing: {
-    pos: ['Square', 'Shopify', 'PayPal Here'],
-    digitalPayments: ['Venmo', 'Zelle', 'Apple Pay', 'Google Pay'],
+    overview: 'Sunstone Studio has built-in Stripe payments — no card reader or extra hardware needed. Customers pay by scanning a QR code or tapping a text link that opens Stripe Checkout on their phone.',
+    howItWorks: [
+      '1. You ring up the sale in the POS and tap "Charge Customer."',
+      '2. A QR code appears on your screen. The customer scans it with their phone camera.',
+      '3. They pay on Stripe Checkout (Apple Pay, Google Pay, or card) and you see the confirmation instantly.',
+      '4. Alternatively, you can send a payment link via text message if the customer is remote or prefers that.',
+    ],
+    processingFees: {
+      model: 'The processing fee is added to the CUSTOMER\'s checkout total — you keep your full sale amount. The fee rate depends on your subscription tier.',
+      rates: {
+        starter: '3% added to the customer\'s total',
+        pro: '1.5% added to the customer\'s total',
+        business: '0% — no processing fee for your customers',
+      },
+      example: 'If a bracelet costs $50 on the Starter plan, the customer pays $51.50 ($50 + 3%) and you receive $50.',
+    },
+    noCardReader: 'You do NOT need a Square reader, card terminal, or any external hardware. Everything runs through the customer\'s phone via Stripe Checkout.',
+    otherPaymentMethods: ['Cash', 'Venmo', 'External card (your own Square/Clover reader outside the app)'],
     tipping: {
       stance:
         'Enable tipping in your POS. PJ qualifies as a beauty service — customers who tip their hair stylist or nail tech will likely tip you too.',
-      note: 'Tipping culture is regional. Sunstone Studio has tipping enabled by default.',
+      note: 'Tipping culture is regional. Sunstone Studio has tipping enabled by default. Tips are collected through Stripe Checkout.',
     },
+    stripeConnect: 'To accept payments, connect your Stripe account in Settings → Payments. If you don\'t have a Stripe account, the app walks you through creating one — it takes about 5 minutes.',
   },
 
   // ---------------------------------------------------------------------------
@@ -1802,7 +1819,47 @@ export const PJOS_PLATFORM_GUIDE = {
   },
 
   // ---------------------------------------------------------------------------
-  // 9.9 Business Reports
+  // 9.9 Payments & Checkout
+  // ---------------------------------------------------------------------------
+  paymentsAndCheckout: {
+    overview: 'Sunstone Studio has integrated Stripe payments built right into the POS. Customers pay by scanning a QR code or tapping a text link — no card reader needed.',
+    howCustomersPay: [
+      '1. You ring up the sale in the POS (add items to cart, apply discounts/tips).',
+      '2. Tap "Charge Customer" to generate a Stripe Checkout session.',
+      '3. A QR code appears on your screen. The customer scans it with their phone camera.',
+      '4. They complete payment on Stripe Checkout — Apple Pay, Google Pay, or credit/debit card.',
+      '5. You see the confirmation instantly in the POS and the sale is recorded.',
+    ],
+    textToPayOption: 'If the customer is remote or prefers a text, tap "Send via Text" to send a payment link to their phone number. They tap the link and pay through the same Stripe Checkout experience.',
+    processingFees: {
+      model: 'The processing fee is added to the CUSTOMER\'s checkout total. You always keep your full sale amount.',
+      rates: {
+        starter: '3% added to the customer\'s total',
+        pro: '1.5% added to the customer\'s total',
+        business: '0% — your customers pay no processing fee',
+      },
+      example: 'A $50 bracelet on Starter: customer pays $51.50, you receive $50. On Business: customer pays $50, you receive $50.',
+    },
+    externalPayments: {
+      overview: 'Not every customer wants to pay through the app. You can record external payments for customers who pay with cash, Venmo, or their own card reader.',
+      methods: ['Cash — record the amount received', 'Venmo — customer sends you payment via Venmo', 'External card — use your own Square reader, Clover, or any card terminal outside the app'],
+      howTo: 'In the POS payment screen, tap "Record External Payment" instead of "Charge Customer." Select the payment method and confirm.',
+    },
+    stripeConnect: {
+      setup: 'Go to Settings → Payments and click "Connect Stripe." If you already have a Stripe account, sign in. If not, creating one takes about 5 minutes.',
+      whatItDoes: 'Once connected, all payments flow through your Stripe account. You can see deposits, refunds, and payout history in your Stripe Dashboard.',
+      noHardware: 'You do NOT need a card reader, terminal, or any external hardware. The customer\'s phone is the payment terminal.',
+    },
+    pendingPayments: 'If a customer starts a payment but hasn\'t completed it, you\'ll see it in the "Pending Payments" section. You can resend the link or cancel the session.',
+    tips: [
+      'Display the QR code on your iPad facing the customer — they scan and pay in seconds.',
+      'For busy events, text-to-pay lets you keep the line moving while customers pay on their own time.',
+      'Cash and Venmo sales are recorded in the POS for accurate reporting even though they don\'t go through Stripe.',
+    ],
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.10 Business Reports (renumbered from 9.9)
   // ---------------------------------------------------------------------------
   businessReports: {
     overview: 'The Reports page shows you how your business is doing with revenue breakdowns, sales trends, and event-by-event performance.',
@@ -1819,14 +1876,14 @@ export const PJOS_PLATFORM_GUIDE = {
   },
 
   // ---------------------------------------------------------------------------
-  // 9.10 Settings
+  // 9.11 Settings
   // ---------------------------------------------------------------------------
   settingsGuide: {
     overview: 'Settings is where you configure everything about your Sunstone Studio account. It has three tabs: General, Subscription, and Team.',
     generalTab: {
       businessInfo: 'Update your business name, type, phone, and website.',
       branding: 'Upload your logo (shows on waivers and receipts) and pick your accent color. There are 8 beautiful presets or enter any hex color.',
-      paymentProcessing: 'Connect Square or Stripe to accept card payments. Enter your API credentials in the Payment Processing section.',
+      paymentProcessing: 'Connect your Stripe account in the Payments section to accept payments via QR code and text link. No card reader needed — customers pay on their phone through Stripe Checkout.',
       taxProfiles: 'Add tax profiles with a name and rate (like "State Sales Tax — 6.5%"). Assign them to events so tax calculates automatically.',
       productTypes: 'Set up product types like Bracelet, Anklet, Necklace, Ring, Hand Chain. Each one defines how many jump rings it uses. You can reorder them.',
       materials: 'Add your materials (Sterling Silver, 14K Gold Filled, etc.) to organize your inventory.',
@@ -1835,46 +1892,51 @@ export const PJOS_PLATFORM_GUIDE = {
     },
     subscriptionTab: 'See your current plan, trial status, and plan features. Upgrade or manage your subscription here.',
     teamTab: 'View your team members, their roles, and invite new ones. Manage who has access to what.',
-    feeHandling: 'Under "Subscription & Fees" you can choose whether to pass the platform fee to your customers (added to their total) or absorb it yourself.',
+    feeHandling: 'The processing fee is automatically added to the customer\'s checkout total — you always keep your full sale amount. On Business plan there is no processing fee at all.',
   },
 
   // ---------------------------------------------------------------------------
-  // 9.11 Subscription & Billing
+  // 9.12 Subscription & Billing
   // ---------------------------------------------------------------------------
   subscriptionAndBilling: {
-    overview: 'Sunstone Studio has three subscription tiers designed to grow with your business.',
+    overview: 'Sunstone Studio has three subscription tiers designed to grow with your business. All plans include integrated Stripe payments — no card reader needed.',
     tiers: {
       starter: {
         price: '$99/month',
-        platformFee: '3% per transaction',
-        features: ['Basic POS (Event Mode and Store Mode)', 'Inventory management', 'Queue and waivers', '5 Sunny AI questions per month', '1 team member'],
+        processingFee: '3% processing fee (customer pays)',
+        features: ['Basic POS (Event Mode and Store Mode)', 'Integrated Stripe payments (QR + text link)', 'Inventory management', 'Queue and waivers', '5 Sunny AI questions per month', '1 team member'],
         bestFor: 'Artists just getting started who want to try the platform.',
       },
       pro: {
         price: '$169/month',
-        platformFee: '1.5% per transaction',
+        processingFee: '1.5% processing fee (customer pays)',
         features: ['Everything in Starter', 'Unlimited Sunny AI questions', 'Full business reports with P&L', 'AI insights', 'Client CRM', 'Up to 3 team members'],
         bestFor: 'Active artists who do regular events and want full business intelligence.',
       },
       business: {
         price: '$279/month',
-        platformFee: '0% — no platform fees',
-        features: ['Everything in Pro', 'Unlimited team members', 'Priority support', 'Zero platform fees'],
+        processingFee: '0% — zero processing fees for your customers',
+        features: ['Everything in Pro', 'Unlimited team members', 'Priority support', 'Zero processing fees'],
         bestFor: 'High-volume artists or teams who want zero fees and unlimited team access.',
       },
     },
     crmAddOn: {
-      overview: 'CRM features (workflows, templates, automated follow-ups, broadcast messaging) are enabled as an add-on by contacting Sunstone. When enabled, you get access to the full CRM suite within your existing plan.',
-      includes: ['Automated follow-up workflows', 'Message templates', 'Broadcast messaging to client segments', 'Re-engagement campaigns', 'Birthday and anniversary automations'],
+      overview: 'CRM is coming soon as an add-on to any plan. It adds automated aftercare, a dedicated business phone number, broadcast messaging, re-engagement campaigns, and more.',
+      pricing: {
+        essentials: '$49/month — automated aftercare sequences, your own phone number, basic broadcast messaging',
+        pro: '$99/month — everything in Essentials plus party booking, client intelligence, advanced automations',
+      },
+      includes: ['Your own business phone number', 'Automated aftercare sequences', 'Follow-up and re-engagement campaigns', 'Broadcast messaging to client segments', 'Birthday and anniversary automations', 'Private party booking (Pro CRM)'],
+      note: 'CRM features are included free during your 60-day Pro trial so you can see the full experience.',
     },
-    trial: 'New accounts get a 60-day Pro trial to explore all features. After the trial, you keep your data and can choose any plan starting at $99/month.',
+    trial: 'New accounts get a 60-day Pro trial to explore all features including CRM. After the trial, you keep your data and can choose any plan starting at $99/month.',
     upgrading: 'Go to Settings → Subscription tab to see your current plan and upgrade. Payment is handled through Stripe.',
     whatHappensAfterTrial: 'If your trial expires without choosing a plan, you move to the Starter plan ($99/month). You keep all your data, events, inventory, and clients — you just lose access to Pro features like full reports, CRM, and unlimited Sunny questions.',
-    feeExplainer: 'The platform fee is a small percentage added to each sale. On Starter it is 3%, on Pro it is 1.5%, and on Business it is 0%. You can choose to pass this fee to your customer or absorb it yourself in Settings.',
+    feeExplainer: 'The processing fee is a small percentage added to the CUSTOMER\'s checkout total — you never pay it. On Starter it is 3%, on Pro it is 1.5%, and on Business it is 0%. This is not a platform fee you absorb — your customer sees it at checkout and pays it.',
   },
 
   // ---------------------------------------------------------------------------
-  // 9.12 Team Management
+  // 9.13 Team Management
   // ---------------------------------------------------------------------------
   teamManagement: {
     overview: 'If you have staff or helpers, you can invite them to your Sunstone Studio account with different roles and permissions.',
@@ -1899,7 +1961,7 @@ export const PJOS_PLATFORM_GUIDE = {
   },
 
   // ---------------------------------------------------------------------------
-  // 9.13 Ask Sunny
+  // 9.14 Ask Sunny
   // ---------------------------------------------------------------------------
   askSunny: {
     overview: 'Sunny is your AI mentor built right into Sunstone Studio. She knows permanent jewelry techniques, Sunstone products, business strategy, and how the app works. She can search the live Sunstone product catalog (281+ products), manage your inventory, clients, events, and more — all through conversation.',
@@ -1933,19 +1995,18 @@ export const PJOS_PLATFORM_GUIDE = {
   },
 
   // ---------------------------------------------------------------------------
-  // 9.14 Platform Troubleshooting
+  // 9.15 Platform Troubleshooting
   // ---------------------------------------------------------------------------
   platformTroubleshooting: {
     paymentProcessorNotConnected: {
-      symptom: 'You cannot take card payments or get an error when trying to charge a card.',
+      symptom: 'You cannot charge customers through the app, or the "Charge Customer" button is disabled.',
       fix: [
-        '1. Go to Settings → General tab.',
-        '2. Scroll to Payment Processing.',
-        '3. Select Square or Stripe and enter your API credentials.',
-        '4. Make sure you are using your production (live) keys, not test/sandbox keys.',
-        '5. Save your settings and try again.',
+        '1. Go to Settings → Payments section.',
+        '2. Click "Connect Stripe" and follow the onboarding flow.',
+        '3. If you already have a Stripe account, sign in. If not, creating one takes about 5 minutes.',
+        '4. Once connected, go back to the POS and try again.',
       ],
-      tip: 'If you do not have a Square or Stripe account yet, sign up for one first. You can always use Cash, Venmo, or Other payment methods in the meantime.',
+      tip: 'While you wait for Stripe, you can still use Cash, Venmo, or any external card reader by choosing "Record External Payment" in the POS.',
     },
     inventoryNotDeducting: {
       symptom: 'Your chain footage or jump ring count does not go down after a sale.',

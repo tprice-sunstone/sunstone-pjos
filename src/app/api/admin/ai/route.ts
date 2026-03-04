@@ -433,7 +433,7 @@ Sunstone PJOS is a multi-tenant SaaS platform for permanent jewelry artists. Bui
 
 Core Feature Set:
 - Events: Artists create events (pop-ups, private parties, bridal), each with its own POS, queue, QR code, and P&L tracking
-- Event Mode POS: Step-through product selection (product type → material → chain → measure), cart with discounts/tips, multiple payment methods (Card, Cash, Venmo, Other)
+- Event Mode POS: Step-through product selection (product type → material → chain → measure), cart with discounts/tips, integrated Stripe payments (QR code + text-to-pay), plus cash/Venmo/external card
 - Store Mode POS: Same POS for everyday walk-in sales without an event context
 - Inventory: Chain products (buy by inch, sell by piece), jump rings (auto-deducted on sale), charms, connectors — with reorder thresholds and low-stock alerts
 - Queue: QR-code-based waiver check-in, SMS notifications, real-time status tracking (Waiting → Notified → Served/No Show)
@@ -445,15 +445,24 @@ Core Feature Set:
 - Atlas AI: Platform admin intelligence (this is you)
 
 Subscription Tiers:
-- Starter ($99/month): 3% platform fee, 5 Sunny questions/month, 1 team member, basic POS and inventory
-- Pro ($169/month): 1.5% platform fee, unlimited Sunny, full reports, AI insights, 3 team members
-- Business ($279/month): 0% platform fee, everything in Pro, unlimited team members, priority support
+- Starter ($99/month): 3% customer-facing processing fee, 5 Sunny questions/month, 1 team member, basic POS and inventory, integrated Stripe payments
+- Pro ($169/month): 1.5% customer-facing processing fee, unlimited Sunny, full reports, AI insights, 3 team members
+- Business ($279/month): 0% processing fee (customers pay nothing extra), everything in Pro, unlimited team members, priority support
 - Trial: 60-day Pro trial for new accounts, defaults to Starter after expiry
-- CRM: Enabled per-tenant by admin toggle (crm_enabled flag on tenants table). Gives access to workflows, templates, broadcast messaging, and automated follow-ups.
+- CRM Add-On (coming soon): $49/mo Essentials (aftercare, phone number, broadcasts), $99/mo Pro (+ party booking, client intelligence). Included free during Pro trial.
+- CRM: Currently enabled per-tenant by admin toggle (crm_enabled flag on tenants table). Gives access to workflows, templates, broadcast messaging, and automated follow-ups.
+
+Payment Model:
+- Integrated Stripe Payment Links — customers pay via QR code scan or text-to-pay link through Stripe Checkout
+- Processing fees are added to the CUSTOMER's checkout total (not absorbed by the artist): 3% Starter, 1.5% Pro, 0% Business
+- Platform collects its fee via Stripe Connect application_fee_amount, stored in platform_fee_collected column on sales
+- Alternative payment methods: Cash, Venmo, external card reader (recorded manually, not through Stripe)
+- No card reader or hardware needed — the customer's phone is the payment terminal
 
 Revenue Model:
-- Platform fees on each sale (3%/1.5%/0% by tier) — tenants choose to pass to customer or absorb
+- Processing fees on each Stripe sale (3%/1.5%/0% by tier) — collected via application_fee_amount
 - Monthly subscriptions (Starter $99, Pro $169, Business $279)
+- CRM add-on revenue (coming soon: $49/mo and $99/mo tiers)
 
 TENANT HEALTH SIGNALS — How to interpret the data:
 - Active events in last 30 days = healthy, engaged tenant
@@ -466,12 +475,13 @@ TENANT HEALTH SIGNALS — How to interpret the data:
 - Multiple team members = growing business, potential Business tier upgrade candidate
 
 COMMON TENANT ISSUES & RESOLUTIONS:
-- "Payment processor not connected" → They need to add Square or Stripe API keys in Settings → Payment Processing
+- "Payment processor not connected" → They need to connect Stripe in Settings → Payments. No API keys needed — it's a one-click OAuth connect flow.
 - "Inventory not deducting" → Product types may not be configured, or chain pricing mode is not set up correctly
 - "SMS not sending" → Customer may not have provided a phone number on the waiver, or carrier delay
 - "Can't invite team members" → Hit tier limit (Starter=1, Pro=3, Business=unlimited) — upgrade needed
 - "Reports not showing" → Starter tier only gets basic metrics, need Pro or Business for full reports
 - "QR code not working" → Usually a display size issue or customer internet connectivity
+- "Customer didn't complete payment" → Check Pending Payments in POS — can resend the Stripe payment link or cancel the session
 
 SUNNY KNOWLEDGE GAP SYSTEM:
 - When Sunny can't answer a question, she logs it to the mentor_knowledge_gaps table
@@ -568,7 +578,7 @@ After onboarding, Sunny shows per-page tutorial tips via a floating pill in the 
 
 DASHBOARD GETTING STARTED CHECKLIST:
 The dashboard shows a "Getting Started" card with 5 checks:
-1. Connect a payment processor (Square or Stripe)
+1. Connect Stripe (Settings → Payments)
 2. Create your first event
 3. Add inventory items
 4. Make your first sale

@@ -243,7 +243,8 @@ const SUBSECTIONS: Subsection[] = [
     id: 'biz-payment',
     label: 'Payment Processing',
     data: BUSINESS_STRATEGY_KNOWLEDGE.paymentProcessing,
-    keywords: ['payment', 'square', 'stripe', 'credit card', 'cash', 'venmo', 'process', 'reader'],
+    keywords: ['payment', 'stripe', 'credit card', 'cash', 'venmo', 'process', 'card reader', 'qr code', 'text link', 'text to pay', 'processing fee', 'how do customers pay', 'accept payment', 'charge customer'],
+    priority: 2,
   },
   {
     id: 'biz-events',
@@ -415,10 +416,17 @@ const SUBSECTIONS: Subsection[] = [
     priority: 1,
   },
   {
+    id: 'app-payments',
+    label: 'Payments & Checkout',
+    data: PJOS_PLATFORM_GUIDE.paymentsAndCheckout,
+    keywords: ['payment', 'pay', 'charge', 'checkout', 'qr code', 'text link', 'text to pay', 'stripe', 'card reader', 'no card reader', 'processing fee', 'how do customers pay', 'accept payment', 'pending payment', 'send payment', 'external payment', 'cash payment', 'venmo payment'],
+    priority: 2,
+  },
+  {
     id: 'app-settings',
     label: 'Settings & Configuration',
     data: PJOS_PLATFORM_GUIDE.settingsGuide,
-    keywords: ['settings', 'configure', 'setup', 'tax profile', 'tax rate', 'payment processor', 'connect square', 'connect stripe', 'business info', 'logo', 'waiver text', 'product types', 'materials', 'suppliers', 'fee handling', 'change settings', 'update settings'],
+    keywords: ['settings', 'configure', 'setup', 'tax profile', 'tax rate', 'payment processor', 'connect stripe', 'business info', 'logo', 'waiver text', 'product types', 'materials', 'suppliers', 'fee handling', 'change settings', 'update settings'],
   },
   {
     id: 'app-subscription',
@@ -443,7 +451,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'app-troubleshooting',
     label: 'App Troubleshooting',
     data: PJOS_PLATFORM_GUIDE.platformTroubleshooting,
-    keywords: ['app problem', 'app issue', 'not working', 'can\'t connect', 'card reader not working', 'payment not working', 'square not working', 'stripe not working', 'inventory not updating', 'sms not sending', 'text not sending', 'qr not working', 'can\'t invite', 'reports not showing', 'app trouble', 'app broken', 'something wrong', 'app help', 'app error'],
+    keywords: ['app problem', 'app issue', 'not working', 'can\'t connect', 'payment not working', 'stripe not working', 'inventory not updating', 'sms not sending', 'text not sending', 'qr not working', 'can\'t invite', 'reports not showing', 'app trouble', 'app broken', 'something wrong', 'app help', 'app error'],
     priority: 1,
   },
   {
@@ -863,6 +871,12 @@ When adding or updating chain inventory, ALWAYS use unit "in" and store the valu
 
 ⚠️ COMPANY NAME:
 The company is called Sunstone or Sunstone Welders. NEVER say "Sunstone Supply" — that company does not exist.
+
+⚠️ PAYMENT MODEL (READ THIS):
+Sunstone Studio has built-in Stripe payments. Customers pay by scanning a QR code or tapping a text link — no card reader needed.
+The processing fee is added to the CUSTOMER's checkout total. The artist keeps their full sale amount. Rates: Starter 3%, Pro 1.5%, Business 0%.
+NEVER say the artist pays the fee. NEVER recommend Square as a payment processor inside the app. If asked about card readers, explain that no hardware is needed.
+External payments (cash, Venmo, personal card reader) can be recorded in the POS under "Record External Payment" but don't go through Stripe.
 
 ⚠️ PRICING MODEL — PER-PRODUCT FLAT PRICING (READ THIS):
 Chains use per-product flat pricing. Each chain stores separate prices for bracelet, anklet, ring, and necklace (necklace is per-inch). When an artist says "2.5x markup", calculate the flat price for each product type using: default_length × cost_per_inch × markup. Standard default lengths: bracelet 7", anklet 10", ring 2.5", necklace priced per inch. Set the flat product price, not a per-inch sell price.

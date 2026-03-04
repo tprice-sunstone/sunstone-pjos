@@ -40,11 +40,12 @@ const PRICING = [
     name: 'Starter',
     price: '$99',
     period: '/mo',
-    fee: '3% platform fee',
+    fee: '3% processing fee (customer pays)',
     tagline: 'Everything you need to launch',
     popular: false,
     features: [
       'Full POS — Event & Store Mode',
+      'Integrated Stripe payments (QR + text link)',
       'Smart Inventory management',
       'Client database',
       'Digital waivers & QR check-in',
@@ -56,7 +57,7 @@ const PRICING = [
     name: 'Pro',
     price: '$169',
     period: '/mo',
-    fee: '1.5% platform fee',
+    fee: '1.5% processing fee (customer pays)',
     tagline: 'For growing businesses',
     popular: true,
     features: [
@@ -72,14 +73,13 @@ const PRICING = [
     name: 'Business',
     price: '$279',
     period: '/mo',
-    fee: '0% platform fee',
+    fee: '0% processing fee',
     tagline: 'For serious operators',
     popular: false,
     features: [
       'Everything in Pro, plus:',
-      'Zero platform fees',
+      'Zero processing fees for your customers',
       'Unlimited team members',
-      'SMS & email campaigns',
       'White-glove onboarding',
       'Dedicated support',
     ],
@@ -88,12 +88,20 @@ const PRICING = [
 
 const FAQS = [
   {
-    q: 'Do I need a Sunstone welder to use Studio?',
-    a: "Sunstone Studio works beautifully for any permanent jewelry artist, regardless of equipment. That said, artists using Sunstone welders get the deepest integration — Sunny knows your exact equipment inside and out, and our supply catalog is built right in.",
+    q: 'How do customers pay?',
+    a: "You build the order in the POS, then tap 'Charge Customer' and choose QR Code or Text Link. A secure Stripe checkout page is created instantly. Your customer scans the QR code with their phone camera or receives a text message with a payment link — they pay on their own phone. No card reader needed. The POS updates in real time when payment is received.",
   },
   {
-    q: 'What payment processors do you support?',
-    a: "Stripe and Square — use one or both. Cash and Venmo are also supported as manual payment methods. We're working on Tap to Pay and Bluetooth reader support for in-person payments.",
+    q: "What's the processing fee?",
+    a: "The processing fee (3% on Starter, 1.5% on Pro, 0% on Business) is added to your customer's checkout total — you always receive the full sale amount. For example, a $70 bracelet on the Starter plan means your customer pays $72.10 and you get $70. On the Business plan, your customers pay exactly what you quote — zero fee.",
+  },
+  {
+    q: 'Can I still use my Square reader?',
+    a: "Yes! You can record external payments (cash, Venmo, Square, or any card reader) anytime — they're logged for bookkeeping with no processing fee. The built-in Stripe integration just gives you automatic tracking, a professional checkout page, and no extra hardware to carry.",
+  },
+  {
+    q: 'Do I need a Sunstone welder to use Studio?',
+    a: "Sunstone Studio works beautifully for any permanent jewelry artist, regardless of equipment. That said, artists using Sunstone welders get the deepest integration — Sunny knows your exact equipment inside and out, and our supply catalog is built right in.",
   },
   {
     q: 'Can I use this at events and pop-ups?',
@@ -113,7 +121,7 @@ const FAQS = [
   },
   {
     q: 'Why not just use Square POS and a spreadsheet?',
-    a: "You absolutely can — most artists start there. But Square doesn't know what a jump ring is, can't track chain by the inch, won't auto-deduct inventory when you sell, can't manage an event queue, and definitely can't give you AI-powered business coaching at 2am. Studio replaces 5+ tools with one purpose-built platform.",
+    a: "You absolutely can — most artists start there. But Square doesn't know what a jump ring is, can't track chain by the inch, won't auto-deduct inventory when you sell, can't manage an event queue, and definitely can't give you AI-powered business coaching at 2am. Studio replaces 5+ tools with one purpose-built platform — and with built-in Stripe payments, you don't even need a card reader.",
   },
 ]
 
@@ -128,14 +136,22 @@ const FEATURES = [
   },
   {
     num: '02',
+    name: 'Get Paid Instantly — No Card Reader Needed',
+    desc: "Build the order, tap charge, and your customer pays on their own phone. QR code payments at your table or text-to-pay when they're across the room. Every transaction tracked automatically with a professional Stripe-hosted checkout page. Real-time payment notifications right in your POS.",
+    highlight: 'Processing fees are added to the customer total — you never pay them',
+    img: '/landing/pos-store.webp',
+    imgAlt: 'POS payment screen showing QR code and text link checkout options with Stripe integration',
+  },
+  {
+    num: '03',
     name: 'Point of Sale — Built for How You Sell',
-    desc: 'Lightning-fast checkout designed for pop-ups, salons, and markets. Tap a chain, pick the product type, swipe to pay. Automatic jump ring deduction, tip screen, receipt delivery — one fluid motion from selection to sale.',
+    desc: 'Lightning-fast checkout designed for pop-ups, salons, and markets. Tap a chain, pick the product type, charge the customer. Automatic jump ring deduction, tip screen, receipt delivery — one fluid motion from selection to sale.',
     highlight: 'Event Mode + Store Mode — works everywhere you do',
     img: '/landing/pos-store.webp',
     imgAlt: 'Store Mode POS showing chain product grid with metal type filters, cart panel with items, and checkout total',
   },
   {
-    num: '03',
+    num: '04',
     name: 'Reports That Actually Help',
     desc: "Know your numbers without a finance degree. Revenue, COGS, profit margins, event comparisons, average sale value — all calculated automatically from your real sales data. Sunny even analyzes the trends and tells you what to do next.",
     highlight: 'AI-powered insights included — not just charts',
@@ -143,7 +159,7 @@ const FEATURES = [
     imgAlt: 'Year-to-date financial reports showing $22K revenue, $8.9K net profit, 46 sales with detailed cost breakdown',
   },
   {
-    num: '04',
+    num: '05',
     name: 'Client Relationships, Not Transactions',
     desc: "Every client gets a profile — purchase history, preferences, birthday, notes, tags. Smart suggestions tell you when to reach out. Automated follow-up workflows handle aftercare, review requests, and re-engagement while you focus on creating.",
     highlight: 'Included in your 60-day Pro trial · Add-on after trial',
@@ -151,7 +167,7 @@ const FEATURES = [
     imgAlt: 'Client profile for Maddy Carty showing contact actions, suggested outreach, and activity timeline',
   },
   {
-    num: '05',
+    num: '06',
     name: 'Events, Queue & Digital Waivers',
     desc: "Print a QR code. Customers scan, sign the waiver, and join the queue — all from their phone. You see the real-time queue, manage who's next, and never lose track of a customer. No more clipboards. No more chaos.",
     highlight: "Your customers feel VIP. You stay completely organized.",
@@ -159,7 +175,7 @@ const FEATURES = [
     imgAlt: 'Digital waiver and check-in form showing customer sign-up with name, email, phone, and event selection',
   },
   {
-    num: '06',
+    num: '07',
     name: 'Smart Inventory — By the Inch',
     desc: "Track every inch of every chain. Cost per inch, sale price, stock levels, low-stock alerts, reorder points — all automatic. Price by the product or by the inch. Jump rings auto-deduct on every sale. You always know exactly where you stand.",
     highlight: 'Automatic COGS tracking · Jump ring auto-deduction',
@@ -1129,9 +1145,9 @@ export default function LandingPageClient() {
             <div style={{ display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
               {[
                 'What does Sunstone Studio do?',
-                "How is Sunny different from ChatGPT?",
+                'How do customers pay?',
                 "What's included in the free trial?",
-                'Can this help me at events?',
+                'Do I need a card reader?',
               ].map((q) => (
                 <button
                   key={q}
@@ -1156,6 +1172,66 @@ export default function LandingPageClient() {
             <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: C.textMuted }}>
               Click any question above to start a live conversation with Sunny.
             </p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ═══════ CRM TEASER ═══════ */}
+      <section id="crm" style={{ padding: '110px 24px', background: C.bgDeep }}>
+        <div className="landing-container">
+          <Reveal style={{ textAlign: 'center', maxWidth: 680, margin: '0 auto 56px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 20px', borderRadius: 100, background: C.wineBg, border: `1px solid ${C.wineBorder}`, fontSize: 13, fontWeight: 700, color: C.wine, marginBottom: 20 }}>
+              Coming Soon
+            </div>
+            <h2 className="serif" style={{ fontSize: 'clamp(2rem, 3.5vw, 2.8rem)', fontWeight: 400, lineHeight: 1.2, marginBottom: 18 }}>
+              Your Own <em style={{ fontStyle: 'italic', color: C.wine }}>CRM</em>
+            </h2>
+            <p style={{ fontSize: 17, color: C.textSec, lineHeight: 1.75 }}>
+              Turn one-time customers into lifelong clients.
+            </p>
+          </Reveal>
+
+          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, maxWidth: 980, margin: '0 auto 48px' }}>
+            {[
+              { icon: '📱', title: 'Your Own Phone Number', desc: 'Get a dedicated business number. Clients text you, you respond from the app. Keep your personal number private.' },
+              { icon: '💛', title: 'Automated Aftercare', desc: 'Post-purchase care instructions, re-weld reminders, and birthday messages — all on autopilot.' },
+              { icon: '🔄', title: 'Smart Follow-ups', desc: 'Automated sequences that nurture new clients into regulars without you lifting a finger.' },
+              { icon: '📣', title: 'Broadcast Messaging', desc: 'One tap to message your VIP list about your next event or promotion.' },
+              { icon: '🎉', title: 'Private Party Booking', desc: 'Shareable booking page with RSVP tracking, deposits, and host rewards.' },
+              { icon: '📊', title: 'Client Intelligence', desc: "Know who your top spenders are, who hasn't visited in 60 days, and who's referring friends." },
+            ].map((item, i) => (
+              <Reveal key={i} delay={i * 0.08}>
+                <div style={{
+                  padding: '32px 24px',
+                  borderRadius: 16,
+                  background: C.card,
+                  border: `1px solid ${C.border}`,
+                  height: '100%',
+                }}>
+                  <div style={{ fontSize: 28, marginBottom: 16 }}>{item.icon}</div>
+                  <h3 style={{ fontSize: 16.5, fontWeight: 700, color: C.text, marginBottom: 10 }}>{item.title}</h3>
+                  <p style={{ fontSize: 14.5, color: C.textSec, lineHeight: 1.7 }}>{item.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+
+          <Reveal style={{ textAlign: 'center' }}>
+            <div style={{
+              display: 'inline-block',
+              padding: '20px 40px',
+              borderRadius: 16,
+              background: C.card,
+              border: `1px solid ${C.border}`,
+              boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+            }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 6 }}>
+                Starting at <span className="serif" style={{ fontSize: 24, color: C.wine }}>$49</span>/month add-on to any plan
+              </div>
+              <div style={{ fontSize: 13.5, color: C.textMuted }}>
+                Included free in your 60-day Pro trial
+              </div>
+            </div>
           </Reveal>
         </div>
       </section>
@@ -1339,7 +1415,19 @@ export default function LandingPageClient() {
           </div>
 
           <Reveal style={{ textAlign: 'center', marginTop: 32 }}>
-            <p style={{ fontSize: 14.5, color: C.textMuted }}>
+            <div style={{
+              maxWidth: 700,
+              margin: '0 auto',
+              padding: '20px 28px',
+              borderRadius: 14,
+              background: C.goldBg,
+              borderLeft: `3px solid ${C.gold}`,
+            }}>
+              <p style={{ fontSize: 15, color: C.text, lineHeight: 1.65, fontWeight: 500 }}>
+                Processing fees are added to the customer&apos;s checkout total — <strong>you never pay them.</strong> Business tier? Your customers pay exactly what you quote.
+              </p>
+            </div>
+            <p style={{ fontSize: 14.5, color: C.textMuted, marginTop: 20 }}>
               All plans include a 60-day free Pro trial — including CRM. No credit card required.
             </p>
           </Reveal>

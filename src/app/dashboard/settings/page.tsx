@@ -69,14 +69,14 @@ const ALL_ROLE_OPTIONS = [
 
 const PLAN_FEATURES: Record<string, string[]> = {
   pro: [
-    '1.5% platform fee (down from 3%)',
+    '1.5% processing fee (customer pays)',
     'Unlimited Sunny AI questions',
     'Business insights & analytics',
     'Full P&L reports',
     'Up to 3 team members',
   ],
   business: [
-    '0% platform fee',
+    '0% processing fee',
     'Everything in Pro',
     'Unlimited team members',
     'Priority support',
@@ -1089,7 +1089,7 @@ function SettingsPage() {
       >
         <div className="space-y-5 pt-4">
           <p className="text-sm text-[var(--text-secondary)]">
-            Connect your Stripe account to accept card payments directly through Sunstone Studio. Customers pay via QR code or payment link — you get instant reconciliation and automatic receipts.
+            Connect Stripe to accept card payments directly through Sunstone Studio. Customers pay via QR code or text link — professional, fast, and fully tracked.
           </p>
 
           {/* Stripe card */}
@@ -1107,7 +1107,7 @@ function SettingsPage() {
             {stripeConnected ? (
               <>
                 <p className="text-sm text-[var(--text-secondary)]">
-                  You can accept payments via QR code and text link in the POS.
+                  Stripe Connected — Accept payments via QR code and text link in the POS. Processing fee ({(feeRate * 100).toFixed(feeRate > 0 ? 1 : 0)}% based on your plan) is added to the customer&apos;s total.
                 </p>
                 <Button variant="danger" size="sm" onClick={disconnectStripe} loading={disconnectingStripe}>
                   Disconnect Stripe
@@ -1116,7 +1116,7 @@ function SettingsPage() {
             ) : (
               <>
                 <p className="text-sm text-[var(--text-secondary)]">
-                  Customers scan a QR code or receive a text link to pay securely with their card. Platform fees are collected automatically.
+                  Connect Stripe to accept card payments directly through Sunstone Studio. Customers pay via QR code or text link — professional, fast, and fully tracked.
                 </p>
                 <Button variant="primary" size="sm" onClick={() => { window.location.href = '/api/stripe/authorize'; }}>
                   Connect Stripe
@@ -1271,7 +1271,7 @@ function SettingsPage() {
                 <div>
                   <h3 className="text-lg font-bold text-[var(--text-primary)]">Pro</h3>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-3xl font-bold text-[var(--text-primary)]">$129</span>
+                    <span className="text-3xl font-bold text-[var(--text-primary)]">${SUBSCRIPTION_PRICES.pro}</span>
                     <span className="text-sm text-[var(--text-tertiary)]">/mo</span>
                   </div>
                 </div>
@@ -1351,10 +1351,19 @@ function SettingsPage() {
                 </thead>
                 <tbody className="divide-y divide-[var(--border-subtle)]">
                   <tr>
-                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Platform fee</td>
+                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">
+                      Processing fee
+                      <span className="block text-xs text-[var(--text-tertiary)]">(customer pays)</span>
+                    </td>
                     <td className="py-2.5 px-3 text-center text-[var(--text-primary)]">3%</td>
                     <td className="py-2.5 px-3 text-center text-[var(--text-primary)]">1.5%</td>
                     <td className="py-2.5 px-3 text-center text-success-600 font-semibold">0%</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Integrated payments</td>
+                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
                   </tr>
                   <tr>
                     <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Sunny AI</td>
@@ -1369,14 +1378,17 @@ function SettingsPage() {
                     <td className="py-2.5 px-3 text-center text-success-600">✓</td>
                   </tr>
                   <tr>
-                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Full P&L reports</td>
+                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Full P&amp;L reports</td>
                     <td className="py-2.5 px-3 text-center text-[var(--text-tertiary)]">—</td>
                     <td className="py-2.5 px-3 text-center text-success-600">✓</td>
                     <td className="py-2.5 px-3 text-center text-success-600">✓</td>
                   </tr>
                   <tr>
-                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">CRM</td>
-                    <td className="py-2.5 px-3 text-center text-[var(--text-tertiary)]">—</td>
+                    <td className="py-2.5 pr-4 text-[var(--text-secondary)]">
+                      CRM Add-On
+                      <span className="block text-xs text-[var(--accent-primary)]">Coming Soon — $49/mo</span>
+                    </td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">Add-on</td>
                     <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">Add-on</td>
                     <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">Add-on</td>
                   </tr>
@@ -1388,9 +1400,9 @@ function SettingsPage() {
                   </tr>
                   <tr>
                     <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Price</td>
-                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)] font-semibold">Free</td>
-                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)] font-semibold">$129/mo</td>
-                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)] font-semibold">$279/mo</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)] font-semibold">${SUBSCRIPTION_PRICES.starter}/mo</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)] font-semibold">${SUBSCRIPTION_PRICES.pro}/mo</td>
+                    <td className="py-2.5 px-3 text-center text-[var(--text-primary)] font-semibold">${SUBSCRIPTION_PRICES.business}/mo</td>
                   </tr>
                 </tbody>
               </table>
@@ -1894,7 +1906,7 @@ function SettingsPage() {
       <SunnyTutorial
         pageKey="settings"
         tips={[
-          { title: 'Connect payments first', body: 'Link Square or Stripe so you can accept card payments at events. This takes about 5 minutes.' },
+          { title: 'Connect Stripe first', body: 'Link your Stripe account to accept payments via QR code or text link. No card reader needed — takes about 5 minutes.' },
           { title: 'Set up tax profiles', body: 'Create tax profiles for different rates (e.g. state vs county). Assign them to events for automatic tax calculation.' },
         ]}
       />
