@@ -17,9 +17,17 @@ export interface AgenticLoopOptions {
   getToolStatusLabel: (toolName: string) => string;
 }
 
+export interface AgenticLoopUsage {
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_input_tokens: number;
+  cache_creation_input_tokens: number;
+}
+
 export interface AgenticLoopResult {
   fullResponseText: string;
   toolStatusEvents: string[];
+  usage: AgenticLoopUsage;
 }
 
 export async function runAgenticLoop(options: AgenticLoopOptions): Promise<AgenticLoopResult> {
@@ -36,6 +44,12 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
 
   const conversationMessages = [...messages];
   const toolStatusEvents: string[] = [];
+  const totalUsage: AgenticLoopUsage = {
+    input_tokens: 0,
+    output_tokens: 0,
+    cache_read_input_tokens: 0,
+    cache_creation_input_tokens: 0,
+  };
   let iterations = 0;
 
   while (iterations < maxIterations) {
@@ -88,6 +102,14 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
     } catch (parseErr: any) {
       console.error('[AgenticLoop] JSON parse error:', parseErr?.message);
       throw new Error('AI service error: invalid JSON response');
+    }
+
+    // Accumulate token usage
+    if (result.usage) {
+      totalUsage.input_tokens += result.usage.input_tokens || 0;
+      totalUsage.output_tokens += result.usage.output_tokens || 0;
+      totalUsage.cache_read_input_tokens += result.usage.cache_read_input_tokens || 0;
+      totalUsage.cache_creation_input_tokens += result.usage.cache_creation_input_tokens || 0;
     }
 
     console.log(`[AgenticLoop] Response: stop_reason=${result.stop_reason}, content_blocks=${result.content?.length || 0}`);
@@ -155,7 +177,7 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
     const fullResponseText = textBlocks.map((b: any) => b.text).join('');
 
     console.log(`[AgenticLoop] Done after ${iterations} iteration(s), response length: ${fullResponseText.length}`);
-    return { fullResponseText, toolStatusEvents };
+    return { fullResponseText, toolStatusEvents, usage: totalUsage };
   }
 
   // Safety cap reached — give a graceful partial-completion message
@@ -175,6 +197,7 @@ export async function runAgenticLoop(options: AgenticLoopOptions): Promise<Agent
   return {
     fullResponseText: lastText || fallbackText,
     toolStatusEvents,
+    usage: totalUsage,
   };
 }
 

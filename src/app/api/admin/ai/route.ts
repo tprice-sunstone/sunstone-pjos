@@ -14,6 +14,7 @@ import { verifyPlatformAdmin, AdminAuthError } from '@/lib/admin/verify-platform
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { runAgenticLoop, buildAgenticSSEStream } from '@/lib/agentic-loop';
 import { ATLAS_TOOL_DEFINITIONS, executeAtlasTool, getAtlasToolStatusLabel } from '@/lib/atlas-tools';
+import { logAnthropicCost } from '@/lib/cost-tracker';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 const ATLAS_RATE_LIMIT = { prefix: 'atlas', limit: 10, windowSeconds: 60 };
@@ -613,7 +614,15 @@ After a tool executes, summarize the result naturally. If a tool errors, explain
       );
     }
 
-    const { fullResponseText, toolStatusEvents } = agenticResult;
+    const { fullResponseText, toolStatusEvents, usage } = agenticResult;
+
+    // Log Anthropic cost (fire-and-forget)
+    logAnthropicCost({
+      tenantId: null,
+      operation: 'admin_ai',
+      model: 'claude-sonnet-4-20250514',
+      usage,
+    });
 
     // Build simulated SSE stream
     const readable = buildAgenticSSEStream(fullResponseText, toolStatusEvents);

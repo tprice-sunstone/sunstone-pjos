@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPlatformAdmin, AdminAuthError } from '@/lib/admin/verify-platform-admin';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { logAnthropicCost } from '@/lib/cost-tracker';
 
 interface Insight {
   type: 'growth' | 'attention' | 'churn_risk' | 'opportunity' | 'milestone';
@@ -455,6 +456,17 @@ Analyze this data and return 4-6 strategic insights as a JSON array.`;
   }
 
   const result = await response.json();
+
+  // Log Anthropic cost (fire-and-forget)
+  if (result.usage) {
+    logAnthropicCost({
+      tenantId: null,
+      operation: 'admin_insights',
+      model: 'claude-sonnet-4-20250514',
+      usage: result.usage,
+    });
+  }
+
   const text = result.content?.[0]?.text || '';
 
   // Parse JSON from response (strip backticks if present)

@@ -1,6 +1,7 @@
 // src/app/api/receipts/email/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
+import { logEmailCost } from '@/lib/cost-tracker';
 
 interface ReceiptEmailBody {
   to: string;
@@ -204,6 +205,9 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Log email cost (fire-and-forget)
+    logEmailCost({ tenantId, operation: 'email_receipt' });
 
     // Log to message_log (fire-and-forget) — use server-derived tenantId
     try {

@@ -3,6 +3,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import { resolveAudience } from '@/lib/broadcasts';
 import { renderTemplate } from '@/lib/templates';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { logSmsCost, logEmailCost } from '@/lib/cost-tracker';
 
 const RATE_LIMIT = { prefix: 'broadcast-send', limit: 5, windowSeconds: 60 };
 
@@ -165,6 +166,15 @@ export async function POST(
 
     // Small delay between messages to avoid rate limiting
     await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+
+  // Log broadcast cost (fire-and-forget, aggregate)
+  if (sentCount > 0) {
+    if (broadcast.channel === 'sms') {
+      logSmsCost({ tenantId: broadcast.tenant_id, operation: 'sms_broadcast', segments: sentCount, metadata: { broadcast_id: id } });
+    } else {
+      logEmailCost({ tenantId: broadcast.tenant_id, operation: 'email_broadcast', count: sentCount, metadata: { broadcast_id: id } });
+    }
   }
 
   // Update broadcast totals

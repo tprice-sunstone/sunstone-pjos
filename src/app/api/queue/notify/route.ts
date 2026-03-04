@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
+import { logSmsCost } from '@/lib/cost-tracker';
 
 const RATE_LIMIT = { prefix: 'queue-notify', limit: 10, windowSeconds: 60 };
 
@@ -39,6 +40,11 @@ export async function POST(request: NextRequest) {
       from: process.env.TWILIO_PHONE_NUMBER,
       to: phone,
     });
+
+    // Log SMS cost (fire-and-forget)
+    if (tenantId) {
+      logSmsCost({ tenantId, operation: 'sms_queue_notify' });
+    }
 
     // Log to message_log (fire-and-forget)
     if (tenantId) {

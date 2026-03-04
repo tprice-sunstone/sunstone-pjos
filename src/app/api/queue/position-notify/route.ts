@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
+import { logSmsCost } from '@/lib/cost-tracker';
 
 const RATE_LIMIT = { prefix: 'pos-notify', limit: 20, windowSeconds: 60 };
 
@@ -106,6 +107,9 @@ export async function POST(request: NextRequest) {
       from: process.env.TWILIO_PHONE_NUMBER,
       to: entry.phone,
     });
+
+    // Log SMS cost (fire-and-forget)
+    logSmsCost({ tenantId, operation: 'sms_position_notify' });
 
     // Log to message_log (fire-and-forget)
     supabaseAdmin.from('message_log').insert({

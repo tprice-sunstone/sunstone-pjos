@@ -29,6 +29,7 @@ import {
   PJOS_PLATFORM_GUIDE,
 } from '@/lib/mentor-knowledge';
 import { runAgenticLoop, buildAgenticSSEStream } from '@/lib/agentic-loop';
+import { logAnthropicCost } from '@/lib/cost-tracker';
 import { SUNNY_TOOL_DEFINITIONS, executeSunnyTool, getSunnyToolStatusLabel } from '@/lib/sunny-tools';
 
 // ============================================================================
@@ -1075,7 +1076,15 @@ After a tool executes, summarize the result naturally. If a tool errors, explain
       );
     }
 
-    const { fullResponseText, toolStatusEvents } = agenticResult;
+    const { fullResponseText, toolStatusEvents, usage } = agenticResult;
+
+    // 7b. Log Anthropic cost (fire-and-forget)
+    logAnthropicCost({
+      tenantId,
+      operation: 'mentor_chat',
+      model: 'claude-sonnet-4-20250514',
+      usage,
+    });
 
     // 8. Post-response: increment question counter for Starter
     if (questionLimit !== Infinity) {

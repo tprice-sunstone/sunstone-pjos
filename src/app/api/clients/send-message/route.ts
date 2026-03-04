@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
 import { renderTemplate } from '@/lib/templates';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { logSmsCost, logEmailCost } from '@/lib/cost-tracker';
 
 const RATE_LIMIT = { prefix: 'send-msg', limit: 30, windowSeconds: 60 };
 
@@ -87,9 +88,11 @@ export async function POST(request: NextRequest) {
     if (channel === 'sms') {
       if (!client.phone) return NextResponse.json({ error: 'Client has no phone number' }, { status: 400 });
       await sendSMS(client.phone, resolvedMessage);
+      logSmsCost({ tenantId, operation: 'sms_direct' });
     } else if (channel === 'email') {
       if (!client.email) return NextResponse.json({ error: 'Client has no email address' }, { status: 400 });
       await sendEmail(client.email, resolvedSubject || 'Message from ' + tenant.name, resolvedMessage);
+      logEmailCost({ tenantId, operation: 'email_direct' });
     } else {
       return NextResponse.json({ error: 'Invalid channel' }, { status: 400 });
     }

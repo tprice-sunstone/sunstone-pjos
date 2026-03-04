@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit'
+import { logAnthropicCost } from '@/lib/cost-tracker'
 
 const SUNNY_DEMO_RATE_LIMIT = { prefix: 'sunny-demo', limit: 10, windowSeconds: 60 };
 
@@ -57,6 +58,14 @@ export async function POST(request: NextRequest) {
         content: m.text,
       })),
     })
+
+    // Log Anthropic cost (fire-and-forget)
+    logAnthropicCost({
+      tenantId: null,
+      operation: 'sunny_demo',
+      model: 'claude-sonnet-4-20250514',
+      usage: response.usage,
+    });
 
     const reply = response.content
       .map((block) => (block.type === 'text' ? block.text : ''))
