@@ -293,6 +293,7 @@ function SunnyChat() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null)
+  const sendingPendingRef = useRef(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -319,25 +320,26 @@ function SunnyChat() {
 
   // Auto-send pending question after chat panel opens
   useEffect(() => {
-    if (open && pendingQuestion && !loading) {
+    if (open && pendingQuestion && !loading && !sendingPendingRef.current) {
+      sendingPendingRef.current = true
       const q = pendingQuestion
       setPendingQuestion(null)
-      const timer = setTimeout(() => {
-        setInput('')
-        const newMsgs = [...msgs, { role: 'user', text: q }]
-        setMsgs(newMsgs)
-        setLoading(true)
-        fetch('/api/sunny-demo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: newMsgs }),
+      setInput('')
+      const newMsgs = [...msgs, { role: 'user', text: q }]
+      setMsgs(newMsgs)
+      setLoading(true)
+      fetch('/api/sunny-demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: newMsgs }),
+      })
+        .then((res) => res.json())
+        .then((data) => setMsgs((prev) => [...prev, { role: 'assistant', text: data.reply }]))
+        .catch(() => setMsgs((prev) => [...prev, { role: 'assistant', text: 'Oops — something went wrong. Try again in a moment!' }]))
+        .finally(() => {
+          setLoading(false)
+          sendingPendingRef.current = false
         })
-          .then((res) => res.json())
-          .then((data) => setMsgs((prev) => [...prev, { role: 'assistant', text: data.reply }]))
-          .catch(() => setMsgs((prev) => [...prev, { role: 'assistant', text: 'Oops — something went wrong. Try again in a moment!' }]))
-          .finally(() => setLoading(false))
-      }, 400)
-      return () => clearTimeout(timer)
     }
   }, [open, pendingQuestion, loading, msgs])
 
