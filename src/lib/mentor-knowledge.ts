@@ -1921,17 +1921,14 @@ export const PJOS_PLATFORM_GUIDE = {
       },
     },
     crmAddOn: {
-      overview: 'CRM is coming soon as an add-on to any plan. It adds automated aftercare, a dedicated business phone number, broadcast messaging, re-engagement campaigns, and more.',
-      pricing: {
-        essentials: '$49/month — automated aftercare sequences, your own phone number, basic broadcast messaging',
-        pro: '$99/month — everything in Essentials plus party booking, client intelligence, advanced automations',
-      },
+      overview: 'CRM is available as an add-on to any plan for $49/month. It adds automated aftercare, a dedicated business phone number, broadcast messaging, re-engagement campaigns, and more.',
+      pricing: '$49/month add-on to any plan — includes automated aftercare sequences, your own phone number, broadcast messaging, client workflows, birthday automations, and message templates.',
       includes: ['Your own business phone number', 'Automated aftercare sequences', 'Follow-up and re-engagement campaigns', 'Broadcast messaging to client segments', 'Birthday and anniversary automations', 'Private party booking (Pro CRM)'],
       note: 'CRM features are included free during your 60-day Pro trial so you can see the full experience.',
     },
     trial: 'New accounts get a 60-day Pro trial to explore all features including CRM. After the trial, you keep your data and can choose any plan starting at $99/month.',
     upgrading: 'Go to Settings → Subscription tab to see your current plan and upgrade. Payment is handled through Stripe.',
-    whatHappensAfterTrial: 'If your trial expires without choosing a plan, you move to the Starter plan ($99/month). You keep all your data, events, inventory, and clients — you just lose access to Pro features like full reports, CRM, and unlimited Sunny questions.',
+    whatHappensAfterTrial: 'If your trial expires without choosing a plan, you move to the Starter plan ($99/month). You keep all your data, events, inventory, and clients — you just lose access to Pro features like full reports and unlimited Sunny questions. CRM features (workflows, broadcasts, dedicated number, aftercare) become a $49/mo add-on to any plan.',
     feeExplainer: 'The processing fee is a small percentage added to the CUSTOMER\'s checkout total — you never pay it. On Starter it is 3%, on Pro it is 1.5%, and on Business it is 0%. This is not a platform fee you absorb — your customer sees it at checkout and pays it.',
   },
 

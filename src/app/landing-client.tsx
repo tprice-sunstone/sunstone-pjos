@@ -51,6 +51,7 @@ const PRICING = [
       'Digital waivers & QR check-in',
       'Basic reports',
       'Sunny AI — 5 questions/mo',
+      '60-day Pro trial with full CRM',
     ],
   },
   {
@@ -67,6 +68,7 @@ const PRICING = [
       'Up to 3 team members',
       'Custom brand themes',
       'Priority support',
+      '60-day Pro trial with full CRM',
     ],
   },
   {
@@ -82,6 +84,7 @@ const PRICING = [
       'Unlimited team members',
       'White-glove onboarding',
       'Dedicated support',
+      '60-day Pro trial with full CRM',
     ],
   },
 ]
@@ -122,6 +125,14 @@ const FAQS = [
   {
     q: 'Why not just use Square POS and a spreadsheet?',
     a: "You absolutely can — most artists start there. But Square doesn't know what a jump ring is, can't track chain by the inch, won't auto-deduct inventory when you sell, can't manage an event queue, and definitely can't give you AI-powered business coaching at 2am. Studio replaces 5+ tools with one purpose-built platform — and with built-in Stripe payments, you don't even need a card reader.",
+  },
+  {
+    q: 'What happens after my 60-day trial?',
+    a: 'You pick your plan (Starter $99, Pro $169, or Business $279). CRM features (workflows, broadcasts, dedicated number, aftercare) become a $49/mo add-on. Your client data and conversation history are preserved — just reactivate CRM to pick up where you left off.',
+  },
+  {
+    q: "What's included in the CRM?",
+    a: 'Your own dedicated business phone number, automated aftercare sequences, broadcast messaging, client workflows, birthday automations, and message templates. All included free during your 60-day Pro trial.',
   },
 ]
 
@@ -1181,13 +1192,13 @@ export default function LandingPageClient() {
         <div className="landing-container">
           <Reveal style={{ textAlign: 'center', maxWidth: 680, margin: '0 auto 56px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 20px', borderRadius: 100, background: C.wineBg, border: `1px solid ${C.wineBorder}`, fontSize: 13, fontWeight: 700, color: C.wine, marginBottom: 20 }}>
-              Coming Soon
+              Included In Your Trial
             </div>
             <h2 className="serif" style={{ fontSize: 'clamp(2rem, 3.5vw, 2.8rem)', fontWeight: 400, lineHeight: 1.2, marginBottom: 18 }}>
-              Your Own <em style={{ fontStyle: 'italic', color: C.wine }}>CRM</em>
+              Your Personal <em style={{ fontStyle: 'italic', color: C.wine }}>CRM</em>
             </h2>
             <p style={{ fontSize: 17, color: C.textSec, lineHeight: 1.75 }}>
-              Turn one-time customers into lifelong clients.
+              Included free in your 60-day Pro trial. Turn one-time customers into lifelong clients.
             </p>
           </Reveal>
 
@@ -1225,11 +1236,8 @@ export default function LandingPageClient() {
               border: `1px solid ${C.border}`,
               boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
             }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 6 }}>
-                Starting at <span className="serif" style={{ fontSize: 24, color: C.wine }}>$49</span>/month add-on to any plan
-              </div>
-              <div style={{ fontSize: 13.5, color: C.textMuted }}>
-                Included free in your 60-day Pro trial
+              <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>
+                Keep CRM after your trial for just <span className="serif" style={{ fontSize: 24, color: C.wine }}>$49</span>/month add-on to any plan
               </div>
             </div>
           </Reveal>

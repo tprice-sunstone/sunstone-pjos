@@ -1329,6 +1329,31 @@ function SettingsPage() {
             </div>
           )}
 
+          {/* CRM add-on info */}
+          {trialActive ? (
+            <div className="border border-[var(--border-default)] rounded-2xl p-5 bg-[var(--surface-base)]">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-[var(--accent-primary)] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  Your Pro trial includes CRM features (automated workflows, broadcasts, dedicated phone number, aftercare). After your trial, CRM is $49/mo as an add-on to any plan.
+                </p>
+              </div>
+            </div>
+          ) : tier === 'starter' && !hasActiveSubscription ? (
+            <div className="border border-[var(--border-default)] rounded-2xl p-5 bg-[var(--surface-base)]">
+              <div className="flex items-start justify-between gap-4">
+                <p className="text-sm text-[var(--text-secondary)]">
+                  Add CRM to your plan for $49/mo &mdash; automated workflows, broadcasts, your own phone number, and aftercare sequences.
+                </p>
+                <Button variant="secondary" className="shrink-0">
+                  Add CRM
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
           {/* Next billing date */}
           {hasActiveSubscription && tenant.subscription_period_end && (
             <p className="text-xs text-[var(--text-tertiary)]">
@@ -1386,7 +1411,7 @@ function SettingsPage() {
                   <tr>
                     <td className="py-2.5 pr-4 text-[var(--text-secondary)]">
                       CRM Add-On
-                      <span className="block text-xs text-[var(--accent-primary)]">Coming Soon — $49/mo</span>
+                      <span className="block text-xs text-[var(--text-tertiary)]">$49/mo add-on</span>
                     </td>
                     <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">Add-on</td>
                     <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">Add-on</td>

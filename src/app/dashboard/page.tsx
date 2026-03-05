@@ -29,12 +29,6 @@ export default function DashboardPage() {
   const [eventsThisWeek, setEventsThisWeek] = useState<number>(0);
   const [refreshing, setRefreshing] = useState(false);
   const [userName, setUserName] = useState<string>('');
-  const [showCrmBanner, setShowCrmBanner] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('pjos-crm-banner-dismissed') !== '1';
-    }
-    return true;
-  });
   // ── Fallback cards — shown if API fails or returns nothing ────────────
   const clientFallbackCards: DashboardCard[] = [
     {
@@ -259,54 +253,6 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
-
-      {/* ================================================================ */}
-      {/* CRM Teaser Banner                                                */}
-      {/* ================================================================ */}
-      {showCrmBanner && (
-        <div
-          className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-2xl overflow-hidden"
-          style={{ marginBottom: 16 }}
-        >
-          <div className="flex items-center justify-between px-5 py-4 gap-4">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="w-9 h-9 rounded-xl bg-[var(--accent-50)] flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-[var(--text-primary)]">
-                  Coming Soon: CRM
-                </p>
-                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                  Automated aftercare, your own phone number, broadcast messaging, and more. Starting at $49/mo.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => router.push('/dashboard/settings?tab=subscription')}
-                className="text-xs font-semibold text-[var(--accent-primary)] hover:underline whitespace-nowrap"
-              >
-                Learn More
-              </button>
-              <button
-                onClick={() => {
-                  setShowCrmBanner(false);
-                  localStorage.setItem('pjos-crm-banner-dismissed', '1');
-                }}
-                className="p-1 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] transition-colors"
-                title="Dismiss"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ================================================================ */}
       {/* Card Grid                                                        */}
