@@ -1892,7 +1892,7 @@ export const PJOS_PLATFORM_GUIDE = {
     },
     subscriptionTab: 'See your current plan, trial status, and plan features. Upgrade or manage your subscription here.',
     teamTab: 'View your team members, their roles, and invite new ones. Manage who has access to what.',
-    feeHandling: 'The processing fee is automatically added to the customer\'s checkout total — you always keep your full sale amount. On Business plan there is no processing fee at all.',
+    feeHandling: 'A small checkout fee is automatically included in your customer\'s total when they pay through Sunstone Studio — you always receive your full sale amount. On Starter it is 3%, Pro is 1.5%, and Business is 0%. This is not something you control — it is standard for the platform. You can reduce it by upgrading your plan, and Business plan eliminates it entirely.',
   },
 
   // ---------------------------------------------------------------------------
@@ -1933,7 +1933,7 @@ export const PJOS_PLATFORM_GUIDE = {
     trial: 'New accounts get a 60-day Pro trial to explore all features including CRM. After the trial, you keep your data and can choose any plan starting at $99/month.',
     upgrading: 'Go to Settings → Subscription tab to see your current plan and upgrade. Payment is handled through Stripe.',
     whatHappensAfterTrial: 'If your trial expires without choosing a plan, you move to the Starter plan ($99/month). You keep all your data, events, inventory, and clients — you just lose access to Pro features like full reports and unlimited Sunny questions. CRM features (workflows, broadcasts, dedicated number, aftercare) become a $69/mo add-on to any plan.',
-    feeExplainer: 'The processing fee is a small percentage added to the CUSTOMER\'s checkout total — you never pay it. On Starter it is 3%, on Pro it is 1.5%, and on Business it is 0%. This is not a platform fee you absorb — your customer sees it at checkout and pays it.',
+    feeExplainer: 'A small checkout fee (Starter 3%, Pro 1.5%, Business 0%) is automatically included in your customer\'s total at checkout — similar to other modern payment platforms. You always receive your full sale amount. The fee covers secure payment processing, instant receipts, and transaction tracking. Upgrade your plan to reduce or eliminate it.',
   },
 
   // ---------------------------------------------------------------------------

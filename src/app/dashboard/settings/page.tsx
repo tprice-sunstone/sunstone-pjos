@@ -32,7 +32,7 @@ import {
 } from '@/components/ui';
 import { applyTheme } from '@/lib/theme';
 import { THEMES, LIGHT_THEMES, DARK_THEMES, getThemeById, DEFAULT_THEME_ID, type ThemeDefinition } from '@/lib/themes';
-import type { TaxProfile, FeeHandling, BusinessType, SubscriptionTier } from '@/types';
+import type { TaxProfile, BusinessType, SubscriptionTier } from '@/types';
 import { PLATFORM_FEE_RATES, SUBSCRIPTION_PRICES } from '@/types';
 import { getSubscriptionTier } from '@/lib/subscription';
 import SunnyTutorial from '@/components/SunnyTutorial';
@@ -333,9 +333,6 @@ function SettingsPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
-  // ── Fee handling ──
-  const [feeHandling, setFeeHandling] = useState<FeeHandling>('pass_to_customer');
-
   // ── Tax profiles ──
   const [taxProfiles, setTaxProfiles] = useState<TaxProfile[]>([]);
   const [newTax, setNewTax] = useState({ name: '', rate: '' });
@@ -449,7 +446,6 @@ function SettingsPage() {
     setBusinessType((tenant as any).business_type || '');
     setBusinessPhone((tenant as any).phone || '');
     setBusinessWebsite((tenant as any).website || '');
-    setFeeHandling(tenant.fee_handling);
     setWaiverText(tenant.waiver_text);
     setAutoEmailReceipt(tenant.auto_email_receipt ?? false);
     setAutoSmsReceipt(tenant.auto_sms_receipt ?? false);
@@ -697,17 +693,6 @@ function SettingsPage() {
     } finally {
       setUploadingLogo(false);
     }
-  };
-
-  const saveFeeHandling = async () => {
-    if (!tenant) return;
-    const { error } = await supabase
-      .from('tenants')
-      .update({ fee_handling: feeHandling })
-      .eq('id', tenant.id);
-    if (error) { toast.error(error.message); return; }
-    toast.success('Fee handling updated');
-    refetch();
   };
 
   const saveDefaultProcessor = async (processor: string) => {
@@ -1134,56 +1119,35 @@ function SettingsPage() {
             )}
           </div>
 
-          {/* Fee handling */}
-          {feeRate > 0 && (
-            <>
-              <div className="border-t border-[var(--border-subtle)]" />
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-[var(--text-primary)]">Platform Fee Handling</span>
-                  <Badge variant="default" size="sm">{(feeRate * 100).toFixed(1)}% fee</Badge>
-                </div>
+          {/* Platform Fee Info */}
+          <div className="border-t border-[var(--border-subtle)]" />
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-[var(--text-primary)]">Platform Fee</span>
+              <Badge variant="default" size="sm">{(feeRate * 100).toFixed(feeRate > 0 ? 1 : 0)}%</Badge>
+            </div>
+            {feeRate > 0 ? (
+              <>
                 <p className="text-sm text-[var(--text-secondary)]">
-                  Choose how the platform fee is handled for each sale.
+                  A {(feeRate * 100).toFixed(1)}% service fee is automatically included in your customer&rsquo;s total when they pay through Sunstone Studio. This is standard for modern checkout platforms and covers secure payment processing, instant receipts, and transaction tracking.
                 </p>
-                <label className="flex items-start gap-3 p-4 rounded-lg border border-[var(--border-default)] cursor-pointer hover:border-[var(--border-strong)] transition-colors has-[:checked]:border-[var(--accent-primary)] has-[:checked]:bg-[var(--surface-subtle)]">
-                  <input
-                    type="radio"
-                    name="feeHandling"
-                    checked={feeHandling === 'pass_to_customer'}
-                    onChange={() => setFeeHandling('pass_to_customer')}
-                    className="mt-1 accent-[var(--accent-primary)]"
-                  />
-                  <div>
-                    <div className="font-medium text-[var(--text-primary)]">Pass to customer</div>
-                    <div className="text-sm text-[var(--text-secondary)]">
-                      Fee appears as a &quot;Service Fee&quot; line item on the receipt.
-                    </div>
-                  </div>
-                </label>
-                <label className="flex items-start gap-3 p-4 rounded-lg border border-[var(--border-default)] cursor-pointer hover:border-[var(--border-strong)] transition-colors has-[:checked]:border-[var(--accent-primary)] has-[:checked]:bg-[var(--surface-subtle)]">
-                  <input
-                    type="radio"
-                    name="feeHandling"
-                    checked={feeHandling === 'absorb'}
-                    onChange={() => setFeeHandling('absorb')}
-                    className="mt-1 accent-[var(--accent-primary)]"
-                  />
-                  <div>
-                    <div className="font-medium text-[var(--text-primary)]">Absorb fee</div>
-                    <div className="text-sm text-[var(--text-secondary)]">
-                      Fee deducted from your payout. Customer sees no additional charges.
-                    </div>
-                  </div>
-                </label>
-                <div className="flex justify-end">
-                  <Button variant="primary" onClick={saveFeeHandling}>
-                    Save Fee Handling
-                  </Button>
+                <div className="rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-default)] px-4 py-3">
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    Example: $100 sale &rarr; customer pays ${(100 + 100 * feeRate).toFixed(2)} &rarr; you receive $100
+                  </p>
                 </div>
-              </div>
-            </>
-          )}
+                <p className="text-xs text-[var(--text-tertiary)]">
+                  {tier === 'starter'
+                    ? 'Upgrade to Pro to reduce the fee to 1.5%, or Business to eliminate it entirely.'
+                    : 'Upgrade to Business to eliminate the fee for your customers.'}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-[var(--text-secondary)]">
+                Your customers pay exactly what you quote &mdash; no additional fees. This is a Business plan benefit.
+              </p>
+            )}
+          </div>
         </div>
       </AccordionSection>
 
