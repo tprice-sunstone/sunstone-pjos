@@ -32,7 +32,7 @@ import {
 } from '@/components/ui';
 import { applyTheme } from '@/lib/theme';
 import { THEMES, LIGHT_THEMES, DARK_THEMES, getThemeById, DEFAULT_THEME_ID, type ThemeDefinition } from '@/lib/themes';
-import type { TaxProfile, BusinessType, SubscriptionTier } from '@/types';
+import type { TaxProfile, SubscriptionTier } from '@/types';
 import { PLATFORM_FEE_RATES, SUBSCRIPTION_PRICES } from '@/types';
 import { getSubscriptionTier } from '@/lib/subscription';
 import SunnyTutorial from '@/components/SunnyTutorial';
@@ -40,15 +40,6 @@ import SunnyTutorial from '@/components/SunnyTutorial';
 // ============================================================================
 // Constants
 // ============================================================================
-
-const BUSINESS_TYPE_OPTIONS = [
-  { value: '', label: 'Not set' },
-  { value: 'permanent_jewelry', label: 'Permanent Jewelry' },
-  { value: 'salon_spa', label: 'Salon / Spa' },
-  { value: 'boutique', label: 'Boutique' },
-  { value: 'popup_vendor', label: 'Pop-up Vendor' },
-  { value: 'other', label: 'Other' },
-];
 
 const TEAM_MEMBER_LIMITS: Record<string, number> = {
   starter: 1,
@@ -320,7 +311,6 @@ function SettingsPage() {
 
   // ── Business info ──
   const [businessName, setBusinessName] = useState('');
-  const [businessType, setBusinessType] = useState('');
   const [businessPhone, setBusinessPhone] = useState('');
   const [businessWebsite, setBusinessWebsite] = useState('');
   const [savingBusiness, setSavingBusiness] = useState(false);
@@ -443,7 +433,6 @@ function SettingsPage() {
   useEffect(() => {
     if (!tenant) return;
     setBusinessName(tenant.name || '');
-    setBusinessType((tenant as any).business_type || '');
     setBusinessPhone((tenant as any).phone || '');
     setBusinessWebsite((tenant as any).website || '');
     setWaiverText(tenant.waiver_text);
@@ -599,7 +588,6 @@ function SettingsPage() {
       .from('tenants')
       .update({
         name: businessName.trim(),
-        business_type: businessType || null,
         phone: businessPhone.trim() || null,
         website: businessWebsite.trim() || null,
       })
@@ -820,6 +808,26 @@ function SettingsPage() {
     }
   };
 
+  const [crmCheckingOut, setCrmCheckingOut] = useState(false);
+  const handleCrmCheckout = async () => {
+    setCrmCheckingOut(true);
+    try {
+      const res = await fetch('/api/stripe/crm-checkout', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to start CRM checkout');
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      toast.error('Failed to start checkout. Please try again.');
+    } finally {
+      setCrmCheckingOut(false);
+    }
+  };
+
   const handleManageSubscription = async () => {
     try {
       const res = await fetch('/api/stripe/portal', {
@@ -865,10 +873,7 @@ function SettingsPage() {
   const pendingMembers = teamMembers.filter((m) => m.is_pending);
 
   // ── Summary lines ──
-  const businessTypeLabel = BUSINESS_TYPE_OPTIONS.find((o) => o.value === businessType)?.label;
-  const businessSummary = businessName
-    ? `${businessName}${businessTypeLabel && businessType ? ` · ${businessTypeLabel}` : ''}`
-    : 'Set up your business info';
+  const businessSummary = businessName || 'Set up your business info';
 
   const paymentSummary = stripeConnected
         ? 'Stripe connected'
@@ -931,12 +936,6 @@ function SettingsPage() {
               value={businessName}
               onChange={(e) => setBusinessName(e.target.value)}
               placeholder="My Jewelry Studio"
-            />
-            <Select
-              label="Business Type"
-              value={businessType}
-              onChange={(e) => setBusinessType(e.target.value)}
-              options={BUSINESS_TYPE_OPTIONS}
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
@@ -1333,7 +1332,7 @@ function SettingsPage() {
                     See what&rsquo;s included &rarr;
                   </a>
                 </div>
-                <Button variant="secondary" className="shrink-0">
+                <Button variant="secondary" className="shrink-0" onClick={handleCrmCheckout} loading={crmCheckingOut}>
                   Add CRM
                 </Button>
               </div>

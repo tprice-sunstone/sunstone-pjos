@@ -81,7 +81,8 @@ export async function autoTagClient(
     if (eventTag) tagsToApply.push(eventTag.id);
   }
 
-  // Apply tags (skip if already assigned)
+  // Apply tags (skip if already assigned) + check for tag_added workflows
+  const newlyAppliedTagIds: string[] = [];
   for (const tagId of tagsToApply) {
     const { data: existing } = await supabase
       .from('client_tag_assignments')
@@ -95,6 +96,39 @@ export async function autoTagClient(
         client_id: clientId,
         tag_id: tagId,
       });
+      newlyAppliedTagIds.push(tagId);
+    }
+  }
+
+  // Check for tag_added workflow triggers on newly applied tags
+  if (newlyAppliedTagIds.length > 0) {
+    try {
+      // Get tag names for the newly applied tags
+      const { data: tagRecords } = await supabase
+        .from('client_tags')
+        .select('id, name')
+        .in('id', newlyAppliedTagIds);
+
+      const tagNames = (tagRecords || []).map((t) => t.name);
+
+      if (tagNames.length > 0) {
+        // Find active workflows with tag_added trigger matching any of these tag names
+        for (const tagName of tagNames) {
+          const { data: tagWorkflows } = await supabase
+            .from('workflow_templates')
+            .select('id, trigger_type, trigger_tag')
+            .eq('tenant_id', tenantId)
+            .eq('trigger_type', 'tag_added')
+            .eq('is_active', true)
+            .eq('trigger_tag', tagName);
+
+          for (const wf of tagWorkflows || []) {
+            await queueWorkflow(tenantId, clientId, 'tag_added', wf.trigger_tag);
+          }
+        }
+      }
+    } catch {
+      // Non-blocking — don't fail auto-tag if workflow check fails
     }
   }
 

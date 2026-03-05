@@ -81,16 +81,21 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await request.json();
-  const { tenantId, name, trigger_type, steps } = body;
+  const { tenantId, name, trigger_type, trigger_tag, steps } = body;
 
   if (!tenantId || !name || !trigger_type) {
     return NextResponse.json({ error: 'tenantId, name, and trigger_type required' }, { status: 400 });
   }
 
   // Create workflow
+  const insertData: Record<string, any> = { tenant_id: tenantId, name, trigger_type, is_active: true };
+  if (trigger_type === 'tag_added' && trigger_tag) {
+    insertData.trigger_tag = trigger_tag;
+  }
+
   const { data: workflow, error: wfError } = await supabase
     .from('workflow_templates')
-    .insert({ tenant_id: tenantId, name, trigger_type, is_active: true })
+    .insert(insertData)
     .select('id')
     .single();
 
@@ -125,7 +130,7 @@ export async function PATCH(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await request.json();
-  const { id, is_active, name, trigger_type, steps } = body;
+  const { id, is_active, name, trigger_type, trigger_tag, steps } = body;
 
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
@@ -133,7 +138,10 @@ export async function PATCH(request: NextRequest) {
   const updates: Record<string, any> = {};
   if (typeof is_active === 'boolean') updates.is_active = is_active;
   if (name) updates.name = name;
-  if (trigger_type) updates.trigger_type = trigger_type;
+  if (trigger_type) {
+    updates.trigger_type = trigger_type;
+    updates.trigger_tag = trigger_type === 'tag_added' ? (trigger_tag || null) : null;
+  }
 
   if (Object.keys(updates).length > 0) {
     const { error } = await supabase

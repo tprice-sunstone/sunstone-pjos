@@ -916,6 +916,7 @@ interface WorkflowTemplate {
   id: string;
   name: string;
   trigger_type: string;
+  trigger_tag?: string | null;
   is_active: boolean;
   created_at: string;
   steps: WorkflowStep[];
@@ -935,6 +936,8 @@ const TRIGGER_LABELS: Record<string, string> = {
   private_party_purchase: 'Private Party Purchase',
   new_client: 'New Client',
   repeat_client: 'Repeat Client',
+  tag_added: 'Tag Added',
+  manual: 'Manual',
 };
 
 function WorkflowsTab({ tenantId }: { tenantId: string }) {
@@ -1061,7 +1064,7 @@ function WorkflowsTab({ tenantId }: { tenantId: string }) {
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
-                    <span>Trigger: {TRIGGER_LABELS[wf.trigger_type] || wf.trigger_type}</span>
+                    <span>Trigger: {TRIGGER_LABELS[wf.trigger_type] || wf.trigger_type}{wf.trigger_type === 'tag_added' && wf.trigger_tag ? ` "${wf.trigger_tag}"` : ''}</span>
                     <span>·</span>
                     <span>{wf.steps?.length || 0} steps</span>
                   </div>
@@ -1129,6 +1132,11 @@ function WorkflowsTab({ tenantId }: { tenantId: string }) {
                   No steps configured. Edit this workflow to add steps.
                 </div>
               )}
+
+              {/* Bulk Enroll section */}
+              {isExpanded && (
+                <BulkEnrollSection workflowId={wf.id} tenantId={tenantId} />
+              )}
             </div>
           </Card>
         );
@@ -1143,6 +1151,122 @@ function WorkflowsTab({ tenantId }: { tenantId: string }) {
           onSaved={() => { setShowCreate(false); setEditingWorkflow(null); fetchWorkflows(); }}
         />
       )}
+    </div>
+  );
+}
+
+// ── Bulk Enroll Section ──────────────────────────────────────────────────────
+
+function BulkEnrollSection({ workflowId, tenantId }: { workflowId: string; tenantId: string }) {
+  const [showEnroll, setShowEnroll] = useState(false);
+  const [tags, setTags] = useState<{ id: string; name: string }[]>([]);
+  const [selectedTag, setSelectedTag] = useState('');
+  const [preview, setPreview] = useState<number | null>(null);
+  const [enrolling, setEnrolling] = useState(false);
+  const [loadingTags, setLoadingTags] = useState(false);
+
+  const fetchTags = async () => {
+    setLoadingTags(true);
+    const res = await fetch(`/api/tags?tenantId=${tenantId}`);
+    if (res.ok) {
+      const data = await res.json();
+      setTags(data.map((t: any) => ({ id: t.id, name: t.name })));
+    }
+    setLoadingTags(false);
+  };
+
+  const handleOpen = () => {
+    setShowEnroll(true);
+    fetchTags();
+  };
+
+  const handleTagSelect = async (tagId: string) => {
+    setSelectedTag(tagId);
+    setPreview(null);
+    if (tagId) {
+      const res = await fetch(`/api/workflows/bulk-enroll?tagId=${tagId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPreview(data.count);
+      }
+    }
+  };
+
+  const handleEnroll = async () => {
+    if (!selectedTag) return;
+    setEnrolling(true);
+    const res = await fetch('/api/workflows/bulk-enroll', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workflowId, tagId: selectedTag, tenantId }),
+    });
+    setEnrolling(false);
+    if (res.ok) {
+      const data = await res.json();
+      toast.success(`Enrolled ${data.enrolled} client${data.enrolled !== 1 ? 's' : ''}${data.skipped > 0 ? ` (${data.skipped} already enrolled)` : ''}`);
+      setShowEnroll(false);
+      setSelectedTag('');
+      setPreview(null);
+    } else {
+      toast.error('Failed to enroll clients');
+    }
+  };
+
+  if (!showEnroll) {
+    return (
+      <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
+        <button
+          onClick={handleOpen}
+          className="text-xs font-medium text-[var(--accent-primary)] hover:underline"
+        >
+          Bulk Enroll by Tag
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] space-y-2">
+      <label className="block text-xs font-medium text-[var(--text-secondary)]">
+        Enroll all clients with tag:
+      </label>
+      {loadingTags ? (
+        <p className="text-xs text-[var(--text-tertiary)]">Loading tags...</p>
+      ) : (
+        <select
+          value={selectedTag}
+          onChange={(e) => handleTagSelect(e.target.value)}
+          className="w-full px-3 py-2 text-sm border border-[var(--border-default)] rounded-lg bg-[var(--surface-raised)] text-[var(--text-primary)] focus:outline-none"
+        >
+          <option value="">Select a tag...</option>
+          {tags.map((tag) => (
+            <option key={tag.id} value={tag.id}>{tag.name}</option>
+          ))}
+        </select>
+      )}
+      {preview !== null && selectedTag && (
+        <p className="text-xs text-[var(--text-secondary)]">
+          This will enroll <strong>{preview}</strong> client{preview !== 1 ? 's' : ''} in this workflow.
+        </p>
+      )}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handleEnroll}
+          loading={enrolling}
+          disabled={!selectedTag || preview === 0}
+        >
+          Enroll
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => { setShowEnroll(false); setSelectedTag(''); setPreview(null); }}
+        >
+          Cancel
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1170,6 +1294,8 @@ function WorkflowEditorModal({
   const isEditing = !!workflow;
   const [name, setName] = useState(workflow?.name || '');
   const [triggerType, setTriggerType] = useState(workflow?.trigger_type || 'event_purchase');
+  const [triggerTag, setTriggerTag] = useState(workflow?.trigger_tag || '');
+  const [availableTags, setAvailableTags] = useState<{ id: string; name: string }[]>([]);
   const [steps, setSteps] = useState<StepDraft[]>(
     workflow?.steps
       ?.sort((a, b) => a.step_order - b.step_order)
@@ -1182,6 +1308,15 @@ function WorkflowEditorModal({
   );
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Fetch tags when tag_added trigger is selected
+  useEffect(() => {
+    if (triggerType === 'tag_added') {
+      fetch(`/api/tags?tenantId=${tenantId}`)
+        .then((r) => r.ok ? r.json() : [])
+        .then((data) => setAvailableTags(data.map((t: any) => ({ id: t.id, name: t.name }))));
+    }
+  }, [triggerType, tenantId]);
 
   const addStep = () => {
     const lastDelay = steps.length > 0 ? steps[steps.length - 1].delay_hours : 0;
@@ -1200,13 +1335,14 @@ function WorkflowEditorModal({
     if (!name.trim()) { toast.error('Workflow name is required'); return; }
     if (steps.length === 0) { toast.error('Add at least one step'); return; }
     if (steps.some((s) => !s.template_name.trim())) { toast.error('All steps need a template name'); return; }
+    if (triggerType === 'tag_added' && !triggerTag) { toast.error('Select a tag for the trigger'); return; }
 
     setSaving(true);
     const url = '/api/workflows';
     const method = isEditing ? 'PATCH' : 'POST';
     const body = isEditing
-      ? { id: workflow!.id, name, trigger_type: triggerType, steps }
-      : { tenantId, name, trigger_type: triggerType, steps };
+      ? { id: workflow!.id, name, trigger_type: triggerType, trigger_tag: triggerType === 'tag_added' ? triggerTag : null, steps }
+      : { tenantId, name, trigger_type: triggerType, trigger_tag: triggerType === 'tag_added' ? triggerTag : null, steps };
 
     const res = await fetch(url, {
       method,
@@ -1262,15 +1398,39 @@ function WorkflowEditorModal({
             </label>
             <select
               value={triggerType}
-              onChange={(e) => setTriggerType(e.target.value)}
+              onChange={(e) => { setTriggerType(e.target.value); if (e.target.value !== 'tag_added') setTriggerTag(''); }}
               className="w-full px-3 py-2.5 text-sm border border-[var(--border-default)] rounded-lg bg-[var(--surface-raised)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-subtle)]"
             >
               <option value="event_purchase">Event Purchase</option>
               <option value="private_party_purchase">Private Party Purchase</option>
+              <option value="tag_added">Tag Added (auto-enroll when tagged)</option>
               <option value="new_client">New Client</option>
               <option value="repeat_client">Repeat Client</option>
+              <option value="manual">Manual Only</option>
             </select>
           </div>
+
+          {/* Tag selector — shown when trigger is tag_added */}
+          {triggerType === 'tag_added' && (
+            <div>
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
+                When client is tagged with
+              </label>
+              <select
+                value={triggerTag}
+                onChange={(e) => setTriggerTag(e.target.value)}
+                className="w-full px-3 py-2.5 text-sm border border-[var(--border-default)] rounded-lg bg-[var(--surface-raised)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-subtle)]"
+              >
+                <option value="">Select a tag...</option>
+                {availableTags.map((tag) => (
+                  <option key={tag.id} value={tag.name}>{tag.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-[var(--text-tertiary)] mt-1">
+                Clients will auto-enroll in this workflow when they get this tag (e.g., from an event purchase).
+              </p>
+            </div>
+          )}
 
           {/* Steps */}
           <div>

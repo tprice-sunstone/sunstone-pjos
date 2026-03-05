@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
+import { queueWorkflow } from '@/lib/workflows';
 
 export async function GET(
   request: NextRequest,
@@ -43,6 +44,28 @@ export async function POST(
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+
+  // Check for tag_added workflow triggers (non-blocking)
+  try {
+    // Get the tag name and client's tenant
+    const { data: tagRecord } = await supabase.from('client_tags').select('name, tenant_id').eq('id', tag_id).single();
+    if (tagRecord) {
+      const { data: tagWorkflows } = await supabase
+        .from('workflow_templates')
+        .select('id, trigger_type, trigger_tag')
+        .eq('tenant_id', tagRecord.tenant_id)
+        .eq('trigger_type', 'tag_added')
+        .eq('trigger_tag', tagRecord.name)
+        .eq('is_active', true);
+
+      for (const wf of tagWorkflows || []) {
+        queueWorkflow(tagRecord.tenant_id, clientId, 'tag_added', wf.trigger_tag || undefined).catch(() => {});
+      }
+    }
+  } catch {
+    // Non-blocking
+  }
+
   return NextResponse.json(data, { status: 201 });
 }
 

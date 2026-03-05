@@ -437,7 +437,8 @@ export const SUNNY_TOOL_DEFINITIONS = [
       type: 'object',
       properties: {
         name: { type: 'string' },
-        trigger_type: { type: 'string', enum: ['event_purchase', 'private_party_purchase', 'manual'], description: 'What triggers this workflow' },
+        trigger_type: { type: 'string', enum: ['event_purchase', 'private_party_purchase', 'tag_added', 'manual'], description: 'What triggers this workflow. Use tag_added to auto-enroll clients when they get a specific tag.' },
+        trigger_tag: { type: 'string', description: 'For tag_added trigger: the tag name that triggers enrollment (e.g., event name)' },
         steps: {
           type: 'array',
           items: {
@@ -1917,14 +1918,18 @@ export async function executeSunnyTool(
       // ── 27. create_workflow ──
       case 'create_workflow': {
         // Create workflow template
+        const insertData: Record<string, any> = {
+          tenant_id: tenantId,
+          name: input.name,
+          trigger_type: input.trigger_type,
+          is_active: true,
+        };
+        if (input.trigger_type === 'tag_added' && input.trigger_tag) {
+          insertData.trigger_tag = input.trigger_tag;
+        }
         const { data: workflow, error: wfError } = await serviceClient
           .from('workflow_templates')
-          .insert({
-            tenant_id: tenantId,
-            name: input.name,
-            trigger_type: input.trigger_type,
-            is_active: true,
-          })
+          .insert(insertData)
           .select('id, name')
           .single();
 

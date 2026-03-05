@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 /* ═══════════════════════════════════════════════════════════════
    SUNSTONE CRM — DEDICATED MARKETING PAGE
@@ -123,21 +125,16 @@ function PhoneMockup({ children, label }: { children: React.ReactNode; label: st
   )
 }
 
-/* ─── Sunstone Logo ─── */
+/* ─── Sunstone Logo (matches landing page) ─── */
 function SunstoneLogo({ size = 34 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-      <circle cx="50" cy="50" r="48" fill={C.wine} />
-      <circle cx="50" cy="50" r="20" fill="none" stroke="#fff" strokeWidth="3" />
-      {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
-        const rad = (angle * Math.PI) / 180
-        const x1 = 50 + 26 * Math.cos(rad)
-        const y1 = 50 + 26 * Math.sin(rad)
-        const x2 = 50 + 40 * Math.cos(rad)
-        const y2 = 50 + 40 * Math.sin(rad)
-        return <line key={angle} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
-      })}
-    </svg>
+    <Image
+      src="/landing/sunstone-logo.webp"
+      alt="Sunstone Studio"
+      width={size}
+      height={size}
+      style={{ borderRadius: 8 }}
+    />
   )
 }
 
@@ -146,8 +143,32 @@ function SunstoneLogo({ size = 34 }: { size?: number }) {
    ═══════════════════════════════════════════════════════════════ */
 
 export default function CRMPageClient({ isLoggedIn }: { isLoggedIn: boolean }) {
-  const ctaHref = isLoggedIn ? '/dashboard/settings?tab=subscription' : '/auth/signup'
   const ctaLabel = isLoggedIn ? 'Add CRM to My Plan' : 'Start Your Free Trial'
+  const [checkingOut, setCheckingOut] = useState(false)
+
+  const handleCrmCheckout = async () => {
+    if (!isLoggedIn) {
+      window.location.href = '/auth/signup'
+      return
+    }
+    if (checkingOut) return
+    setCheckingOut(true)
+    try {
+      const res = await fetch('/api/stripe/crm-checkout', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to start checkout')
+        setCheckingOut(false)
+        return
+      }
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch {
+      toast.error('Something went wrong. Please try again.')
+      setCheckingOut(false)
+    }
+  }
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", color: C.text, background: C.bg }}>
@@ -181,12 +202,13 @@ export default function CRMPageClient({ isLoggedIn }: { isLoggedIn: boolean }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <a href="#pricing" style={{ fontSize: 14, fontWeight: 500, color: C.textSec, textDecoration: 'none' }}>Pricing</a>
             <a href="#faq" style={{ fontSize: 14, fontWeight: 500, color: C.textSec, textDecoration: 'none' }}>FAQ</a>
-            <Link href={ctaHref} style={{
+            <button onClick={handleCrmCheckout} disabled={checkingOut} style={{
               padding: '9px 20px', borderRadius: 10, background: C.wine, color: '#fff',
-              fontSize: 14, fontWeight: 600, textDecoration: 'none',
+              fontSize: 14, fontWeight: 600, border: 'none', cursor: checkingOut ? 'wait' : 'pointer',
+              opacity: checkingOut ? 0.7 : 1,
             }}>
-              {ctaLabel}
-            </Link>
+              {checkingOut ? 'Loading...' : ctaLabel}
+            </button>
           </div>
         </div>
       </nav>
@@ -211,13 +233,14 @@ export default function CRMPageClient({ isLoggedIn }: { isLoggedIn: boolean }) {
           </Reveal>
           <Reveal delay={0.24}>
             <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href={ctaHref} style={{
+              <button onClick={handleCrmCheckout} disabled={checkingOut} style={{
                 padding: '14px 32px', borderRadius: 12, background: C.wine, color: '#fff',
-                fontSize: 16, fontWeight: 600, textDecoration: 'none',
+                fontSize: 16, fontWeight: 600, border: 'none', cursor: checkingOut ? 'wait' : 'pointer',
                 boxShadow: `0 4px 20px ${C.wineBg}`,
+                opacity: checkingOut ? 0.7 : 1,
               }}>
-                {ctaLabel}
-              </Link>
+                {checkingOut ? 'Loading...' : ctaLabel}
+              </button>
               <a href="#sunny" style={{
                 padding: '14px 28px', borderRadius: 12, background: 'transparent',
                 border: `1.5px solid ${C.border}`, color: C.text,
@@ -506,13 +529,14 @@ export default function CRMPageClient({ isLoggedIn }: { isLoggedIn: boolean }) {
           </Reveal>
           <Reveal delay={0.12}>
             <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href={ctaHref} style={{
+              <button onClick={handleCrmCheckout} disabled={checkingOut} style={{
                 padding: '16px 36px', borderRadius: 12, background: C.wine, color: '#fff',
-                fontSize: 17, fontWeight: 600, textDecoration: 'none',
+                fontSize: 17, fontWeight: 600, border: 'none', cursor: checkingOut ? 'wait' : 'pointer',
                 boxShadow: '0 4px 24px rgba(107,41,66,0.3)',
+                opacity: checkingOut ? 0.7 : 1,
               }}>
-                {ctaLabel}
-              </Link>
+                {checkingOut ? 'Loading...' : ctaLabel}
+              </button>
             </div>
           </Reveal>
         </div>
@@ -572,13 +596,15 @@ export default function CRMPageClient({ isLoggedIn }: { isLoggedIn: boolean }) {
             <p style={{ fontSize: 16, color: C.textSec, marginBottom: 32 }}>
               Try the full CRM free for 60 days. No credit card required to start.
             </p>
-            <Link href={ctaHref} style={{
+            <button onClick={handleCrmCheckout} disabled={checkingOut} style={{
               display: 'inline-block', padding: '16px 36px', borderRadius: 12,
               background: C.wine, color: '#fff', fontSize: 17, fontWeight: 600,
-              textDecoration: 'none', boxShadow: `0 4px 20px ${C.wineBg}`,
+              border: 'none', cursor: checkingOut ? 'wait' : 'pointer',
+              boxShadow: `0 4px 20px ${C.wineBg}`,
+              opacity: checkingOut ? 0.7 : 1,
             }}>
-              {ctaLabel}
-            </Link>
+              {checkingOut ? 'Loading...' : ctaLabel}
+            </button>
           </Reveal>
         </div>
       </section>

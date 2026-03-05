@@ -13,7 +13,6 @@ import {
   ClientProfile,
   ClientFormModal,
   TagManagerModal,
-  NeedsAttention,
 } from '@/components/clients';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import type { Client, ClientTag, ClientSegment } from '@/types';
@@ -210,15 +209,6 @@ export default function ClientsPage() {
           />
         )}
       </div>
-
-      {/* Needs Attention — requires CRM enabled */}
-      {!isStarter && crmEnabled && tenant && (
-        <NeedsAttention
-          tenantId={tenant.id}
-          onOpenProfile={(cid) => setProfileClientId(cid)}
-          onSendMessage={() => {}}
-        />
-      )}
 
       {/* Client List */}
       <ClientList

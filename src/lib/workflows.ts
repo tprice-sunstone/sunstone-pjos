@@ -73,7 +73,8 @@ async function seedWorkflows(tenantId: string): Promise<void> {
 export async function queueWorkflow(
   tenantId: string,
   clientId: string,
-  triggerType: string
+  triggerType: string,
+  triggerTag?: string
 ): Promise<void> {
   const supabase = await createServiceRoleClient();
 
@@ -81,12 +82,19 @@ export async function queueWorkflow(
   await seedWorkflows(tenantId);
 
   // Find active workflows for this trigger type
-  const { data: workflows } = await supabase
+  let query = supabase
     .from('workflow_templates')
     .select('id, name')
     .eq('tenant_id', tenantId)
     .eq('trigger_type', triggerType)
     .eq('is_active', true);
+
+  // For tag_added triggers, also match the specific tag
+  if (triggerType === 'tag_added' && triggerTag) {
+    query = query.eq('trigger_tag', triggerTag);
+  }
+
+  const { data: workflows } = await query;
 
   if (!workflows || workflows.length === 0) return;
 
