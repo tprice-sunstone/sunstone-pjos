@@ -40,7 +40,7 @@ const PRICING = [
     name: 'Starter',
     price: '$99',
     period: '/mo',
-    fee: '3% processing fee (customer pays)',
+    fee: '3% checkout fee',
     tagline: 'Everything you need to launch',
     popular: false,
     features: [
@@ -58,7 +58,7 @@ const PRICING = [
     name: 'Pro',
     price: '$169',
     period: '/mo',
-    fee: '1.5% processing fee (customer pays)',
+    fee: '1.5% checkout fee',
     tagline: 'For growing businesses',
     popular: true,
     features: [
@@ -75,12 +75,12 @@ const PRICING = [
     name: 'Business',
     price: '$279',
     period: '/mo',
-    fee: '0% processing fee',
+    fee: 'Zero checkout fee',
     tagline: 'For serious operators',
     popular: false,
     features: [
       'Everything in Pro, plus:',
-      'Zero processing fees for your customers',
+      'Zero checkout fees — customers pay exactly what you quote',
       'Unlimited team members',
       'White-glove onboarding',
       'Dedicated support',
@@ -95,12 +95,12 @@ const FAQS = [
     a: "You build the order in the POS, then tap 'Charge Customer' and choose QR Code or Text Link. A secure Stripe checkout page is created instantly. Your customer scans the QR code with their phone camera or receives a text message with a payment link — they pay on their own phone. No card reader needed. The POS updates in real time when payment is received.",
   },
   {
-    q: "What's the processing fee?",
-    a: "The processing fee (3% on Starter, 1.5% on Pro, 0% on Business) is added to your customer's checkout total — you always receive the full sale amount. For example, a $70 bracelet on the Starter plan means your customer pays $72.10 and you get $70. On the Business plan, your customers pay exactly what you quote — zero fee.",
+    q: 'How does the checkout fee work?',
+    a: "When a customer pays through Sunstone Studio (via QR code or payment link), a small checkout fee is transparently added to their total — similar to what they see on other modern checkout platforms. This covers secure payment processing and enables features like instant digital receipts and automatic transaction tracking. On Starter it's 3%, Pro is 1.5%, and the Business plan has zero fee — your customers pay exactly what you quote. You always receive your full sale amount. Most artists find their customers don't even notice it, but if you'd prefer zero fees for your clients, the Business plan has you covered.",
   },
   {
     q: 'Can I still use my Square reader?',
-    a: "Yes! You can record external payments (cash, Venmo, Square, or any card reader) anytime — they're logged for bookkeeping with no processing fee. The built-in Stripe integration just gives you automatic tracking, a professional checkout page, and no extra hardware to carry.",
+    a: "Yes! You can record external payments (cash, Venmo, Square, or any card reader) anytime — they're logged for bookkeeping with no checkout fee. The built-in Stripe integration just gives you automatic tracking, a professional checkout experience, and no extra hardware to carry.",
   },
   {
     q: 'Do I need a Sunstone welder to use Studio?',
@@ -149,7 +149,7 @@ const FEATURES = [
     num: '02',
     name: 'Get Paid Instantly — No Card Reader Needed',
     desc: "Build the order, tap charge, and your customer pays on their own phone. QR code payments at your table or text-to-pay when they're across the room. Every transaction tracked automatically with a professional Stripe-hosted checkout page. Real-time payment notifications right in your POS.",
-    highlight: 'Processing fees are added to the customer total — you never pay them',
+    highlight: 'A small checkout fee is transparently included in the customer total — you always receive your full sale amount',
     img: '/landing/pos-store.webp',
     imgAlt: 'POS payment screen showing QR code and text link checkout options with Stripe integration',
   },
@@ -1432,7 +1432,7 @@ export default function LandingPageClient() {
               borderLeft: `3px solid ${C.gold}`,
             }}>
               <p style={{ fontSize: 15, color: C.text, lineHeight: 1.65, fontWeight: 500 }}>
-                Processing fees are added to the customer&apos;s checkout total — <strong>you never pay them.</strong> Business tier? Your customers pay exactly what you quote.
+                A small checkout fee is transparently included in your customer&apos;s total — similar to other modern payment platforms. <strong>You always receive your full sale amount.</strong> Want zero fees for your customers? The Business plan has you covered.
               </p>
             </div>
             <p style={{ fontSize: 14.5, color: C.textMuted, marginTop: 20 }}>

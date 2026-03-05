@@ -78,15 +78,76 @@ export async function POST(request: NextRequest) {
     let updated = 0;
 
     if (mode === 'by_type') {
-      // Set a flat price per product — applies to chains
-      const defaultPrice = payload.bracelet_price || 0;
-      for (const item of items) {
-        if (item.type === 'chain') {
-          const { error } = await supabase
+      // Ensure default product types exist for this tenant
+      const DEFAULT_PRODUCT_TYPES = [
+        { name: 'Bracelet', default_inches: 7, sort_order: 1 },
+        { name: 'Anklet', default_inches: 10, sort_order: 2 },
+        { name: 'Necklace', default_inches: 18, sort_order: 3 },
+        { name: 'Ring', default_inches: 2.5, sort_order: 4 },
+      ];
+
+      const { data: existingTypes } = await supabase
+        .from('product_types')
+        .select('id, name')
+        .eq('tenant_id', tenantId);
+
+      const existingNames = new Set((existingTypes || []).map(t => t.name.toLowerCase()));
+      const typesToInsert = DEFAULT_PRODUCT_TYPES.filter(t => !existingNames.has(t.name.toLowerCase()));
+
+      if (typesToInsert.length > 0) {
+        await supabase.from('product_types').insert(
+          typesToInsert.map(t => ({
+            tenant_id: tenantId,
+            name: t.name,
+            default_inches: t.default_inches,
+            sort_order: t.sort_order,
+            is_active: true,
+            is_default: true,
+          }))
+        );
+      }
+
+      // Re-fetch all product types to get IDs
+      const { data: productTypes } = await supabase
+        .from('product_types')
+        .select('id, name, default_inches')
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .order('sort_order');
+
+      if (productTypes && productTypes.length > 0) {
+        // Build a name→price map from the payload
+        const priceMap: Record<string, number> = {
+          bracelet: payload.bracelet_price || 0,
+          anklet: payload.anklet_price || 0,
+          necklace: payload.necklace_price || 0,
+          ring: payload.ring_price || 0,
+        };
+
+        // For each chain, create chain_product_prices entries and set pricing_mode
+        const chainItems = items.filter(i => i.type === 'chain');
+        for (const chain of chainItems) {
+          const priceRows = productTypes.map(pt => ({
+            inventory_item_id: chain.id,
+            product_type_id: pt.id,
+            tenant_id: tenantId,
+            sell_price: priceMap[pt.name.toLowerCase()] || 0,
+            default_inches: pt.default_inches,
+            is_active: (priceMap[pt.name.toLowerCase()] || 0) > 0,
+          }));
+
+          // Upsert chain_product_prices
+          await supabase
+            .from('chain_product_prices')
+            .upsert(priceRows, { onConflict: 'inventory_item_id,product_type_id' });
+
+          // Ensure chain pricing_mode is per_product and sell_price is 0
+          await supabase
             .from('inventory_items')
-            .update({ sell_price: defaultPrice })
-            .eq('id', item.id);
-          if (!error) updated++;
+            .update({ pricing_mode: 'per_product', sell_price: 0 })
+            .eq('id', chain.id);
+
+          updated++;
         }
       }
     } else if (mode === 'by_metal') {

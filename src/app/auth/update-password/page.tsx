@@ -45,8 +45,12 @@ export default function UpdatePasswordPage() {
     setError('');
 
     // Validation
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^a-zA-Z0-9]/.test(password)) {
+      setError('Password must include uppercase, lowercase, numbers, and a symbol.');
       return;
     }
 
@@ -192,9 +196,9 @@ export default function UpdatePasswordPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder="At least 8 characters"
                   required
-                  minLength={6}
+                  minLength={8}
                   autoComplete="new-password"
                   autoFocus
                   className="w-full h-12 px-4 rounded-lg border border-border-default bg-surface-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500 transition-colors"
@@ -216,10 +220,13 @@ export default function UpdatePasswordPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Type your new password again"
                   required
-                  minLength={6}
+                  minLength={8}
                   autoComplete="new-password"
                   className="w-full h-12 px-4 rounded-lg border border-border-default bg-surface-base text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500 transition-colors"
                 />
+                <p className="mt-1.5 text-xs text-text-tertiary">
+                  Must be at least 8 characters with uppercase, lowercase, numbers, and a symbol. Common or leaked passwords will be rejected.
+                </p>
               </div>
 
               {/* Submit */}

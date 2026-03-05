@@ -23,6 +23,18 @@ export default function SignupPage() {
     setLoading(true);
     setError('');
 
+    // Client-side password validation
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      setLoading(false);
+      return;
+    }
+    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^a-zA-Z0-9]/.test(password)) {
+      setError('Password must include uppercase, lowercase, numbers, and a symbol.');
+      setLoading(false);
+      return;
+    }
+
     try {
       // 1. Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -163,9 +175,9 @@ export default function SignupPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min 6 characters"
-                helperText="At least 6 characters"
-                minLength={6}
+                placeholder="Min 8 characters"
+                helperText="Must be at least 8 characters with uppercase, lowercase, numbers, and a symbol. Common or leaked passwords will be rejected."
+                minLength={8}
                 required
               />
               <button

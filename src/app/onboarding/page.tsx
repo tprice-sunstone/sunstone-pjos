@@ -805,12 +805,40 @@ function OnboardingFlow() {
                 <div className="space-y-4">
                   {pricingMode === 'by_type' && (
                     <div className="space-y-3">
+                      <p className="text-sm text-text-secondary text-center">Set a price for each product type:</p>
                       <Input
-                        label="Price per piece ($)"
+                        label="Bracelet price ($)"
                         type="number"
                         value={pricingValues.bracelet_price?.toString() || ''}
                         onChange={(e) => setPricingValues({ ...pricingValues, bracelet_price: parseFloat(e.target.value) || 0 })}
                         placeholder="45"
+                        min={0}
+                        step={0.01}
+                      />
+                      <Input
+                        label="Anklet price ($)"
+                        type="number"
+                        value={pricingValues.anklet_price?.toString() || ''}
+                        onChange={(e) => setPricingValues({ ...pricingValues, anklet_price: parseFloat(e.target.value) || 0 })}
+                        placeholder="55"
+                        min={0}
+                        step={0.01}
+                      />
+                      <Input
+                        label="Necklace price per inch ($)"
+                        type="number"
+                        value={pricingValues.necklace_price?.toString() || ''}
+                        onChange={(e) => setPricingValues({ ...pricingValues, necklace_price: parseFloat(e.target.value) || 0 })}
+                        placeholder="8"
+                        min={0}
+                        step={0.01}
+                      />
+                      <Input
+                        label="Ring price ($)"
+                        type="number"
+                        value={pricingValues.ring_price?.toString() || ''}
+                        onChange={(e) => setPricingValues({ ...pricingValues, ring_price: parseFloat(e.target.value) || 0 })}
+                        placeholder="25"
                         min={0}
                         step={0.01}
                       />
