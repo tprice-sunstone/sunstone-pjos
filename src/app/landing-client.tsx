@@ -1235,10 +1235,22 @@ export default function LandingPageClient() {
               background: C.card,
               border: `1px solid ${C.border}`,
               boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+              marginBottom: 20,
             }}>
               <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>
                 Keep CRM after your trial for just <span className="serif" style={{ fontSize: 24, color: C.wine }}>$69</span>/month add-on to any plan
               </div>
+            </div>
+            <div>
+              <a href="/crm" style={{
+                fontSize: 15, fontWeight: 600, color: C.wine, textDecoration: 'none',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+              }}>
+                See Everything CRM Can Do
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 12h14m-7-7l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </a>
             </div>
           </Reveal>
         </div>

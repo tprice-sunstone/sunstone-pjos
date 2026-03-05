@@ -2,6 +2,7 @@
 // CRM Add-On Checkout — POST /api/stripe/crm-checkout
 // ============================================================================
 // Creates a Stripe Checkout session for the $69/mo CRM add-on subscription.
+// If tenant is in trial, defers first billing to trial end date.
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     const { data: tenant } = await supabase
       .from('tenants')
-      .select('id, name, stripe_customer_id, crm_subscription_id')
+      .select('id, name, stripe_customer_id, crm_subscription_id, trial_ends_at')
       .eq('id', member.tenant_id)
       .single();
 
@@ -68,11 +69,29 @@ export async function POST(request: NextRequest) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://sunstonepj.app';
 
+    // Check if tenant is still in trial — defer billing to trial end date
+    let subscriptionData: Stripe.Checkout.SessionCreateParams['subscription_data'] = {
+      metadata: {
+        tenant_id: tenant.id,
+        type: 'crm_addon',
+      },
+    };
+
+    if (tenant.trial_ends_at) {
+      const trialEnd = new Date(tenant.trial_ends_at);
+      const now = new Date();
+      if (trialEnd > now) {
+        // Defer first payment to trial end date (Stripe trial_end is unix timestamp)
+        subscriptionData.trial_end = Math.floor(trialEnd.getTime() / 1000);
+      }
+    }
+
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: CRM_PRICE_ID, quantity: 1 }],
+      subscription_data: subscriptionData,
       metadata: {
         tenant_id: tenant.id,
         type: 'crm_addon',

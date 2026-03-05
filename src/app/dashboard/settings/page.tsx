@@ -1312,17 +1312,27 @@ function SettingsPage() {
                 <svg className="w-5 h-5 text-[var(--accent-primary)] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                 </svg>
-                <p className="text-sm text-[var(--text-secondary)]">
-                  Your Pro trial includes full CRM (dedicated phone number, two-way SMS, automated aftercare, broadcasts, workflows, and more). After your trial, CRM is $69/mo as an add-on to any plan.
-                </p>
+                <div>
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    Your Pro trial includes full CRM (dedicated phone number, two-way SMS, automated aftercare, broadcasts, workflows, and more). After your trial, CRM is $69/mo as an add-on to any plan.
+                  </p>
+                  <a href="/crm" target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[var(--accent-600)] hover:underline mt-2 inline-block">
+                    See what&rsquo;s included &rarr;
+                  </a>
+                </div>
               </div>
             </div>
           ) : tier === 'starter' && !hasActiveSubscription ? (
             <div className="border border-[var(--border-default)] rounded-2xl p-5 bg-[var(--surface-base)]">
               <div className="flex items-start justify-between gap-4">
-                <p className="text-sm text-[var(--text-secondary)]">
-                  Add CRM to your plan for $69/mo &mdash; dedicated phone number, two-way SMS, automated workflows, broadcasts, aftercare, and more.
-                </p>
+                <div>
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    Add CRM to your plan for $69/mo &mdash; dedicated phone number, two-way SMS, automated workflows, broadcasts, aftercare, and more.
+                  </p>
+                  <a href="/crm" target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[var(--accent-600)] hover:underline mt-2 inline-block">
+                    See what&rsquo;s included &rarr;
+                  </a>
+                </div>
                 <Button variant="secondary" className="shrink-0">
                   Add CRM
                 </Button>

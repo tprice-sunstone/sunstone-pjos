@@ -25,6 +25,23 @@ export default function MessagesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCompose, setShowCompose] = useState(false);
 
+  // Sunny text mode
+  const [sunnyMode, setSunnyMode] = useState<'off' | 'suggest' | 'auto'>(tenant?.sunny_text_mode || 'off');
+  const [sunnyDropdownOpen, setSunnyDropdownOpen] = useState(false);
+  const hasDedicatedPhone = !!tenant?.dedicated_phone_number;
+
+  // Sync sunnyMode when tenant loads
+  useEffect(() => {
+    if (tenant?.sunny_text_mode) setSunnyMode(tenant.sunny_text_mode);
+  }, [tenant?.sunny_text_mode]);
+
+  const updateSunnyMode = async (mode: 'off' | 'suggest' | 'auto') => {
+    setSunnyMode(mode);
+    setSunnyDropdownOpen(false);
+    const supabase = createClient();
+    await supabase.from('tenants').update({ sunny_text_mode: mode }).eq('id', tenantId);
+  };
+
   const fetchConversations = useCallback(async () => {
     try {
       const res = await fetch('/api/conversations');
@@ -99,18 +116,89 @@ export default function MessagesPage() {
       {/* Left: Conversation list */}
       <div className={`w-full md:w-[360px] lg:w-[400px] border-r border-[var(--border-default)] flex flex-col ${selectedId ? 'hidden md:flex' : 'flex'}`}>
         {/* Header */}
-        <div className="px-4 py-4 border-b border-[var(--border-default)] flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-[var(--text-primary)]">Messages</h1>
-          <button
-            onClick={() => { setShowCompose(true); setSelectedId(null); }}
-            className="p-2 rounded-lg hover:bg-[var(--surface-raised)] text-[var(--accent-600)] min-h-[44px] min-w-[44px] flex items-center justify-center"
-            aria-label="New message"
-            title="New message"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
+        <div className="px-4 py-3 border-b border-[var(--border-default)]">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold text-[var(--text-primary)]">Messages</h1>
+            <div className="flex items-center gap-1">
+              {/* Sunny mode dropdown */}
+              {hasDedicatedPhone && (
+                <div className="relative">
+                  <button
+                    onClick={() => setSunnyDropdownOpen(!sunnyDropdownOpen)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-[var(--surface-raised)] transition-colors min-h-[36px]"
+                    style={{ color: sunnyMode === 'off' ? 'var(--text-tertiary)' : 'var(--accent-600)' }}
+                  >
+                    {sunnyMode !== 'off' && (
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" />
+                      </svg>
+                    )}
+                    Sunny: {sunnyMode === 'auto' ? 'Auto' : sunnyMode === 'suggest' ? 'Suggest' : 'Off'}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                      <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                  {sunnyDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setSunnyDropdownOpen(false)} />
+                      <div className="absolute right-0 top-full mt-1 z-20 w-64 bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl shadow-lg overflow-hidden">
+                        {([
+                          { value: 'auto' as const, label: 'Auto', desc: 'Sunny answers routine texts automatically', icon: true },
+                          { value: 'suggest' as const, label: 'Suggest', desc: 'Sunny drafts responses for your review', icon: true },
+                          { value: 'off' as const, label: 'Off', desc: "I'll handle all texts myself", icon: false },
+                        ]).map((opt) => (
+                          <button
+                            key={opt.value}
+                            onClick={() => updateSunnyMode(opt.value)}
+                            className={`w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-[var(--surface-base)] transition-colors ${
+                              sunnyMode === opt.value ? 'bg-[var(--accent-50)]' : ''
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                {opt.icon && (
+                                  <svg className="w-3.5 h-3.5 text-[var(--accent-500)]" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" />
+                                  </svg>
+                                )}
+                                <span className="text-sm font-semibold text-[var(--text-primary)]">{opt.label}</span>
+                              </div>
+                              <p className="text-xs text-[var(--text-tertiary)] mt-0.5">{opt.desc}</p>
+                            </div>
+                            {sunnyMode === opt.value && (
+                              <svg className="w-4 h-4 text-[var(--accent-500)] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              {/* New message */}
+              <button
+                onClick={() => { setShowCompose(true); setSelectedId(null); }}
+                className="p-2 rounded-lg hover:bg-[var(--surface-raised)] text-[var(--accent-600)] min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="New message"
+                title="New message"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          {/* Sunny status indicator */}
+          {hasDedicatedPhone && sunnyMode !== 'off' && (
+            <p className="text-xs text-[var(--accent-600)] mt-1.5 flex items-center gap-1">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" />
+              </svg>
+              {sunnyMode === 'auto' ? 'Sunny is handling routine texts' : 'Sunny will suggest responses'}
+            </p>
+          )}
         </div>
 
         {/* List */}
