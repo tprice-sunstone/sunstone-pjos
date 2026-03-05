@@ -982,6 +982,9 @@ function SettingsPage() {
           {/* Dedicated Text Number */}
           <DedicatedPhoneSection tenant={tenant} onProvisioned={refetch} />
 
+          {/* Call Handling */}
+          <CallHandlingSection tenant={tenant} onSaved={refetch} />
+
           {/* Divider */}
           <div className="border-t border-[var(--border-subtle)]" />
 
@@ -1343,7 +1346,7 @@ function SettingsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                 </svg>
                 <p className="text-sm text-[var(--text-secondary)]">
-                  Your Pro trial includes CRM features (automated workflows, broadcasts, dedicated phone number, aftercare). After your trial, CRM is $49/mo as an add-on to any plan.
+                  Your Pro trial includes full CRM (dedicated phone number, two-way SMS, automated aftercare, broadcasts, workflows, and more). After your trial, CRM is $69/mo as an add-on to any plan.
                 </p>
               </div>
             </div>
@@ -1351,7 +1354,7 @@ function SettingsPage() {
             <div className="border border-[var(--border-default)] rounded-2xl p-5 bg-[var(--surface-base)]">
               <div className="flex items-start justify-between gap-4">
                 <p className="text-sm text-[var(--text-secondary)]">
-                  Add CRM to your plan for $49/mo &mdash; automated workflows, broadcasts, your own phone number, and aftercare sequences.
+                  Add CRM to your plan for $69/mo &mdash; dedicated phone number, two-way SMS, automated workflows, broadcasts, aftercare, and more.
                 </p>
                 <Button variant="secondary" className="shrink-0">
                   Add CRM
@@ -1416,12 +1419,12 @@ function SettingsPage() {
                   </tr>
                   <tr>
                     <td className="py-2.5 pr-4 text-[var(--text-secondary)]">
-                      CRM Add-On
-                      <span className="block text-xs text-[var(--text-tertiary)]">$49/mo add-on</span>
+                      CRM Available
+                      <span className="block text-xs text-[var(--text-tertiary)]">($69/mo add-on, free during trial)</span>
                     </td>
-                    <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">Add-on</td>
-                    <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">Add-on</td>
-                    <td className="py-2.5 px-3 text-center text-[var(--text-secondary)]">Add-on</td>
+                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
+                    <td className="py-2.5 px-3 text-center text-success-600">✓</td>
                   </tr>
                   <tr>
                     <td className="py-2.5 pr-4 text-[var(--text-secondary)]">Team members</td>
@@ -2050,6 +2053,166 @@ function DedicatedPhoneSection({ tenant, onProvisioned }: { tenant: any; onProvi
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Call Handling Section
+// ============================================================================
+
+function CallHandlingSection({ tenant, onSaved }: { tenant: any; onSaved: () => void }) {
+  const [callHandling, setCallHandling] = useState<string>(tenant?.call_handling || 'text_only');
+  const [forwardNumber, setForwardNumber] = useState<string>(tenant?.call_forward_number || '');
+  const [greeting, setGreeting] = useState<string>(tenant?.call_greeting || '');
+  const [muteDuringEvents, setMuteDuringEvents] = useState<boolean>(tenant?.call_mute_during_events ?? true);
+  const [saving, setSaving] = useState(false);
+
+  // Don't show if no dedicated number
+  if (!tenant?.dedicated_phone_number) return null;
+
+  const handleSave = async () => {
+    if (callHandling === 'forward' && !forwardNumber.trim()) {
+      toast.error('Please enter a phone number to forward calls to.');
+      return;
+    }
+    if (greeting.length > 200) {
+      toast.error('Custom greeting must be 200 characters or less.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('tenants')
+        .update({
+          call_handling: callHandling,
+          call_forward_number: callHandling === 'forward' ? forwardNumber.trim() : tenant.call_forward_number,
+          call_greeting: greeting.trim() || null,
+          call_mute_during_events: muteDuringEvents,
+        })
+        .eq('id', tenant.id);
+
+      if (error) throw error;
+      toast.success('Call settings saved');
+      onSaved();
+    } catch (err: any) {
+      console.error('Failed to save call settings:', err);
+      toast.error('Failed to save call settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-[var(--text-primary)] mb-3">
+        <span className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+          </svg>
+          Incoming Calls
+        </span>
+      </label>
+      <p className="text-xs text-[var(--text-tertiary)] mb-4">When someone calls your business number:</p>
+
+      <div className="space-y-3 mb-4">
+        {/* Text Only */}
+        <label className="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors hover:bg-[var(--surface-subtle)] border-[var(--border-default)]"
+          style={callHandling === 'text_only' ? { borderColor: 'var(--accent-500)', background: 'var(--surface-subtle)' } : {}}
+        >
+          <input
+            type="radio"
+            name="call_handling"
+            value="text_only"
+            checked={callHandling === 'text_only'}
+            onChange={() => setCallHandling('text_only')}
+            className="mt-0.5 accent-[var(--accent-500)]"
+          />
+          <div>
+            <p className="text-sm font-medium text-[var(--text-primary)]">Text Only <span className="text-xs font-normal text-[var(--text-tertiary)]">(recommended)</span></p>
+            <p className="text-xs text-[var(--text-tertiary)] mt-0.5">Plays a greeting asking callers to text instead.</p>
+          </div>
+        </label>
+
+        {/* Forward to My Phone */}
+        <label className="flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors hover:bg-[var(--surface-subtle)] border-[var(--border-default)]"
+          style={callHandling === 'forward' ? { borderColor: 'var(--accent-500)', background: 'var(--surface-subtle)' } : {}}
+        >
+          <input
+            type="radio"
+            name="call_handling"
+            value="forward"
+            checked={callHandling === 'forward'}
+            onChange={() => setCallHandling('forward')}
+            className="mt-0.5 accent-[var(--accent-500)]"
+          />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-[var(--text-primary)]">Forward to My Phone</p>
+            <p className="text-xs text-[var(--text-tertiary)] mt-0.5">Rings your personal phone. Your business number shows as caller ID.</p>
+            {callHandling === 'forward' && (
+              <div className="mt-2">
+                <Input
+                  type="tel"
+                  placeholder="(555) 123-4567"
+                  value={forwardNumber}
+                  onChange={(e) => setForwardNumber(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+        </label>
+
+        {/* Ring in App (future) */}
+        <div className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border-default)] opacity-50 cursor-not-allowed">
+          <input
+            type="radio"
+            name="call_handling"
+            value="ring_in_app"
+            disabled
+            className="mt-0.5"
+          />
+          <div>
+            <p className="text-sm font-medium text-[var(--text-tertiary)]">Ring in App <span className="text-xs font-normal">— available with mobile app</span></p>
+            <p className="text-xs text-[var(--text-tertiary)] mt-0.5">Your phone rings through the Sunstone Studio app.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Custom Greeting */}
+      <div className="mb-4">
+        <Textarea
+          label="Custom Greeting (optional)"
+          value={greeting}
+          onChange={(e) => setGreeting(e.target.value.slice(0, 200))}
+          placeholder={`Hi, you've reached ${tenant?.name || 'us'}!`}
+          rows={2}
+        />
+        <p className="text-xs text-[var(--text-tertiary)] mt-1">
+          {greeting.length}/200 characters. Default: &ldquo;Hi, you&rsquo;ve reached {tenant?.name || 'your business name'}.&rdquo;
+        </p>
+      </div>
+
+      {/* Mute during events */}
+      <label className="flex items-center gap-3 mb-4 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={muteDuringEvents}
+          onChange={(e) => setMuteDuringEvents(e.target.checked)}
+          className="w-4 h-4 rounded accent-[var(--accent-500)]"
+        />
+        <div>
+          <p className="text-sm text-[var(--text-primary)]">Mute calls during events</p>
+          <p className="text-xs text-[var(--text-tertiary)]">Calls go to text-only greeting while you&rsquo;re running an event.</p>
+        </div>
+      </label>
+
+      <div className="flex justify-end">
+        <Button variant="primary" onClick={handleSave} loading={saving}>
+          Save Call Settings
+        </Button>
+      </div>
     </div>
   );
 }

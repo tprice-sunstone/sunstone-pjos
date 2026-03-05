@@ -449,8 +449,8 @@ Subscription Tiers:
 - Pro ($169/month): 1.5% customer-facing processing fee, unlimited Sunny, full reports, AI insights, 3 team members
 - Business ($279/month): 0% processing fee (customers pay nothing extra), everything in Pro, unlimited team members, priority support
 - Trial: 60-day Pro trial for new accounts, defaults to Starter after expiry
-- CRM Add-On (coming soon): $49/mo Essentials (aftercare, phone number, broadcasts), $99/mo Pro (+ party booking, client intelligence). Included free during Pro trial.
-- CRM: Currently enabled per-tenant by admin toggle (crm_enabled flag on tenants table). Gives access to workflows, templates, broadcast messaging, and automated follow-ups.
+- CRM Add-On: $69/mo add-on to any plan — dedicated business phone number, two-way SMS, automated aftercare, broadcasts, workflows, party booking, client intelligence. Included free during 60-day Pro trial.
+- CRM: Currently enabled per-tenant by admin toggle (crm_enabled flag on tenants table). Gives access to workflows, templates, broadcast messaging, dedicated phone number, two-way SMS, and automated follow-ups.
 
 Payment Model:
 - Integrated Stripe Payment Links — customers pay via QR code scan or text-to-pay link through Stripe Checkout
@@ -462,7 +462,7 @@ Payment Model:
 Revenue Model:
 - Processing fees on each Stripe sale (3%/1.5%/0% by tier) — collected via application_fee_amount
 - Monthly subscriptions (Starter $99, Pro $169, Business $279)
-- CRM add-on revenue (coming soon: $49/mo and $99/mo tiers)
+- CRM add-on revenue ($69/mo per subscriber)
 
 TENANT HEALTH SIGNALS — How to interpret the data:
 - Active events in last 30 days = healthy, engaged tenant

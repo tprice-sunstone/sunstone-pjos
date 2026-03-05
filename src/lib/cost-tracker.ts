@@ -14,6 +14,7 @@ const ANTHROPIC_PRICING: Record<string, { input: number; output: number; cacheRe
 };
 
 const TWILIO_SMS_COST = 0.0079;   // per segment
+const TWILIO_VOICE_COST = 0.0085; // per minute inbound voice
 const TWILIO_PHONE_MONTHLY = 1.15; // per phone number per month
 const RESEND_EMAIL_COST = 0.0004; // per email (estimate)
 
@@ -95,6 +96,28 @@ export function logPhoneRentalCost(params: {
       })
     )
     .catch(err => console.error('[CostTracker] Failed to log phone rental cost:', err));
+}
+
+export function logVoiceCost(params: {
+  tenantId: string;
+  operation: string;
+  minutes?: number;
+  metadata?: Record<string, unknown>;
+}) {
+  const minutes = params.minutes || 1;
+  const cost = minutes * TWILIO_VOICE_COST;
+
+  createServiceRoleClient()
+    .then(client =>
+      client.from('platform_costs').insert({
+        tenant_id: params.tenantId,
+        service: 'twilio',
+        operation: params.operation,
+        estimated_cost: cost,
+        metadata: { minutes, ...params.metadata },
+      })
+    )
+    .catch(err => console.error('[CostTracker] Failed to log voice cost:', err));
 }
 
 export function logEmailCost(params: {

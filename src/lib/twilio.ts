@@ -181,11 +181,13 @@ export async function provisionPhoneNumber(
 
     const chosen = available[0];
 
-    // Purchase the number and configure webhook
+    // Purchase the number and configure webhooks (SMS + Voice)
     const purchased = await client.incomingPhoneNumbers.create({
       phoneNumber: chosen.phoneNumber,
       smsUrl: `${APP_URL}/api/twilio/inbound`,
       smsMethod: 'POST',
+      voiceUrl: `${APP_URL}/api/voice/inbound`,
+      voiceMethod: 'POST',
       friendlyName: `Sunstone PJOS - ${tenantId.slice(0, 8)}`,
     });
 

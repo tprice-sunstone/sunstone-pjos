@@ -128,11 +128,11 @@ const FAQS = [
   },
   {
     q: 'What happens after my 60-day trial?',
-    a: 'You pick your plan (Starter $99, Pro $169, or Business $279). CRM features (workflows, broadcasts, dedicated number, aftercare) become a $49/mo add-on. Your client data and conversation history are preserved — just reactivate CRM to pick up where you left off.',
+    a: 'You pick your plan (Starter $99, Pro $169, or Business $279). CRM features (workflows, broadcasts, dedicated number, aftercare) become a $69/mo add-on. Your client data and conversation history are preserved indefinitely — just reactivate CRM to pick up where you left off.',
   },
   {
     q: "What's included in the CRM?",
-    a: 'Your own dedicated business phone number, automated aftercare sequences, broadcast messaging, client workflows, birthday automations, and message templates. All included free during your 60-day Pro trial.',
+    a: 'Your own dedicated business phone number, two-way SMS conversations, automated aftercare sequences, broadcast messaging, client workflows, birthday automations, message templates, private party booking, and client intelligence. $69/mo add-on to any plan — all included free during your 60-day Pro trial.',
   },
 ]
 
@@ -1237,7 +1237,7 @@ export default function LandingPageClient() {
               boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
             }}>
               <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>
-                Keep CRM after your trial for just <span className="serif" style={{ fontSize: 24, color: C.wine }}>$49</span>/month add-on to any plan
+                Keep CRM after your trial for just <span className="serif" style={{ fontSize: 24, color: C.wine }}>$69</span>/month add-on to any plan
               </div>
             </div>
           </Reveal>
