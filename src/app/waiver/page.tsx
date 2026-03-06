@@ -31,6 +31,7 @@ function WaiverPageInner() {
     event_id: eventId || '',
   });
   const [smsConsent, setSmsConsent] = useState(false);
+  const [showSmsDialog, setShowSmsDialog] = useState(false);
   const [signing, setSigning] = useState(false);
   const [error, setError] = useState('');
   const [logoError, setLogoError] = useState(false);
@@ -417,10 +418,12 @@ function WaiverPageInner() {
                 className="w-full"
                 onClick={() => {
                   if (!form.name) return setError('Please enter your name');
-                  if (!form.phone) return setError('Please enter your phone number');
                   setError('');
                   if (isPreview) {
-                    // Demo mode — skip signature, go straight to done
+                    if (!smsConsent) {
+                      setShowSmsDialog(true);
+                      return;
+                    }
                     setStep('done');
                     return;
                   }
@@ -431,8 +434,34 @@ function WaiverPageInner() {
               </Button>
 
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm text-center rounded-lg p-3">
-                  {error}
+                <p className="text-red-600 text-sm">{error}</p>
+              )}
+
+              {/* SMS opt-out confirmation dialog (demo mode only) */}
+              {showSmsDialog && (
+                <div className="border border-amber-300 bg-amber-50 rounded-lg p-5 space-y-4">
+                  <p className="text-sm text-amber-900 font-medium">
+                    Are you sure? Without SMS consent, you won&apos;t receive queue updates or notifications.
+                  </p>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={() => setShowSmsDialog(false)}
+                    >
+                      Go Back
+                    </Button>
+                    <Button
+                      variant="primary"
+                      className="flex-1"
+                      onClick={() => {
+                        setShowSmsDialog(false);
+                        setStep('done');
+                      }}
+                    >
+                      Continue Without SMS
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -505,27 +534,15 @@ function WaiverPageInner() {
                 </svg>
               </div>
               <h2 className="text-2xl font-bold text-[var(--text-primary)]">Check-in Complete!</h2>
-              {smsConsent && form.phone ? (
-                <p className="text-[var(--text-secondary)]">
-                  SMS notifications enabled. You&apos;ll receive queue updates at <strong>{form.phone}</strong>.
-                </p>
-              ) : form.phone && !smsConsent ? (
-                <p className="text-[var(--text-secondary)]">
-                  You&apos;ve been added to the queue. Listen for your name to be called.
-                </p>
-              ) : (
-                <p className="text-[var(--text-secondary)]">
-                  You&apos;re all checked in! Your artist will be with you shortly.
-                </p>
-              )}
+              <p className="text-[var(--text-secondary)]">
+                You&apos;ve been added to the queue.
+                {smsConsent && form.phone && (
+                  <> We&apos;ll text you at <strong>{form.phone}</strong> when it&apos;s your turn.</>
+                )}
+              </p>
               <p className="text-xs text-[var(--text-tertiary)]">
                 You can close this page now.
               </p>
-              {isPreview && (
-                <p className="text-[10px] text-[var(--text-tertiary)] mt-4 opacity-60">
-                  Demo mode — scan a QR code at a participating business for the real experience.
-                </p>
-              )}
             </CardContent>
           </Card>
         )}
