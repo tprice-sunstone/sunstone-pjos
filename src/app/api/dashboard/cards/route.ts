@@ -28,7 +28,7 @@ import type { DashboardCard } from '@/types';
 
 // Bump this version whenever card generation logic changes. Cached cards with
 // a different version are treated as stale and regenerated on next load.
-const CARD_CACHE_VERSION = 6;
+const CARD_CACHE_VERSION = 7;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -228,10 +228,17 @@ async function refreshGettingStarted(
     const completedCount = steps.filter((s) => s.done).length;
     const otherCards = cachedCards.filter((c) => c.type !== 'getting_started');
 
-    // All done or dismissed — remove the card
     const onboardingData = (tenant?.onboarding_data as Record<string, any>) || {};
-    if (completedCount >= steps.length || onboardingData.getting_started_dismissed === true) {
+    if (onboardingData.getting_started_dismissed === true) {
       return otherCards;
+    }
+
+    // Auto-dismiss 7 days after all tasks completed
+    if (completedCount >= steps.length && onboardingData.getting_started_completed_at) {
+      const daysSinceComplete = Math.floor(
+        (Date.now() - new Date(onboardingData.getting_started_completed_at).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (daysSinceComplete >= 7) return otherCards;
     }
 
     return [
@@ -424,11 +431,11 @@ async function generateCards(
     // Continue with defaults — revenue $0 card will still be generated below
   }
 
-  // ── Getting Started Checklist (tenants < 14 days old) ─────────────────
+  // ── Getting Started Checklist (until dismissed or all complete for 7+ days) ──
   const onboardingData = (tenant?.onboarding_data as Record<string, any>) || {};
   const isDismissed = onboardingData.getting_started_dismissed === true;
 
-  if (tenantAgeDays < 14 && !isDismissed) {
+  if (!isDismissed) {
     try {
       const hasEvents = (allEventsCountResult.count || 0) > 0;
       const hasInventory = (inventoryCountResult.count || 0) > 0;
@@ -466,8 +473,27 @@ async function generateCards(
 
       const completedCount = steps.filter((s) => s.done).length;
 
-      // Only show if not all steps are done
-      if (completedCount < steps.length) {
+      // Show checklist until all steps are done — then auto-dismiss after 7 days
+      const allDone = completedCount >= steps.length;
+      const completedAt = onboardingData.getting_started_completed_at;
+      let shouldHide = false;
+
+      if (allDone && !completedAt) {
+        // First time all done — record the timestamp (fire-and-forget)
+        try {
+          await db.from('tenants').update({
+            onboarding_data: { ...onboardingData, getting_started_completed_at: new Date().toISOString() },
+          }).eq('id', tenantId);
+        } catch { /* non-critical */ }
+      } else if (allDone && completedAt) {
+        // Auto-dismiss 7 days after all tasks completed
+        const daysSinceComplete = Math.floor(
+          (now.getTime() - new Date(completedAt).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        if (daysSinceComplete >= 7) shouldHide = true;
+      }
+
+      if (!shouldHide) {
         cards.push({
           type: 'getting_started',
           priority: 0, // Highest priority — always first
