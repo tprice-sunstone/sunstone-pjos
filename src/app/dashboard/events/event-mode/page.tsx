@@ -230,7 +230,7 @@ function EventModePageInner() {
 
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const { data: sales } = await supabase
-        .from('sales').select('total').eq('event_id', eventId).eq('status', 'completed').gte('created_at', today.toISOString());
+        .from('sales').select('total').eq('event_id', eventId).eq('status', 'completed').eq('payment_status', 'completed').gte('created_at', today.toISOString());
       if (sales) setTodaySales({ count: sales.length, total: sales.reduce((s, r) => s + Number(r.total), 0) });
     };
     load();
@@ -318,29 +318,22 @@ function EventModePageInner() {
       const saleItems = cart.items.map((item: any) => {
         const resolution = jumpRingResolutions.find((r: JumpRingResolution) => r.cart_item_id === item.id);
         const jumpRingCost = resolution ? resolution.jump_ring_cost_each * resolution.jump_rings_needed : 0;
+        const inv = inventory.find((i) => i.id === item.inventory_item_id);
+        const chainMaterialCost = inv?.type === 'chain' && item.inches_used
+          ? Number(inv.cost_per_unit) * item.inches_used
+          : 0;
         return {
           inventory_item_id: item.inventory_item_id || null,
           name: item.name, quantity: item.quantity, unit_price: item.unit_price,
           discount_type: item.discount_type || null, discount_value: item.discount_value || 0,
           line_total: item.line_total, product_type_id: item.product_type_id || null,
           product_type_name: item.product_type_name || null, inches_used: item.inches_used || null,
+          chain_material_cost: chainMaterialCost || null,
           jump_ring_cost: jumpRingCost,
         };
       });
 
-      const deductions: { item_id: string; amount: number; log_movement: boolean; notes: string | null; performed_by: string | null }[] = [];
-      for (const item of cart.items as any[]) {
-        if (!item.inventory_item_id) continue;
-        const inv = inventory.find((i) => i.id === item.inventory_item_id);
-        if (!inv) continue;
-        let deduct: number; let movementNotes: string;
-        if (inv.type === 'chain' && item.inches_used) {
-          deduct = item.inches_used * item.quantity;
-          movementNotes = `${item.product_type_name || 'Chain'} (${item.inches_used} in)`;
-        } else { deduct = item.quantity; movementNotes = ''; }
-        deductions.push({ item_id: item.inventory_item_id, amount: deduct, log_movement: true, notes: movementNotes || null, performed_by: user?.id || null });
-      }
-
+      // No inventory deductions for pending sales — webhook deducts on payment completion
       const { data: saleId, error: rpcError } = await supabase.rpc('create_sale_transaction', {
         p_tenant_id: tenant.id, p_event_id: eventId, p_client_id: clientId || null,
         p_subtotal: cart.subtotal, p_discount_amount: cart.discount_amount,
@@ -351,7 +344,7 @@ function EventModePageInner() {
         p_fee_handling: tenant.fee_handling || null, p_status: 'completed',
         p_receipt_email: receiptEmail || null, p_receipt_phone: receiptPhone || null,
         p_notes: cart.notes || null, p_completed_by: user?.id || null,
-        p_items: saleItems, p_inventory_deductions: deductions,
+        p_items: saleItems, p_inventory_deductions: [],
         p_queue_entry_id: activeQueueEntry?.id || null,
       });
       if (rpcError) throw rpcError;
@@ -436,7 +429,11 @@ function EventModePageInner() {
   };
 
   const completeSale = async (resolutions: JumpRingResolution[]) => {
-    if (!tenant || !eventId || !cart.payment_method) return;
+    // Gift card full coverage: force payment method if state hasn't propagated yet
+    const effectivePaymentMethod = (giftCardData && giftCardData.remainingDue <= 0)
+      ? 'gift_card'
+      : cart.payment_method;
+    if (!tenant || !eventId || !effectivePaymentMethod) return;
     if (cart.items.length === 0) { toast.error('Cart is empty'); return; }
     setProcessing(true);
     try {
@@ -447,14 +444,18 @@ function EventModePageInner() {
       const saleData: CompletedSaleData = {
         saleId: '', items: cart.items.map((i: any) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unit_price, lineTotal: i.line_total })),
         subtotal: cart.subtotal, taxAmount: cart.tax_amount, taxRate: cart.tax_rate, tipAmount: cart.tip_amount,
-        total: cart.total, paymentMethod: cart.payment_method, saleDate: new Date().toISOString(), clientId,
+        total: cart.total, paymentMethod: effectivePaymentMethod, saleDate: new Date().toISOString(), clientId,
       };
 
-      // Build sale items with jump_ring_cost for RPC
+      // Build sale items with chain_material_cost and jump_ring_cost for RPC
       const saleItems = cart.items.map((item: any) => {
         const resolution = resolutions.find((r: JumpRingResolution) => r.cart_item_id === item.id);
         const jumpRingCost = resolution
           ? resolution.jump_ring_cost_each * resolution.jump_rings_needed
+          : 0;
+        const inv = inventory.find((i) => i.id === item.inventory_item_id);
+        const chainMaterialCost = inv?.type === 'chain' && item.inches_used
+          ? Number(inv.cost_per_unit) * item.inches_used
           : 0;
         return {
           inventory_item_id: item.inventory_item_id || null,
@@ -467,6 +468,7 @@ function EventModePageInner() {
           product_type_id: item.product_type_id || null,
           product_type_name: item.product_type_name || null,
           inches_used: item.inches_used || null,
+          chain_material_cost: chainMaterialCost || null,
           jump_ring_cost: jumpRingCost,
         };
       });
@@ -502,7 +504,7 @@ function EventModePageInner() {
         p_tip_amount: cart.tip_amount,
         p_platform_fee_amount: cart.platform_fee_amount,
         p_total: cart.total,
-        p_payment_method: cart.payment_method,
+        p_payment_method: effectivePaymentMethod,
         p_payment_status: 'completed',
         p_payment_provider: null,
         p_platform_fee_rate: PLATFORM_FEE_RATES[tenant.subscription_tier],

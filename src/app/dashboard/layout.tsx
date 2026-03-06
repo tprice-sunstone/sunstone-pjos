@@ -627,12 +627,9 @@ function TabletSidebar() {
         {/* CRM section */}
         {crmItems.length > 0 && (
           <div className="pt-2">
-            {expanded && (
-              <div className="flex items-center justify-between px-3 mb-1">
-                <span className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">CRM</span>
-                {crmStatus.reason === 'trial' && crmStatus.daysLeft != null && crmStatus.daysLeft <= 14 && (
-                  <span className="text-[10px] font-medium text-warning-600">{crmStatus.daysLeft}d</span>
-                )}
+            {expanded && crmStatus.reason === 'trial' && crmStatus.daysLeft != null && crmStatus.daysLeft <= 14 && (
+              <div className="flex items-center justify-end px-3 mb-1">
+                <span className="text-[10px] font-medium text-warning-600">{crmStatus.daysLeft}d</span>
               </div>
             )}
             {crmItems.map(item => renderTabletItem(item, !crmStatus.active))}
@@ -750,19 +747,20 @@ function DesktopSidebar() {
         {/* CRM Group */}
         {crmItems.length > 0 && (
           <div className="pt-3">
-            <div className="flex items-center justify-between px-3 mb-1">
-              <span className="text-[10px] uppercase tracking-wider text-text-tertiary font-semibold">CRM</span>
-              {crmStatus.reason === 'trial' && crmStatus.daysLeft != null && crmStatus.daysLeft <= 14 && (
-                <span className="text-[10px] font-medium text-warning-600">
-                  {crmStatus.daysLeft}d left
-                </span>
-              )}
-              {!crmStatus.active && (
-                <Link href="/dashboard/settings?tab=subscription" className="text-[10px] font-medium text-[var(--accent-600)] hover:underline">
-                  Activate
-                </Link>
-              )}
-            </div>
+            {(crmStatus.reason === 'trial' && crmStatus.daysLeft != null && crmStatus.daysLeft <= 14) || !crmStatus.active ? (
+              <div className="flex items-center justify-end px-3 mb-1">
+                {crmStatus.reason === 'trial' && crmStatus.daysLeft != null && crmStatus.daysLeft <= 14 && (
+                  <span className="text-[10px] font-medium text-warning-600">
+                    {crmStatus.daysLeft}d left
+                  </span>
+                )}
+                {!crmStatus.active && (
+                  <Link href="/dashboard/settings?tab=subscription" className="text-[10px] font-medium text-[var(--accent-600)] hover:underline">
+                    Activate
+                  </Link>
+                )}
+              </div>
+            ) : null}
             {crmItems.map(item => renderNavItem(item, !crmStatus.active))}
           </div>
         )}

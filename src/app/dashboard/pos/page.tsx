@@ -23,12 +23,14 @@ import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
 import { ProductSelector, QueueBadge, CheckoutFlow, PendingPayments, GiftCardModal } from '@/components/pos';
 import type { CompletedSaleData, CheckoutStep, GiftCardData } from '@/components/pos';
+import { calculateJumpRingNeeds, getLowStockWarnings } from '@/lib/jump-rings';
 import SunnyTutorial from '@/components/SunnyTutorial';
 import type {
   InventoryItem,
   TaxProfile,
   ProductType,
   ChainProductPrice,
+  JumpRingResolution,
 } from '@/types';
 
 // SVG icon for back button (still used in header)
@@ -111,7 +113,7 @@ export default function StoreModePage() {
 
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const { data: sales } = await supabase
-        .from('sales').select('total').eq('tenant_id', tenant.id).is('event_id', null).eq('status', 'completed').gte('created_at', today.toISOString());
+        .from('sales').select('total').eq('tenant_id', tenant.id).is('event_id', null).eq('status', 'completed').eq('payment_status', 'completed').gte('created_at', today.toISOString());
       if (sales) setTodaySales({ count: sales.length, total: sales.reduce((s, r) => s + Number(r.total), 0) });
     };
     load();
@@ -129,6 +131,7 @@ export default function StoreModePage() {
   // ── Derived data ───────────────────────────────────────────────────────
 
   const chains = useMemo(() => inventory.filter((i) => i.type === 'chain'), [inventory]);
+  const jumpRingInventory = useMemo(() => inventory.filter((i) => i.type === 'jump_ring' && i.is_active), [inventory]);
 
   // ── Queue: Start Sale from check-in strip ──────────────────────────────
 
@@ -219,29 +222,28 @@ export default function StoreModePage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      const saleItems = cart.items.map((item) => ({
-        inventory_item_id: item.inventory_item_id || null,
-        name: item.name,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        discount_type: item.discount_type || null,
-        discount_value: item.discount_value || 0,
-        line_total: item.line_total,
-        product_type_id: item.product_type_id || null,
-        product_type_name: item.product_type_name || null,
-        inches_used: item.inches_used || null,
-        jump_ring_cost: null,
-      }));
-
-      const deductions: { item_id: string; amount: number; log_movement: boolean }[] = [];
-      for (const item of cart.items) {
-        if (!item.inventory_item_id) continue;
+      const saleItems = cart.items.map((item) => {
         const inv = inventory.find((i) => i.id === item.inventory_item_id);
-        if (!inv) continue;
-        const deduct = inv.type === 'chain' && item.inches_used ? item.inches_used : item.quantity;
-        deductions.push({ item_id: item.inventory_item_id, amount: deduct, log_movement: false });
-      }
+        const chainMaterialCost = inv?.type === 'chain' && item.inches_used
+          ? Number(inv.cost_per_unit) * item.inches_used
+          : 0;
+        return {
+          inventory_item_id: item.inventory_item_id || null,
+          name: item.name,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          discount_type: item.discount_type || null,
+          discount_value: item.discount_value || 0,
+          line_total: item.line_total,
+          product_type_id: item.product_type_id || null,
+          product_type_name: item.product_type_name || null,
+          inches_used: item.inches_used || null,
+          chain_material_cost: chainMaterialCost || null,
+          jump_ring_cost: null,
+        };
+      });
 
+      // No inventory deductions for pending sales — webhook deducts on payment completion
       const { data: saleId, error: rpcError } = await supabase.rpc('create_sale_transaction', {
         p_tenant_id: tenant.id,
         p_event_id: null,
@@ -263,7 +265,7 @@ export default function StoreModePage() {
         p_notes: cart.notes || 'Store sale',
         p_completed_by: user?.id || null,
         p_items: saleItems,
-        p_inventory_deductions: deductions,
+        p_inventory_deductions: [],
         p_queue_entry_id: activeQueueEntry?.id || null,
       });
       if (rpcError) throw rpcError;
@@ -325,25 +327,43 @@ export default function StoreModePage() {
   // ── Sale completion (external payments: cash, venmo, card_external) ──
 
   const completeSale = async () => {
-    if (!tenant || !cart.payment_method) return;
+    // Gift card full coverage: force payment method if state hasn't propagated yet
+    const effectivePaymentMethod = (giftCardData && giftCardData.remainingDue <= 0)
+      ? 'gift_card'
+      : cart.payment_method;
+    if (!tenant || !effectivePaymentMethod) return;
     if (cart.items.length === 0) { toast.error('Cart is empty'); return; }
     setProcessing(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      const saleItems = cart.items.map((item) => ({
-        inventory_item_id: item.inventory_item_id || null,
-        name: item.name,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        discount_type: item.discount_type || null,
-        discount_value: item.discount_value || 0,
-        line_total: item.line_total,
-        product_type_id: item.product_type_id || null,
-        product_type_name: item.product_type_name || null,
-        inches_used: item.inches_used || null,
-        jump_ring_cost: null,
-      }));
+      // Calculate jump ring needs for COGS
+      const jumpRingResolutions = calculateJumpRingNeeds(cart.items, jumpRingInventory);
+
+      const saleItems = cart.items.map((item) => {
+        const inv = inventory.find((i) => i.id === item.inventory_item_id);
+        const chainMaterialCost = inv?.type === 'chain' && item.inches_used
+          ? Number(inv.cost_per_unit) * item.inches_used
+          : 0;
+        const resolution = jumpRingResolutions.find((r: JumpRingResolution) => r.cart_item_id === item.id);
+        const jumpRingCost = resolution
+          ? resolution.jump_ring_cost_each * resolution.jump_rings_needed
+          : 0;
+        return {
+          inventory_item_id: item.inventory_item_id || null,
+          name: item.name,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          discount_type: item.discount_type || null,
+          discount_value: item.discount_value || 0,
+          line_total: item.line_total,
+          product_type_id: item.product_type_id || null,
+          product_type_name: item.product_type_name || null,
+          inches_used: item.inches_used || null,
+          chain_material_cost: chainMaterialCost || null,
+          jump_ring_cost: jumpRingCost || null,
+        };
+      });
 
       const deductions: { item_id: string; amount: number; log_movement: boolean }[] = [];
       for (const item of cart.items) {
@@ -364,7 +384,7 @@ export default function StoreModePage() {
         p_tip_amount: cart.tip_amount,
         p_platform_fee_amount: cart.platform_fee_amount,
         p_total: cart.total,
-        p_payment_method: cart.payment_method,
+        p_payment_method: effectivePaymentMethod,
         p_payment_status: 'completed',
         p_payment_provider: null,
         p_platform_fee_rate: PLATFORM_FEE_RATES[tenant.subscription_tier],
@@ -411,7 +431,7 @@ export default function StoreModePage() {
         taxRate: taxProfile ? Number(taxProfile.rate) : 0,
         tipAmount: cart.tip_amount,
         total: cart.total,
-        paymentMethod: cart.payment_method || 'Unknown',
+        paymentMethod: effectivePaymentMethod || 'Unknown',
       };
 
       setTodaySales((p) => ({ count: p.count + 1, total: p.total + cart.total }));
@@ -466,6 +486,22 @@ export default function StoreModePage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ clientId: cart.client_id, type: 'sale' }),
         }).catch(() => {});
+      }
+
+      // Deduct jump rings post-sale (store mode)
+      for (const resolution of jumpRingResolutions) {
+        if (!resolution.jump_ring_inventory_id || resolution.jump_rings_needed <= 0) continue;
+        try {
+          await supabase.rpc('decrement_inventory', {
+            p_item_id: resolution.jump_ring_inventory_id,
+            p_amount: resolution.jump_rings_needed,
+            p_tenant_id: tenant.id,
+            p_movement_type: 'sale',
+            p_reference_id: saleId,
+            p_notes: `Deducted for ${resolution.material_name} sale`,
+            p_performed_by: user?.id || null,
+          });
+        } catch { /* non-critical */ }
       }
 
       const { data: refreshed } = await supabase.from('inventory_items').select('*').eq('tenant_id', tenant.id).eq('is_active', true).order('type').order('name');

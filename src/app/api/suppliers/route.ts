@@ -38,6 +38,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'tenant_id and name required' }, { status: 400 });
   }
 
+  // Check for existing supplier with same name to prevent duplicates
+  const { data: existing } = await supabase
+    .from('suppliers')
+    .select('*')
+    .eq('tenant_id', tenant_id)
+    .ilike('name', name.trim())
+    .limit(1)
+    .single();
+  if (existing) return NextResponse.json(existing);
+
   const { data, error } = await supabase
     .from('suppliers')
     .insert({

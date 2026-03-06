@@ -119,6 +119,40 @@ export async function POST(request: NextRequest) {
             })
             .eq('id', saleId);
 
+          // Deduct inventory now that payment is confirmed
+          try {
+            const { data: saleItems } = await serviceRole
+              .from('sale_items')
+              .select('inventory_item_id, inches_used, quantity')
+              .eq('sale_id', saleId);
+
+            if (saleItems && saleItems.length > 0) {
+              for (const si of saleItems) {
+                if (!si.inventory_item_id) continue;
+                const deductAmount = si.inches_used && Number(si.inches_used) > 0
+                  ? Number(si.inches_used)
+                  : Number(si.quantity);
+
+                // Fetch current qty, floor at 0, update — service role bypasses RLS
+                const { data: inv } = await serviceRole
+                  .from('inventory_items')
+                  .select('quantity_on_hand')
+                  .eq('id', si.inventory_item_id)
+                  .single();
+
+                if (inv) {
+                  const newQty = Math.max(Number(inv.quantity_on_hand) - deductAmount, 0);
+                  await serviceRole
+                    .from('inventory_items')
+                    .update({ quantity_on_hand: newQty })
+                    .eq('id', si.inventory_item_id);
+                }
+              }
+            }
+          } catch (invErr: any) {
+            console.error(`[Webhook] Inventory deduction failed for sale ${saleId}:`, invErr);
+          }
+
           console.log(`[Webhook] POS payment completed — sale ${saleId}, fee collected: $${feeCollected}`);
           break;
         }
@@ -214,10 +248,10 @@ export async function POST(request: NextRequest) {
         if (saleId) {
           await serviceRole
             .from('sales')
-            .update({ payment_status: 'expired' })
+            .update({ payment_status: 'expired', status: 'voided' })
             .eq('id', saleId);
 
-          console.log(`[Webhook] POS payment expired — sale ${saleId}`);
+          console.log(`[Webhook] POS payment expired — sale ${saleId} → voided`);
         }
         break;
       }

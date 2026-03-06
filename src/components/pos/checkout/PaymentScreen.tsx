@@ -272,8 +272,9 @@ export function PaymentScreen({
     if (result.remainingDue <= 0) {
       // Full coverage — complete sale with 'gift_card' payment method
       onSelectMethod('gift_card' as PaymentMethod);
-      // Small delay to ensure state propagates before completeSale reads it
-      setTimeout(() => onCompleteSale(), 50);
+      // Delay to ensure state propagates before completeSale reads it
+      // The parent completeSale() also checks giftCardData as a fallback
+      setTimeout(() => onCompleteSale(), 150);
     }
   };
 

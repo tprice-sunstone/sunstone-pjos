@@ -300,6 +300,7 @@ export default function ReportsPage() {
       .select('*, sale_items(*)')
       .eq('tenant_id', tenant.id)
       .eq('status', 'completed')
+      .in('payment_status', ['completed'])
       .gte('created_at', dateRange.start.toISOString())
       .lte('created_at', dateRange.end.toISOString())
       .order('created_at', { ascending: true });

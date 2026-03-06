@@ -569,7 +569,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
   const [sku, setSku] = useState(editingItem?.sku || '');
   const [unit, setUnit] = useState<InventoryUnit>(editingItem?.unit || 'in');
   const [costPerUnit, setCostPerUnit] = useState(
-    editingItem ? Number(editingItem.cost_per_unit) : 0
+    editingItem && Number(editingItem.cost_per_unit) > 0 ? String(Number(editingItem.cost_per_unit)) : ''
   );
   const [sellPrice, setSellPrice] = useState(
     editingItem ? Number(editingItem.sell_price) : 0
@@ -687,7 +687,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
         supplier_id: supplierId,
         sku: sku.trim() || null,
         unit: type === 'chain' ? 'in' : unit,
-        cost_per_unit: costPerUnit,
+        cost_per_unit: parseFloat(costPerUnit) || 0,
         sell_price: type === 'chain' && pricingMode === 'per_product' ? 0 : sellPrice,
         quantity_on_hand: quantity,
         reorder_threshold: reorderThreshold,
@@ -928,10 +928,10 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
                 </span>
                 <input
                   type="number"
-                  step="0.01"
+                  step="any"
                   min="0"
-                  value={costPerUnit || ''}
-                  onChange={(e) => setCostPerUnit(parseFloat(e.target.value) || 0)}
+                  value={costPerUnit}
+                  onChange={(e) => setCostPerUnit(e.target.value)}
                   placeholder="0.00"
                   className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] pl-8 pr-4 py-3 text-[var(--text-primary)] text-base  placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)] min-h-[48px]"
                 />

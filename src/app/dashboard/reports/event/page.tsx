@@ -246,6 +246,7 @@ function EventPLReportPage() {
         .select('*, sale_items(*)')
         .eq('event_id', evId)
         .eq('status', 'completed')
+        .in('payment_status', ['completed'])
         .order('created_at', { ascending: true }),
       supabase.from('refunds').select('*, sale:sales!inner(event_id)')
         .eq('tenant_id', tenant.id)
