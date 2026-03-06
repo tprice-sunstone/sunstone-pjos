@@ -69,18 +69,41 @@ export function clearPhoneCache(tenantId: string): void {
 /**
  * Send an SMS message via Twilio.
  * If tenantId is provided, sends from the tenant's dedicated number (or falls back to platform number).
+ * If skipConsentCheck is false (default) and queueEntryId is provided, checks sms_consent before sending.
  * Returns the Twilio message SID, or null if sending was skipped.
  */
 export async function sendSMS(params: {
   to: string;
   body: string;
   tenantId?: string;
+  /** Queue entry ID — used to check sms_consent before sending */
+  queueEntryId?: string;
+  /** Skip consent check (for CRM two-way messages where user initiated) */
+  skipConsentCheck?: boolean;
 }): Promise<string | null> {
-  const { to, body, tenantId } = params;
+  const { to, body, tenantId, queueEntryId, skipConsentCheck } = params;
 
   if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
     console.log(`[Twilio SMS Skipped] Would send to ${to}: ${body.slice(0, 50)}`);
     return null;
+  }
+
+  // Belt-and-suspenders consent check for queue-based messages
+  if (queueEntryId && !skipConsentCheck) {
+    try {
+      const supabase = await createServiceRoleClient();
+      const { data: entry } = await supabase
+        .from('queue_entries')
+        .select('sms_consent')
+        .eq('id', queueEntryId)
+        .single();
+      if (entry && !entry.sms_consent) {
+        console.log(`[Twilio SMS Blocked] Recipient has not consented — queue entry ${queueEntryId}`);
+        return null;
+      }
+    } catch {
+      // If lookup fails, allow send (caller already checked consent)
+    }
   }
 
   const from = tenantId

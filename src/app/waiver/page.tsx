@@ -360,26 +360,36 @@ function WaiverPageInner() {
                 placeholder="(555) 123-4567"
               />
 
-              {/* SMS Consent — required for A2P 10DLC compliance */}
-              <label className="flex items-start gap-3 cursor-pointer">
-                <span className="flex-shrink-0 pt-0.5">
-                  <input
-                    type="checkbox"
-                    checked={smsConsent}
-                    onChange={(e) => setSmsConsent(e.target.checked)}
-                    required
-                    className="w-6 h-6 rounded border-2 border-[var(--border-default)] accent-[var(--accent-primary)] cursor-pointer"
-                  />
-                </span>
-                <span style={{ fontSize: 12, lineHeight: 1.6 }} className="text-[var(--text-secondary)]">
-                  By providing my phone number, I consent to receive text messages from
-                  this business via Sunstone Studio. Messages may include queue position
-                  updates, service notifications, appointment reminders, receipts, and
-                  aftercare instructions. Message frequency varies, typically 1–3 messages
-                  per visit. Message and data rates may apply. Reply STOP to unsubscribe
-                  at any time. Reply HELP for help.
-                </span>
-              </label>
+              {/* SMS Consent — separate from waiver, A2P 10DLC compliant */}
+              {form.phone && (
+                <div className="border border-[var(--border-default)] rounded-lg p-4 bg-[var(--surface-base)]">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <span className="flex-shrink-0 pt-0.5">
+                      <input
+                        type="checkbox"
+                        checked={smsConsent}
+                        onChange={(e) => setSmsConsent(e.target.checked)}
+                        className="w-6 h-6 rounded border-2 border-[var(--border-default)] accent-[var(--accent-primary)] cursor-pointer"
+                      />
+                    </span>
+                    <span style={{ fontSize: 12, lineHeight: 1.7 }} className="text-[var(--text-secondary)]">
+                      I agree to receive text messages from <strong className="text-[var(--text-primary)]">{displayName}</strong> including
+                      queue updates, service notifications, receipts, and aftercare
+                      instructions. Message frequency varies. Msg &amp; data rates
+                      may apply. Reply STOP to unsubscribe at any time. Reply HELP for help.
+                      View our{' '}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline text-[var(--accent-primary)]">Privacy Policy</a>
+                      {' '}and{' '}
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline text-[var(--accent-primary)]">Terms</a>.
+                    </span>
+                  </label>
+                  {!smsConsent && (
+                    <p style={{ fontSize: 11, marginTop: 6, marginLeft: 36 }} className="text-[var(--text-tertiary)]">
+                      Optional — if unchecked, we won&apos;t text you (listen for your name instead).
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Event selector — only show when no event param and events exist */}
               {!eventId && events.length > 0 && (
@@ -412,7 +422,6 @@ function WaiverPageInner() {
                 onClick={() => {
                   if (isPreview) return setError('This is a preview. Scan a QR code at a participating business to check in.');
                   if (!form.name) return setError('Please enter your name');
-                  if (!smsConsent) return setError('Please agree to the SMS consent to continue');
                   setError('');
                   setStep('sign');
                 }}
@@ -515,7 +524,7 @@ function WaiverPageInner() {
         <span>Powered by Sunstone Studio</span>
         <span className="mx-1.5">|</span>
         <a
-          href="https://permanentjewelry.sunstonewelders.com/pages/privacy-policy"
+          href="/privacy"
           target="_blank"
           rel="noopener noreferrer"
           className="underline underline-offset-2 hover:text-[var(--text-secondary)] transition-colors"
@@ -524,12 +533,12 @@ function WaiverPageInner() {
         </a>
         <span className="mx-1.5">|</span>
         <a
-          href="https://permanentjewelry.sunstonewelders.com/pages/terms-conditions"
+          href="/terms"
           target="_blank"
           rel="noopener noreferrer"
           className="underline underline-offset-2 hover:text-[var(--text-secondary)] transition-colors"
         >
-          Terms &amp; Conditions
+          Terms of Service
         </a>
       </footer>
     </div>

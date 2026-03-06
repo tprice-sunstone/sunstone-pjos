@@ -640,7 +640,7 @@ export default function CRMPageClient({ authState, trialEndDate }: { authState: 
       {/* ═══════ FOOTER ═══════ */}
       <footer style={{ padding: '32px 24px', borderTop: `1px solid ${C.border}`, textAlign: 'center' }}>
         <p style={{ fontSize: 13, color: C.textMuted }}>
-          &copy; {new Date().getFullYear()} Sunstone Studio &middot; <Link href="/" style={{ color: C.textMuted, textDecoration: 'underline' }}>Home</Link>
+          &copy; {new Date().getFullYear()} Sunstone Studio &middot; <Link href="/" style={{ color: C.textMuted, textDecoration: 'underline' }}>Home</Link> &middot; <Link href="/privacy" style={{ color: C.textMuted, textDecoration: 'underline' }}>Privacy</Link> &middot; <Link href="/terms" style={{ color: C.textMuted, textDecoration: 'underline' }}>Terms</Link>
         </p>
       </footer>
     </div>
