@@ -337,12 +337,6 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
             <span className="">${cart.tip_amount.toFixed(2)}</span>
           </div>
         )}
-        {cart.platform_fee_amount > 0 && tenant?.fee_handling === 'pass_to_customer' && (
-          <div className="flex justify-between text-[var(--text-tertiary)] text-xs">
-            <span>Service Fee</span>
-            <span className="">${cart.platform_fee_amount.toFixed(2)}</span>
-          </div>
-        )}
       </div>
 
       {/* —— THE MOMENT: Total —— */}

@@ -304,12 +304,11 @@ export function PaymentScreen({
       <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8">
         <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">Scan to Pay</h2>
         <p className="text-3xl font-bold text-[var(--text-primary)] mb-1">
-          ${(total + (platformFeeAmount > 0 ? platformFeeAmount : 0)).toFixed(2)}
+          ${total.toFixed(2)}
         </p>
-        {platformFeeAmount > 0 && (
+        {taxAmount > 0 && (
           <p className="text-xs text-[var(--text-tertiary)] mb-6">
-            ${subtotal.toFixed(2)} + ${platformFeeAmount.toFixed(2)} processing fee
-            {taxAmount > 0 ? ` + $${taxAmount.toFixed(2)} tax` : ''}
+            Includes ${taxAmount.toFixed(2)} tax
           </p>
         )}
 

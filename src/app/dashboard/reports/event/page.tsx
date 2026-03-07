@@ -79,7 +79,7 @@ const paymentMethodLabels: Record<string, string> = {
 // CSV Export — FIXED
 // ————————————————————————————————————————————————
 
-function exportCSV(report: EventPL, expenses: ExpenseTotals) {
+function exportCSV(report: EventPL, expenses: ExpenseTotals, cashDrawer?: { opening: number; sales: number; tips: number; payIns: number; payOuts: number; expected: number; counted: number | null; overShort: number | null } | null) {
   const eventName = report.event.name.replace(/[^a-zA-Z0-9 ]/g, '');
   const eventDate = format(new Date(report.event.start_time), 'yyyy-MM-dd');
   const filename = `${eventName} - PL Report - ${eventDate}.csv`;
@@ -138,6 +138,20 @@ function exportCSV(report: EventPL, expenses: ExpenseTotals) {
     lines.push(`"${paymentMethodLabels[method] || method}",${data.count},${data.total.toFixed(2)}`);
   });
   lines.push('');
+
+  // Cash drawer
+  if (cashDrawer) {
+    lines.push('CASH DRAWER');
+    lines.push(`Opening Balance,${cashDrawer.opening.toFixed(2)}`);
+    lines.push(`Cash Sales,${cashDrawer.sales.toFixed(2)}`);
+    lines.push(`Cash Tips,${cashDrawer.tips.toFixed(2)}`);
+    lines.push(`Pay Ins,${cashDrawer.payIns.toFixed(2)}`);
+    lines.push(`Pay Outs,${cashDrawer.payOuts.toFixed(2)}`);
+    lines.push(`Expected,${cashDrawer.expected.toFixed(2)}`);
+    if (cashDrawer.counted != null) lines.push(`Counted,${cashDrawer.counted.toFixed(2)}`);
+    if (cashDrawer.overShort != null) lines.push(`Over/Short,${cashDrawer.overShort.toFixed(2)}`);
+    lines.push('');
+  }
 
   // Top items
   lines.push('TOP ITEMS');
@@ -203,6 +217,10 @@ function EventPLReportPage() {
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(eventId);
   const [expenseTotals, setExpenseTotals] = useState<ExpenseTotals>({ total: 0, byCategory: {} });
+  const [cashDrawerSummary, setCashDrawerSummary] = useState<{
+    opening: number; sales: number; tips: number; payIns: number; payOuts: number;
+    expected: number; counted: number | null; overShort: number | null; drawerCount: number;
+  } | null>(null);
   useEffect(() => {
    if (eventId && eventId !== selectedEventId) {setSelectedEventId(eventId);}
    }, [eventId]);
@@ -337,6 +355,37 @@ function EventPLReportPage() {
       netProfit, salesCount, avgSaleValue, paymentBreakdown, topItems,
     });
 
+    // Fetch cash drawers for this event
+    try {
+      const drawersRes = await fetch(`/api/cash-drawers?event_id=${evId}`);
+      const drawers = await drawersRes.json();
+      if (Array.isArray(drawers) && drawers.length > 0) {
+        let opening = 0, cdSales = 0, cdTips = 0, payIns = 0, payOuts = 0;
+        let counted: number | null = null, overShort: number | null = null;
+        for (const d of drawers) {
+          opening += Number(d.opening_balance) || 0;
+          if (d.closing_balance != null) counted = (counted || 0) + Number(d.closing_balance);
+          if (d.over_short != null) overShort = (overShort || 0) + Number(d.over_short);
+          // Fetch transactions for each drawer
+          const txnRes = await fetch(`/api/cash-drawers/${d.id}`);
+          const detail = await txnRes.json();
+          for (const txn of detail.transactions || []) {
+            const amt = Number(txn.amount);
+            if (txn.type === 'sale') cdSales += amt;
+            else if (txn.type === 'tip') cdTips += amt;
+            else if (txn.type === 'pay_in') payIns += amt;
+            else if (txn.type === 'pay_out') payOuts += amt;
+          }
+        }
+        const expected = opening + cdSales + cdTips + payIns - payOuts;
+        setCashDrawerSummary({ opening, sales: cdSales, tips: cdTips, payIns, payOuts, expected: Math.round(expected * 100) / 100, counted, overShort, drawerCount: drawers.length });
+      } else {
+        setCashDrawerSummary(null);
+      }
+    } catch {
+      setCashDrawerSummary(null);
+    }
+
     setLoading(false);
   };
 
@@ -404,7 +453,7 @@ function EventPLReportPage() {
                 {report.event.location && ` · ${report.event.location}`}
               </p>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => exportCSV(report, expenseTotals)}>
+            <Button variant="secondary" size="sm" onClick={() => exportCSV(report, expenseTotals, cashDrawerSummary)}>
               <span className="flex items-center gap-1.5">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -564,6 +613,36 @@ function EventPLReportPage() {
               ))}
             </CardContent>
           </Card>
+
+          {/* Cash Drawer Summary */}
+          {cashDrawerSummary && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Cash Drawer Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-0">
+                {[
+                  { label: 'Opening Balance', value: money(cashDrawerSummary.opening) },
+                  { label: 'Cash Sales', value: money(cashDrawerSummary.sales) },
+                  ...(cashDrawerSummary.tips > 0 ? [{ label: 'Cash Tips', value: money(cashDrawerSummary.tips) }] : []),
+                  ...(cashDrawerSummary.payIns > 0 ? [{ label: 'Pay Ins', value: money(cashDrawerSummary.payIns) }] : []),
+                  ...(cashDrawerSummary.payOuts > 0 ? [{ label: 'Pay Outs', value: `-${money(cashDrawerSummary.payOuts)}` }] : []),
+                  { label: 'Expected Cash', value: money(cashDrawerSummary.expected), bold: true },
+                  ...(cashDrawerSummary.counted != null ? [{ label: 'Counted Cash', value: money(cashDrawerSummary.counted) }] : []),
+                  ...(cashDrawerSummary.overShort != null ? [{
+                    label: cashDrawerSummary.overShort >= 0 ? 'Over' : 'Short',
+                    value: `${cashDrawerSummary.overShort >= 0 ? '+' : '-'}${money(Math.abs(cashDrawerSummary.overShort))}`,
+                    color: cashDrawerSummary.overShort === 0 ? 'text-emerald-600' : cashDrawerSummary.overShort > 0 ? 'text-blue-600' : 'text-red-600',
+                  }] : []),
+                ].map((row: any) => (
+                  <div key={row.label} className="flex items-center justify-between py-2.5 border-b border-[var(--border-subtle)] last:border-b-0">
+                    <span className={`text-sm ${row.bold ? 'font-semibold text-text-primary' : 'text-text-secondary'}`}>{row.label}</span>
+                    <span className={`text-sm font-medium ${row.color || 'text-text-primary'}`}>{row.value}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Expenses linked to this event */}
           {report.event && (

@@ -157,9 +157,8 @@ export default function TermsOfServicePage() {
               </a>.
             </p>
             <p>
-              A platform processing fee may be added to customer transactions. The fee rate depends on the service
-              provider&rsquo;s subscription tier (Starter: 3%, Pro: 1.5%, Business: 0%). Service providers always receive
-              their full sale amount.
+              A platform fee is deducted from service provider payouts based on their subscription tier
+              (Starter: 3%, Pro: 1.5%, Business: 0%). Customers are not charged any additional processing fees.
             </p>
           </Section>
 

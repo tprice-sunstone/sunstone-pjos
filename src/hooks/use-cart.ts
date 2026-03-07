@@ -60,7 +60,7 @@ function generateId() {
 export const useCartStore = create<CartStore>((set, get) => ({
   ...initialState,
   _platformFeeRate: 0,
-  _feeHandling: 'pass_to_customer',
+  _feeHandling: 'absorb',
   _cartDiscountType: null,
   _cartDiscountValue: 0,
 
@@ -161,11 +161,8 @@ export const useCartStore = create<CartStore>((set, get) => ({
       platform_fee_amount = Math.round(preTotal * state._platformFeeRate * 100) / 100;
     }
 
-    // If pass_to_customer, fee is added to total. If absorb, it's deducted post-sale.
-    const total =
-      state._feeHandling === 'pass_to_customer'
-        ? preTotal + platform_fee_amount
-        : preTotal;
+    // Fee is always absorbed — deducted from artist's Stripe payout, never shown to customer
+    const total = preTotal;
 
     set({ subtotal: itemSubtotal, discount_amount, tax_amount, platform_fee_amount, total });
   },

@@ -40,7 +40,7 @@ const PRICING = [
     name: 'Starter',
     price: '$99',
     period: '/mo',
-    fee: '3% checkout fee',
+    fee: '3% platform fee',
     tagline: 'Everything you need to launch',
     popular: false,
     features: [
@@ -58,7 +58,7 @@ const PRICING = [
     name: 'Pro',
     price: '$169',
     period: '/mo',
-    fee: '1.5% checkout fee',
+    fee: '1.5% platform fee',
     tagline: 'For growing businesses',
     popular: true,
     features: [
@@ -75,12 +75,12 @@ const PRICING = [
     name: 'Business',
     price: '$279',
     period: '/mo',
-    fee: 'Zero checkout fee',
+    fee: 'Zero platform fee',
     tagline: 'For serious operators',
     popular: false,
     features: [
       'Everything in Pro, plus:',
-      'Zero checkout fees — customers pay exactly what you quote',
+      'Zero platform fee — you keep 100% of every sale',
       'Unlimited team members',
       'White-glove onboarding',
       'Dedicated support',
@@ -95,8 +95,8 @@ const FAQS = [
     a: "You build the order in the POS, then tap 'Charge Customer' and choose QR Code or Text Link. A secure Stripe checkout page is created instantly. Your customer scans the QR code with their phone camera or receives a text message with a payment link — they pay on their own phone. No card reader needed. The POS updates in real time when payment is received.",
   },
   {
-    q: 'How does the checkout fee work?',
-    a: "When a customer pays through Sunstone Studio (via QR code or payment link), a small checkout fee is transparently added to their total — similar to what they see on other modern checkout platforms. This covers secure payment processing and enables features like instant digital receipts and automatic transaction tracking. On Starter it's 3%, Pro is 1.5%, and the Business plan has zero fee — your customers pay exactly what you quote. You always receive your full sale amount. Most artists find their customers don't even notice it, but if you'd prefer zero fees for your clients, the Business plan has you covered.",
+    q: 'How does the platform fee work?',
+    a: "A small platform fee is deducted from your Stripe payouts — your customers never see it. They pay exactly what you quote with a clean, professional checkout. On Starter it's 3%, Pro is 1.5%, and the Business plan has zero fee — you keep 100% of every sale. For example, on a $100 sale with the Starter plan, your customer pays $100 and you receive $97 after the platform fee. The fee covers secure payment processing, instant digital receipts, and automatic transaction tracking.",
   },
   {
     q: 'Can I still use my Square reader?',
@@ -149,7 +149,7 @@ const FEATURES = [
     num: '02',
     name: 'Get Paid Instantly — No Card Reader Needed',
     desc: "Build the order, tap charge, and your customer pays on their own phone. QR code payments at your table or text-to-pay when they're across the room. Every transaction tracked automatically with a professional Stripe-hosted checkout page. Real-time payment notifications right in your POS.",
-    highlight: 'A small checkout fee is transparently included in the customer total — you always receive your full sale amount',
+    highlight: 'Customers see a clean checkout with no extra fees — a small platform fee is deducted from your payouts',
     img: '/landing/pos-store.webp',
     imgAlt: 'POS payment screen showing QR code and text link checkout options with Stripe integration',
   },
@@ -1444,7 +1444,7 @@ export default function LandingPageClient() {
               borderLeft: `3px solid ${C.gold}`,
             }}>
               <p style={{ fontSize: 15, color: C.text, lineHeight: 1.65, fontWeight: 500 }}>
-                A small checkout fee is transparently included in your customer&apos;s total — similar to other modern payment platforms. <strong>You always receive your full sale amount.</strong> Want zero fees for your customers? The Business plan has you covered.
+                A small platform fee is deducted from your Stripe payouts — <strong>your customers see a clean checkout with no extra fees.</strong> Want to keep 100%? The Business plan has zero platform fee.
               </p>
             </div>
             <p style={{ fontSize: 14.5, color: C.textMuted, marginTop: 20 }}>

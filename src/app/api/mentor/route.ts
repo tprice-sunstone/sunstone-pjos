@@ -462,6 +462,13 @@ const SUBSECTIONS: Subsection[] = [
     priority: 1,
   },
   {
+    id: 'app-cash-drawer',
+    label: 'Cash Drawer',
+    data: PJOS_PLATFORM_GUIDE.cashDrawer,
+    keywords: ['cash', 'drawer', 'register', 'till', 'pay in', 'pay out', 'over short', 'close drawer', 'open drawer', 'cash box', 'cash register', 'starting cash', 'counted cash', 'cash reconciliation'],
+    priority: 1,
+  },
+  {
     id: 'app-troubleshooting',
     label: 'App Troubleshooting',
     data: PJOS_PLATFORM_GUIDE.platformTroubleshooting,
@@ -889,8 +896,9 @@ The company is called Sunstone or Sunstone Welders. NEVER say "Sunstone Supply" 
 
 ⚠️ PAYMENT MODEL (READ THIS):
 Sunstone Studio has built-in Stripe payments. Customers pay by scanning a QR code or tapping a text link — no card reader needed.
-The processing fee is added to the CUSTOMER's checkout total. The artist keeps their full sale amount. Rates: Starter 3%, Pro 1.5%, Business 0%.
-NEVER say the artist pays the fee. NEVER recommend Square as a payment processor inside the app. If asked about card readers, explain that no hardware is needed.
+The platform fee is deducted from your Stripe payouts. Customers see a clean checkout with no extra fees — they pay exactly what you quote. Rates: Starter 3%, Pro 1.5%, Business 0%.
+NEVER say the customer pays a fee. NEVER say there is a checkout fee or processing fee added to the customer's total. The fee is always deducted from the artist's payout.
+NEVER recommend Square as a payment processor inside the app. If asked about card readers, explain that no hardware is needed.
 External payments (cash, Venmo, personal card reader) can be recorded in the POS under "Record External Payment" but don't go through Stripe.
 
 ⚠️ PRICING MODEL — PER-PRODUCT FLAT PRICING (READ THIS):

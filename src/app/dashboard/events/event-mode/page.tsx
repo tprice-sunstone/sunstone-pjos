@@ -23,6 +23,7 @@ import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/ui/Moda
 import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
 import JumpRingPickerModal from '@/components/JumpRingPickerModal';
+import CashDrawerPanel from '@/components/CashDrawerPanel';
 import { ProductSelector, QueueBadge, CheckoutFlow, PendingPayments, GiftCardModal } from '@/components/pos';
 import type { CompletedSaleData, CheckoutStep, GiftCardData } from '@/components/pos';
 import type { QueueEntry } from '@/components/MiniQueueStrip';
@@ -135,6 +136,7 @@ function EventModePageInner() {
   const [showGiftCardModal, setShowGiftCardModal] = useState(false);
   const [giftCardData, setGiftCardData] = useState<GiftCardData | null>(null);
   const [autoReplyOn, setAutoReplyOn] = useState(false);
+  const [openDrawerId, setOpenDrawerId] = useState<string | null>(null);
 
   // Receipt / confirmation
   const [completedSale, setCompletedSale] = useState<CompletedSaleData | null>(null);
@@ -541,6 +543,22 @@ function EventModePageInner() {
       saleData.saleId = saleId;
       if (activeQueueEntry) setActiveQueueEntry(null);
 
+      // Auto-log cash sale to open cash drawer
+      if (effectivePaymentMethod === 'cash' && openDrawerId) {
+        fetch(`/api/cash-drawers/${openDrawerId}/transaction`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'sale', amount: cart.total - cart.tip_amount, saleId }),
+        }).catch(() => {});
+        if (cart.tip_amount > 0) {
+          fetch(`/api/cash-drawers/${openDrawerId}/transaction`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'tip', amount: cart.tip_amount, saleId }),
+          }).catch(() => {});
+        }
+      }
+
       setTodaySales((s) => ({ count: s.count + 1, total: s.total + cart.total }));
       toast.success(`Sale completed — $${cart.total.toFixed(2)}`);
 
@@ -680,6 +698,16 @@ function EventModePageInner() {
               onStartSale={handleQueueStartSale}
               isServingActive={!!activeQueueEntry}
               refreshTrigger={queueRefresh}
+            />
+          )}
+
+          {/* Cash Drawer */}
+          {tenant && eventId && (
+            <CashDrawerPanel
+              tenantId={tenant.id}
+              eventId={eventId}
+              mode="event"
+              onDrawerChange={setOpenDrawerId}
             />
           )}
 

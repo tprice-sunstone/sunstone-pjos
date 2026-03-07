@@ -284,6 +284,12 @@ export default function ReportsPage() {
 
   const sourceLabel = sourceFilter === 'all' ? 'All Sales' : sourceFilter === 'events' ? 'Events Only' : 'Store Only';
 
+  // Cash drawer aggregate state
+  const [cashDrawerAgg, setCashDrawerAgg] = useState<{
+    opening: number; sales: number; tips: number; payIns: number; payOuts: number;
+    expected: number; counted: number | null; overShort: number | null; drawerCount: number;
+  } | null>(null);
+
   // Load sales data
   useEffect(() => {
     if (!tenant) return;
@@ -329,6 +335,45 @@ export default function ReportsPage() {
 
     setSales((salesRes.data || []) as (Sale & { sale_items: SaleItem[] })[]);
     setRefunds((refundsRes.data || []) as Refund[]);
+
+    // Fetch closed cash drawers for the date range
+    try {
+      const drawersRes = await fetch(`/api/cash-drawers?status=closed`);
+      const allDrawers = await drawersRes.json();
+      if (Array.isArray(allDrawers) && allDrawers.length > 0) {
+        const filtered = allDrawers.filter((d: any) => {
+          const closedAt = new Date(d.closed_at);
+          return closedAt >= dateRange.start && closedAt <= dateRange.end;
+        });
+        if (filtered.length > 0) {
+          let opening = 0, cdSales = 0, cdTips = 0, payIns = 0, payOuts = 0;
+          let counted: number | null = null, overShort: number | null = null;
+          for (const d of filtered) {
+            opening += Number(d.opening_balance) || 0;
+            if (d.closing_balance != null) counted = (counted || 0) + Number(d.closing_balance);
+            if (d.over_short != null) overShort = (overShort || 0) + Number(d.over_short);
+            const txnRes = await fetch(`/api/cash-drawers/${d.id}`);
+            const detail = await txnRes.json();
+            for (const txn of detail.transactions || []) {
+              const amt = Number(txn.amount);
+              if (txn.type === 'sale') cdSales += amt;
+              else if (txn.type === 'tip') cdTips += amt;
+              else if (txn.type === 'pay_in') payIns += amt;
+              else if (txn.type === 'pay_out') payOuts += amt;
+            }
+          }
+          const expected = opening + cdSales + cdTips + payIns - payOuts;
+          setCashDrawerAgg({ opening, sales: cdSales, tips: cdTips, payIns, payOuts, expected: Math.round(expected * 100) / 100, counted, overShort, drawerCount: filtered.length });
+        } else {
+          setCashDrawerAgg(null);
+        }
+      } else {
+        setCashDrawerAgg(null);
+      }
+    } catch {
+      setCashDrawerAgg(null);
+    }
+
     setLoading(false);
   };
 
@@ -822,6 +867,35 @@ export default function ReportsPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Cash Drawer Summary */}
+              {cashDrawerAgg && (
+                <Card>
+                  <CardHeader><CardTitle>Cash Drawer Summary</CardTitle></CardHeader>
+                  <CardContent className="space-y-0">
+                    {[
+                      { label: `${cashDrawerAgg.drawerCount} Drawer${cashDrawerAgg.drawerCount !== 1 ? 's' : ''} Closed`, value: '', header: true },
+                      { label: 'Total Opening', value: money(cashDrawerAgg.opening) },
+                      { label: 'Cash Sales', value: money(cashDrawerAgg.sales) },
+                      ...(cashDrawerAgg.tips > 0 ? [{ label: 'Cash Tips', value: money(cashDrawerAgg.tips) }] : []),
+                      ...(cashDrawerAgg.payIns > 0 ? [{ label: 'Pay Ins', value: money(cashDrawerAgg.payIns) }] : []),
+                      ...(cashDrawerAgg.payOuts > 0 ? [{ label: 'Pay Outs', value: `-${money(cashDrawerAgg.payOuts)}` }] : []),
+                      { label: 'Expected Cash', value: money(cashDrawerAgg.expected), bold: true },
+                      ...(cashDrawerAgg.counted != null ? [{ label: 'Counted Cash', value: money(cashDrawerAgg.counted) }] : []),
+                      ...(cashDrawerAgg.overShort != null ? [{
+                        label: cashDrawerAgg.overShort >= 0 ? 'Total Over' : 'Total Short',
+                        value: `${cashDrawerAgg.overShort >= 0 ? '+' : '-'}${money(Math.abs(cashDrawerAgg.overShort))}`,
+                        color: cashDrawerAgg.overShort === 0 ? 'text-emerald-600' : cashDrawerAgg.overShort > 0 ? 'text-blue-600' : 'text-red-600',
+                      }] : []),
+                    ].map((row: any, i) => (
+                      <div key={i} className="flex items-center justify-between py-2.5 border-b border-[var(--border-subtle)] last:border-b-0">
+                        <span className={`text-sm ${row.header ? 'font-semibold text-text-tertiary' : row.bold ? 'font-semibold text-text-primary' : 'text-text-secondary'}`}>{row.label}</span>
+                        <span className={`text-sm font-medium ${row.color || 'text-text-primary'}`}>{row.value}</span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Expenses */}
               <ExpensesSection

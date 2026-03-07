@@ -6,7 +6,7 @@
 
 export type SubscriptionTier = 'starter' | 'pro' | 'business';
 export type SubscriptionStatus = 'none' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid';
-export type FeeHandling = 'pass_to_customer' | 'absorb';
+export type FeeHandling = 'pass_to_customer' | 'absorb'; // Default: 'absorb' — fee deducted from artist payout
 export type TenantRole = 'admin' | 'manager' | 'staff';
 export type BusinessType = 'permanent_jewelry' | 'salon_spa' | 'boutique' | 'popup_vendor' | 'other';
 export type InventoryType = 'chain' | 'jump_ring' | 'charm' | 'connector' | 'other';
@@ -770,4 +770,42 @@ export interface ConversationMessage {
   read: boolean;
   ai_suggested_response: string | null;
   created_at: string;
+}
+
+// ============================================================================
+// Cash Drawers
+// ============================================================================
+
+export type CashDrawerStatus = 'open' | 'closed';
+export type CashDrawerTransactionType = 'sale' | 'tip' | 'pay_in' | 'pay_out' | 'adjustment';
+
+export interface CashDrawer {
+  id: string;
+  tenant_id: string;
+  event_id: string | null;
+  opened_at: string;
+  closed_at: string | null;
+  opening_balance: number;
+  closing_balance: number | null;
+  expected_balance: number | null;
+  over_short: number | null;
+  notes: string | null;
+  status: CashDrawerStatus;
+  opened_by: string | null;
+  closed_by: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  transactions?: CashDrawerTransaction[];
+}
+
+export interface CashDrawerTransaction {
+  id: string;
+  cash_drawer_id: string;
+  sale_id: string | null;
+  type: CashDrawerTransactionType;
+  amount: number;
+  note: string | null;
+  created_at: string;
+  created_by: string | null;
 }

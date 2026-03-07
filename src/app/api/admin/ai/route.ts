@@ -445,22 +445,22 @@ Core Feature Set:
 - Atlas AI: Platform admin intelligence (this is you)
 
 Subscription Tiers:
-- Starter ($99/month): 3% customer-facing processing fee, 5 Sunny questions/month, 1 team member, basic POS and inventory, integrated Stripe payments
-- Pro ($169/month): 1.5% customer-facing processing fee, unlimited Sunny, full reports, AI insights, 3 team members
-- Business ($279/month): 0% processing fee (customers pay nothing extra), everything in Pro, unlimited team members, priority support
+- Starter ($99/month): 3% platform fee (deducted from artist's Stripe payouts), 5 Sunny questions/month, 1 team member, basic POS and inventory, integrated Stripe payments
+- Pro ($169/month): 1.5% platform fee (deducted from payouts), unlimited Sunny, full reports, AI insights, 3 team members
+- Business ($279/month): 0% platform fee (artist keeps 100%), everything in Pro, unlimited team members, priority support
 - Trial: 60-day Pro trial for new accounts, defaults to Starter after expiry
 - CRM Add-On: $69/mo add-on to any plan — dedicated business phone number, two-way SMS, automated aftercare, broadcasts, workflows, party booking, client intelligence. Included free during 60-day Pro trial.
 - CRM: Currently enabled per-tenant by admin toggle (crm_enabled flag on tenants table). Gives access to workflows, templates, broadcast messaging, dedicated phone number, two-way SMS, and automated follow-ups.
 
 Payment Model:
 - Integrated Stripe Payment Links — customers pay via QR code scan or text-to-pay link through Stripe Checkout
-- Processing fees are added to the CUSTOMER's checkout total (not absorbed by the artist): 3% Starter, 1.5% Pro, 0% Business
-- Platform collects its fee via Stripe Connect application_fee_amount, stored in platform_fee_collected column on sales
+- Platform fee is DEDUCTED from the artist's Stripe payout (artist-absorbed). Customers see a clean checkout with no extra fees.
+- Fee rates: Starter 3%, Pro 1.5%, Business 0%. Collected via Stripe Connect application_fee_amount, stored in platform_fee_collected column on sales
 - Alternative payment methods: Cash, Venmo, external card reader (recorded manually, not through Stripe)
 - No card reader or hardware needed — the customer's phone is the payment terminal
 
 Revenue Model:
-- Processing fees on each Stripe sale (3%/1.5%/0% by tier) — collected via application_fee_amount
+- Platform fees on each Stripe sale (3%/1.5%/0% by tier) — deducted from artist payouts via application_fee_amount
 - Monthly subscriptions (Starter $99, Pro $169, Business $279)
 - CRM add-on revenue ($69/mo per subscriber)
 

@@ -2,8 +2,8 @@
 // Stripe Payment Link API — POST /api/stripe/payment-link
 // ============================================================================
 // Creates a Stripe Checkout Session on the artist's connected account.
-// Platform fee is collected via application_fee_amount and shown to the
-// customer as a "Processing fee" line item.
+// Platform fee is silently deducted from the artist's Stripe payout via
+// application_fee_amount — the customer never sees a processing fee.
 // ============================================================================
 
 export const runtime = 'nodejs';
@@ -101,18 +101,8 @@ export async function POST(request: Request) {
     // Calculate platform fee on the subtotal (not on tax/tip)
     const platformFeeCents = Math.round(subtotalCents * feeRate);
 
-    // Add platform fee as a visible line item the customer pays
-    // Only add if fee rate > 0 (Business tier = 0%)
-    if (platformFeeCents > 0) {
-      stripeLineItems.push({
-        price_data: {
-          currency: 'usd',
-          product_data: { name: 'Processing fee' },
-          unit_amount: platformFeeCents,
-        },
-        quantity: 1,
-      });
-    }
+    // Platform fee is collected via application_fee_amount (deducted from artist payout)
+    // Customer sees a clean checkout with no extra fees
 
     // Determine success/cancel URLs based on POS mode
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://sunstonepj.app';

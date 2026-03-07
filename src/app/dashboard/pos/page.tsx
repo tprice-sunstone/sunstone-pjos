@@ -25,6 +25,7 @@ import { ProductSelector, QueueBadge, CheckoutFlow, PendingPayments, GiftCardMod
 import type { CompletedSaleData, CheckoutStep, GiftCardData } from '@/components/pos';
 import { calculateJumpRingNeeds, getLowStockWarnings } from '@/lib/jump-rings';
 import SunnyTutorial from '@/components/SunnyTutorial';
+import CashDrawerPanel from '@/components/CashDrawerPanel';
 import type {
   InventoryItem,
   TaxProfile,
@@ -66,6 +67,9 @@ export default function StoreModePage() {
   // Queue/check-in state
   const [activeQueueEntry, setActiveQueueEntry] = useState<any | null>(null);
   const [queueRefresh, setQueueRefresh] = useState(0);
+
+  // Cash drawer state
+  const [openDrawerId, setOpenDrawerId] = useState<string | null>(null);
 
   // Receipt / confirmation
   const [completedSale, setCompletedSale] = useState<CompletedSaleData | null>(null);
@@ -436,6 +440,23 @@ export default function StoreModePage() {
 
       setTodaySales((p) => ({ count: p.count + 1, total: p.total + cart.total }));
       setCompletedSale(saleData);
+
+      // Auto-log cash sale to open cash drawer
+      if (effectivePaymentMethod === 'cash' && openDrawerId) {
+        fetch(`/api/cash-drawers/${openDrawerId}/transaction`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'sale', amount: cart.total - cart.tip_amount, saleId }),
+        }).catch(() => {});
+        if (cart.tip_amount > 0) {
+          fetch(`/api/cash-drawers/${openDrawerId}/transaction`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'tip', amount: cart.tip_amount, saleId }),
+          }).catch(() => {});
+        }
+      }
+
       cart.reset(); setStep('confirmation'); setShowCart(false);
       setEmailSent(false); setSmsSent(false); setEmailError(''); setSmsError('');
       setQueueRefresh((n) => n + 1);
@@ -550,6 +571,13 @@ export default function StoreModePage() {
             onStartSale={handleQueueStartSale}
             isServingActive={!!activeQueueEntry}
             refreshTrigger={queueRefresh}
+          />
+
+          {/* Cash Drawer */}
+          <CashDrawerPanel
+            tenantId={tenant.id}
+            mode="store"
+            onDrawerChange={setOpenDrawerId}
           />
 
           {/* Sell Gift Card button */}

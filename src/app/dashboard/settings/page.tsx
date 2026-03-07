@@ -60,14 +60,14 @@ const ALL_ROLE_OPTIONS = [
 
 const PLAN_FEATURES: Record<string, string[]> = {
   pro: [
-    '1.5% processing fee (customer pays)',
+    '1.5% platform fee (deducted from payouts)',
     'Unlimited Sunny AI questions',
     'Business insights & analytics',
     'Full P&L reports',
     'Up to 3 team members',
   ],
   business: [
-    '0% processing fee',
+    '0% platform fee',
     'Everything in Pro',
     'Unlimited team members',
     'Priority support',
@@ -1133,22 +1133,22 @@ function SettingsPage() {
             {feeRate > 0 ? (
               <>
                 <p className="text-sm text-[var(--text-secondary)]">
-                  A {(feeRate * 100).toFixed(1)}% service fee is automatically included in your customer&rsquo;s total when they pay through Sunstone Studio. This is standard for modern checkout platforms and covers secure payment processing, instant receipts, and transaction tracking.
+                  A {(feeRate * 100).toFixed(1)}% platform fee is deducted from your Stripe payouts. Your customers see a clean checkout with no extra fees &mdash; they pay exactly what you quote.
                 </p>
                 <div className="rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-default)] px-4 py-3">
                   <p className="text-sm text-[var(--text-secondary)]">
-                    Example: $100 sale &rarr; customer pays ${(100 + 100 * feeRate).toFixed(2)} &rarr; you receive $100
+                    Example: $100 sale &rarr; customer pays $100 &rarr; you receive ${(100 - 100 * feeRate).toFixed(2)}
                   </p>
                 </div>
                 <p className="text-xs text-[var(--text-tertiary)]">
                   {tier === 'starter'
                     ? 'Upgrade to Pro to reduce the fee to 1.5%, or Business to eliminate it entirely.'
-                    : 'Upgrade to Business to eliminate the fee for your customers.'}
+                    : 'Upgrade to Business to eliminate the platform fee.'}
                 </p>
               </>
             ) : (
               <p className="text-sm text-[var(--text-secondary)]">
-                Your customers pay exactly what you quote &mdash; no additional fees. This is a Business plan benefit.
+                No platform fee &mdash; you keep 100% of every sale. This is a Business plan benefit.
               </p>
             )}
           </div>

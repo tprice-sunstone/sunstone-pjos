@@ -815,13 +815,13 @@ export const BUSINESS_STRATEGY_KNOWLEDGE = {
       '4. Alternatively, you can send a payment link via text message if the customer is remote or prefers that.',
     ],
     processingFees: {
-      model: 'The processing fee is added to the CUSTOMER\'s checkout total — you keep your full sale amount. The fee rate depends on your subscription tier.',
+      model: 'The platform fee is deducted from your Stripe payouts — your customers see a clean checkout with no extra fees. They pay exactly what you quote.',
       rates: {
-        starter: '3% added to the customer\'s total',
-        pro: '1.5% added to the customer\'s total',
-        business: '0% — no processing fee for your customers',
+        starter: '3% deducted from your payouts',
+        pro: '1.5% deducted from your payouts',
+        business: '0% — you keep 100% of every sale',
       },
-      example: 'If a bracelet costs $50 on the Starter plan, the customer pays $51.50 ($50 + 3%) and you receive $50.',
+      example: 'If a bracelet costs $50 on the Starter plan, the customer pays $50 and you receive $48.50 after the 3% platform fee.',
     },
     noCardReader: 'You do NOT need a Square reader, card terminal, or any external hardware. Everything runs through the customer\'s phone via Stripe Checkout.',
     otherPaymentMethods: ['Cash', 'Venmo', 'External card (your own Square/Clover reader outside the app)'],
@@ -1834,13 +1834,13 @@ export const PJOS_PLATFORM_GUIDE = {
     ],
     textToPayOption: 'If the customer is remote or prefers a text, tap "Send via Text" to send a payment link to their phone number. They tap the link and pay through the same Stripe Checkout experience.',
     processingFees: {
-      model: 'The processing fee is added to the CUSTOMER\'s checkout total. You always keep your full sale amount.',
+      model: 'The platform fee is deducted from your Stripe payouts. Your customers see a clean checkout with no extra fees.',
       rates: {
-        starter: '3% added to the customer\'s total',
-        pro: '1.5% added to the customer\'s total',
-        business: '0% — your customers pay no processing fee',
+        starter: '3% deducted from your payouts',
+        pro: '1.5% deducted from your payouts',
+        business: '0% — you keep 100% of every sale',
       },
-      example: 'A $50 bracelet on Starter: customer pays $51.50, you receive $50. On Business: customer pays $50, you receive $50.',
+      example: 'A $50 bracelet on Starter: customer pays $50, you receive $48.50. On Business: customer pays $50, you receive $50.',
     },
     externalPayments: {
       overview: 'Not every customer wants to pay through the app. You can record external payments for customers who pay with cash, Venmo, or their own card reader.',
@@ -1894,7 +1894,7 @@ export const PJOS_PLATFORM_GUIDE = {
     },
     subscriptionTab: 'See your current plan, trial status, and plan features. Upgrade or manage your subscription here.',
     teamTab: 'View your team members, their roles, and invite new ones. Manage who has access to what.',
-    feeHandling: 'A small checkout fee is automatically included in your customer\'s total when they pay through Sunstone Studio — you always receive your full sale amount. On Starter it is 3%, Pro is 1.5%, and Business is 0%. This is not something you control — it is standard for the platform. You can reduce it by upgrading your plan, and Business plan eliminates it entirely.',
+    feeHandling: 'A small platform fee is deducted from your Stripe payouts — your customers see a clean checkout with no extra fees. On Starter it is 3%, Pro is 1.5%, and Business is 0%. You can reduce it by upgrading your plan, and Business plan eliminates it entirely.',
   },
 
   // ---------------------------------------------------------------------------
@@ -1905,20 +1905,20 @@ export const PJOS_PLATFORM_GUIDE = {
     tiers: {
       starter: {
         price: '$99/month',
-        processingFee: '3% processing fee (customer pays)',
+        processingFee: '3% platform fee (deducted from your payouts)',
         features: ['Basic POS (Event Mode and Store Mode)', 'Integrated Stripe payments (QR + text link)', 'Inventory management', 'Queue and waivers', '5 Sunny AI questions per month', '1 team member'],
         bestFor: 'Artists just getting started who want to try the platform.',
       },
       pro: {
         price: '$169/month',
-        processingFee: '1.5% processing fee (customer pays)',
+        processingFee: '1.5% platform fee (deducted from your payouts)',
         features: ['Everything in Starter', 'Unlimited Sunny AI questions', 'Full business reports with P&L', 'AI insights', 'Client CRM', 'Up to 3 team members'],
         bestFor: 'Active artists who do regular events and want full business intelligence.',
       },
       business: {
         price: '$279/month',
-        processingFee: '0% — zero processing fees for your customers',
-        features: ['Everything in Pro', 'Unlimited team members', 'Priority support', 'Zero processing fees'],
+        processingFee: '0% — you keep 100% of every sale',
+        features: ['Everything in Pro', 'Unlimited team members', 'Priority support', 'Zero platform fee'],
         bestFor: 'High-volume artists or teams who want zero fees and unlimited team access.',
       },
     },
@@ -1943,7 +1943,7 @@ export const PJOS_PLATFORM_GUIDE = {
     upgrading: 'Go to Settings → Plan & Billing to see your current plan, select a new one, or manage your subscription through Stripe.',
     whatHappensAfterTrial: 'If your trial expires without choosing a plan, your dashboard is locked — you can see your data but can\'t use POS, CRM, or other features until you select a plan. All your data, events, inventory, clients, and conversation history are preserved — nothing is ever deleted. Just choose a plan from the lockout screen or Settings to pick up right where you left off.',
     crmRequiresBasePlan: 'CRM ($69/mo) is an add-on that requires a base plan (Starter, Pro, or Business). You can\'t purchase CRM standalone after your trial expires. During your trial, CRM is included free. After the trial, choose a base plan first, then add CRM.',
-    feeExplainer: 'A small checkout fee (Starter 3%, Pro 1.5%, Business 0%) is automatically included in your customer\'s total at checkout — similar to other modern payment platforms. You always receive your full sale amount. The fee covers secure payment processing, instant receipts, and transaction tracking. Upgrade your plan to reduce or eliminate it.',
+    feeExplainer: 'A small platform fee (Starter 3%, Pro 1.5%, Business 0%) is deducted from your Stripe payouts. Your customers see a clean checkout with no extra fees — they pay exactly what you quote. The fee covers secure payment processing, instant receipts, and transaction tracking. Upgrade your plan to reduce or eliminate it.',
   },
 
   // ---------------------------------------------------------------------------
@@ -2006,7 +2006,36 @@ export const PJOS_PLATFORM_GUIDE = {
   },
 
   // ---------------------------------------------------------------------------
-  // 9.15 Platform Troubleshooting
+  // 9.15 Cash Drawer
+  // ---------------------------------------------------------------------------
+  cashDrawer: {
+    overview: 'The Cash Drawer feature tracks physical cash in your register or cash box. Open a drawer at the start of your shift or event, and close it at the end to reconcile.',
+    opening: {
+      howTo: 'Tap the cash register icon in the POS header bar. Enter your starting cash amount (how much change you are beginning with) and tap "Open Drawer." Quick presets for $50, $100, and $200 are available.',
+      note: 'You can only have one cash drawer open at a time per mode (Store Mode or per event in Event Mode).',
+    },
+    autoLogging: 'When you complete a cash sale while a drawer is open, the sale amount and tip are automatically logged as transactions in the cash drawer. No extra steps needed.',
+    payInOut: {
+      payIn: 'Tap "Pay In" to add cash to the drawer — for example, bringing extra change from the bank.',
+      payOut: 'Tap "Pay Out" to remove cash from the drawer — for example, buying supplies with cash from the register.',
+      note: 'Each pay in/out can include an optional note explaining the reason.',
+    },
+    closing: {
+      howTo: 'From the drawer detail view, tap "Close Drawer." Count the physical cash and enter the total. The system shows the expected balance and calculates whether you are over, short, or balanced.',
+      expected: 'Expected balance = opening cash + cash sales + cash tips + pay ins − pay outs.',
+      overShort: 'If your counted cash matches the expected, you see "Balanced" in green. Over shows in blue, short shows in red.',
+    },
+    eventMode: 'In Event Mode, the POS automatically prompts you to open a cash drawer when you enter the event. Each event gets its own drawer, and the cash drawer summary appears in your Event P&L report.',
+    reports: 'Closed cash drawers appear in your Event P&L report (per event) and in Business Reports (aggregate across the date range). The summary shows opening balance, cash sales, tips, pay ins, pay outs, expected vs counted, and any over/short amount.',
+    tips: [
+      'Always count your cash and close your drawer at the end of each event or shift for accurate records.',
+      'Use pay-out notes to track exactly why cash left the drawer — helpful for expense tracking.',
+      'The cash drawer is separate from your Stripe payments. Only cash sales are tracked here.',
+    ],
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.16 Platform Troubleshooting
   // ---------------------------------------------------------------------------
   platformTroubleshooting: {
     paymentProcessorNotConnected: {
