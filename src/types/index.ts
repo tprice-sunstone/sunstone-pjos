@@ -786,13 +786,12 @@ export interface CashDrawer {
   opened_at: string;
   closed_at: string | null;
   opening_amount: number;
-  actual_amount: number | null;
+  closing_amount: number | null;
   expected_amount: number | null;
-  variance: number | null;
+  difference: number | null;
   notes: string | null;
   status: CashDrawerStatus;
   opened_by: string | null;
-  closed_by: string | null;
   created_at: string;
   updated_at: string;
   // Joined

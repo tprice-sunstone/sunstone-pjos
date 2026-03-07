@@ -350,8 +350,8 @@ export default function ReportsPage() {
           let counted: number | null = null, overShort: number | null = null;
           for (const d of filtered) {
             opening += Number(d.opening_amount) || 0;
-            if (d.actual_amount != null) counted = (counted || 0) + Number(d.actual_amount);
-            if (d.variance != null) overShort = (overShort || 0) + Number(d.variance);
+            if (d.closing_amount != null) counted = (counted || 0) + Number(d.closing_amount);
+            if (d.difference != null) overShort = (overShort || 0) + Number(d.difference);
             const txnRes = await fetch(`/api/cash-drawers/${d.id}`);
             const detail = await txnRes.json();
             for (const txn of detail.transactions || []) {

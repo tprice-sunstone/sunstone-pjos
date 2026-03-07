@@ -121,10 +121,9 @@ export async function PATCH(
     .update({
       status: 'closed',
       closed_at: new Date().toISOString(),
-      closed_by: user.id,
-      actual_amount: closingBalance,
+      closing_amount: closingBalance,
       expected_amount: expectedBalance,
-      variance: overShort,
+      difference: overShort,
       notes: notes || null,
     })
     .eq('id', id)
