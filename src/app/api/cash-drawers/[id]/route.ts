@@ -35,7 +35,8 @@ export async function GET(
     .single();
 
   if (error || !drawer) {
-    return NextResponse.json({ error: 'Cash drawer not found' }, { status: 404 });
+    if (error) console.error('[CashDrawer GET detail] Error:', JSON.stringify({ message: error.message, code: error.code, details: error.details, hint: error.hint }));
+    return NextResponse.json({ error: 'Cash drawer not found', dbError: error?.message }, { status: 404 });
   }
 
   // Fetch transactions
@@ -124,6 +125,9 @@ export async function PATCH(
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[CashDrawer PATCH close] Error:', JSON.stringify({ message: error.message, code: error.code, details: error.details, hint: error.hint }));
+    return NextResponse.json({ error: error.message, code: error.code, details: error.details, hint: error.hint }, { status: 500 });
+  }
   return NextResponse.json(closed);
 }

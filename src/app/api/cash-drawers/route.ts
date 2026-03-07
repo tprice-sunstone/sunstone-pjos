@@ -42,7 +42,13 @@ export async function POST(request: NextRequest) {
     existingQuery.is('event_id', null);
   }
 
-  const { data: existing } = await existingQuery.limit(1);
+  const { data: existing, error: existingError } = await existingQuery.limit(1);
+
+  if (existingError) {
+    console.error('[CashDrawer POST] Error checking existing drawers:', JSON.stringify(existingError));
+    // Table may not exist yet — fall through to insert which will give a clearer error
+  }
+
   if (existing && existing.length > 0) {
     return NextResponse.json(
       { error: 'A cash drawer is already open. Close it before opening a new one.' },
@@ -50,18 +56,34 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const insertPayload = {
+    tenant_id: member.tenant_id,
+    event_id: eventId || null,
+    opening_balance: openingBalance,
+    opened_by: user.id,
+  };
+  console.log('[CashDrawer POST] Inserting:', JSON.stringify(insertPayload));
+
   const { data: drawer, error } = await supabase
     .from('cash_drawers')
-    .insert({
-      tenant_id: member.tenant_id,
-      event_id: eventId || null,
-      opening_balance: openingBalance,
-      opened_by: user.id,
-    })
+    .insert(insertPayload)
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[CashDrawer POST] Insert error:', JSON.stringify({
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    }));
+    return NextResponse.json({
+      error: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    }, { status: 500 });
+  }
   return NextResponse.json(drawer, { status: 201 });
 }
 
@@ -95,6 +117,19 @@ export async function GET(request: NextRequest) {
   if (eventId) query = query.eq('event_id', eventId);
 
   const { data: drawers, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('[CashDrawer GET] List error:', JSON.stringify({
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    }));
+    return NextResponse.json({
+      error: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    }, { status: 500 });
+  }
   return NextResponse.json(drawers || []);
 }
