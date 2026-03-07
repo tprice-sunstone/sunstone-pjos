@@ -137,6 +137,7 @@ function EventModePageInner() {
   const [giftCardData, setGiftCardData] = useState<GiftCardData | null>(null);
   const [autoReplyOn, setAutoReplyOn] = useState(false);
   const [openDrawerId, setOpenDrawerId] = useState<string | null>(null);
+  const [drawerRefresh, setDrawerRefresh] = useState(0);
 
   // Receipt / confirmation
   const [completedSale, setCompletedSale] = useState<CompletedSaleData | null>(null);
@@ -543,20 +544,22 @@ function EventModePageInner() {
       saleData.saleId = saleId;
       if (activeQueueEntry) setActiveQueueEntry(null);
 
-      // Auto-log cash sale to open cash drawer
+      // Auto-log cash sale to open cash drawer, then refresh drawer data
       if (effectivePaymentMethod === 'cash' && openDrawerId) {
-        fetch(`/api/cash-drawers/${openDrawerId}/transaction`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'sale', amount: cart.total - cart.tip_amount, saleId }),
-        }).catch(() => {});
-        if (cart.tip_amount > 0) {
+        Promise.all([
           fetch(`/api/cash-drawers/${openDrawerId}/transaction`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'tip', amount: cart.tip_amount, saleId }),
-          }).catch(() => {});
-        }
+            body: JSON.stringify({ type: 'sale', amount: cart.total - cart.tip_amount, saleId }),
+          }),
+          ...(cart.tip_amount > 0 ? [
+            fetch(`/api/cash-drawers/${openDrawerId}/transaction`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: 'tip', amount: cart.tip_amount, saleId }),
+            }),
+          ] : []),
+        ]).then(() => setDrawerRefresh((n) => n + 1)).catch(() => {});
       }
 
       setTodaySales((s) => ({ count: s.count + 1, total: s.total + cart.total }));
@@ -708,6 +711,7 @@ function EventModePageInner() {
               eventId={eventId}
               mode="event"
               onDrawerChange={setOpenDrawerId}
+              refreshTrigger={drawerRefresh}
             />
           )}
 

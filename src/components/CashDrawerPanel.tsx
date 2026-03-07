@@ -5,7 +5,7 @@
 // src/components/CashDrawerPanel.tsx
 // ============================================================================
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -16,11 +16,18 @@ interface CashDrawerPanelProps {
   eventId?: string;
   mode: 'store' | 'event';
   onDrawerChange: (drawerId: string | null) => void;
+  refreshTrigger?: number;
 }
 
-export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChange }: CashDrawerPanelProps) {
+export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChange, refreshTrigger }: CashDrawerPanelProps) {
   const [drawer, setDrawer] = useState<(CashDrawer & { transactions?: CashDrawerTransaction[] }) | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Track drawer ID via ref so refresh effects can access it without stale closures
+  const drawerIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    drawerIdRef.current = drawer?.id || null;
+  }, [drawer]);
 
   // Modal states
   const [showOpen, setShowOpen] = useState(false);
@@ -38,11 +45,22 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
 
   // ── Fetch open drawer on mount ──────────────────────────────────────────
 
-  const fetchOpenDrawer = useCallback(async () => {
+  const fetchOpenDrawer = useCallback(async (isRetry = false) => {
+    let willRetry = false;
     try {
       const params = new URLSearchParams({ status: 'open' });
       if (eventId) params.set('event_id', eventId);
       const res = await fetch(`/api/cash-drawers?${params}`);
+
+      if (!res.ok) {
+        console.error(`[CashDrawer] Fetch failed: ${res.status}`);
+        if (!isRetry) {
+          willRetry = true;
+          setTimeout(() => fetchOpenDrawer(true), 2000);
+        }
+        return;
+      }
+
       const data = await res.json();
 
       if (Array.isArray(data) && data.length > 0) {
@@ -62,10 +80,17 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
         setDrawer(null);
         onDrawerChange(null);
       }
-    } catch {
-      // Silent fail
+    } catch (err) {
+      console.error('[CashDrawer] Fetch error:', err);
+      if (!isRetry) {
+        willRetry = true;
+        setTimeout(() => fetchOpenDrawer(true), 2000);
+      }
     } finally {
-      setLoading(false);
+      // Keep loading=true while a retry is pending so event auto-prompt doesn't fire prematurely
+      if (!willRetry) {
+        setLoading(false);
+      }
     }
   }, [eventId, onDrawerChange]);
 
@@ -81,17 +106,35 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
     }
   }, [mode, loading, drawer]);
 
+  // ── Refresh drawer data when refreshTrigger changes (e.g. after cash sale) ──
+
+  useEffect(() => {
+    if (refreshTrigger != null && refreshTrigger > 0) {
+      const id = drawerIdRef.current;
+      if (id) {
+        // Drawer is open — fetch detail (includes transactions) so expected balance updates
+        fetchDrawerDetail(id);
+      } else {
+        // No drawer known — re-discover (handles case where initial fetch failed)
+        fetchOpenDrawer();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger]);
+
   // ── Fetch drawer detail (with transactions) ────────────────────────────
 
   const fetchDrawerDetail = useCallback(async (id: string) => {
     try {
       const res = await fetch(`/api/cash-drawers/${id}`);
-      const data = await res.json();
-      if (res.ok) {
-        setDrawer(data);
+      if (!res.ok) {
+        console.error(`[CashDrawer] Detail fetch failed: ${res.status}`);
+        return;
       }
-    } catch {
-      // Silent fail
+      const data = await res.json();
+      setDrawer(data);
+    } catch (err) {
+      console.error('[CashDrawer] Detail fetch error:', err);
     }
   }, []);
 

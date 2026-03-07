@@ -70,6 +70,7 @@ export default function StoreModePage() {
 
   // Cash drawer state
   const [openDrawerId, setOpenDrawerId] = useState<string | null>(null);
+  const [drawerRefresh, setDrawerRefresh] = useState(0);
 
   // Receipt / confirmation
   const [completedSale, setCompletedSale] = useState<CompletedSaleData | null>(null);
@@ -441,20 +442,22 @@ export default function StoreModePage() {
       setTodaySales((p) => ({ count: p.count + 1, total: p.total + cart.total }));
       setCompletedSale(saleData);
 
-      // Auto-log cash sale to open cash drawer
+      // Auto-log cash sale to open cash drawer, then refresh drawer data
       if (effectivePaymentMethod === 'cash' && openDrawerId) {
-        fetch(`/api/cash-drawers/${openDrawerId}/transaction`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'sale', amount: cart.total - cart.tip_amount, saleId }),
-        }).catch(() => {});
-        if (cart.tip_amount > 0) {
+        Promise.all([
           fetch(`/api/cash-drawers/${openDrawerId}/transaction`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'tip', amount: cart.tip_amount, saleId }),
-          }).catch(() => {});
-        }
+            body: JSON.stringify({ type: 'sale', amount: cart.total - cart.tip_amount, saleId }),
+          }),
+          ...(cart.tip_amount > 0 ? [
+            fetch(`/api/cash-drawers/${openDrawerId}/transaction`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ type: 'tip', amount: cart.tip_amount, saleId }),
+            }),
+          ] : []),
+        ]).then(() => setDrawerRefresh((n) => n + 1)).catch(() => {});
       }
 
       cart.reset(); setStep('confirmation'); setShowCart(false);
@@ -578,6 +581,7 @@ export default function StoreModePage() {
             tenantId={tenant.id}
             mode="store"
             onDrawerChange={setOpenDrawerId}
+            refreshTrigger={drawerRefresh}
           />
 
           {/* Sell Gift Card button */}
