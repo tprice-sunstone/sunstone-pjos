@@ -22,12 +22,17 @@ interface CashDrawerPanelProps {
 export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChange, refreshTrigger }: CashDrawerPanelProps) {
   const [drawer, setDrawer] = useState<(CashDrawer & { transactions?: CashDrawerTransaction[] }) | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   // Track drawer ID via ref so refresh effects can access it without stale closures
   const drawerIdRef = useRef<string | null>(null);
   useEffect(() => {
     drawerIdRef.current = drawer?.id || null;
   }, [drawer]);
+
+  // Retry counter ref — caps retries at 2 to prevent infinite loops
+  const retryCountRef = useRef(0);
+  const MAX_RETRIES = 2;
 
   // Modal states
   const [showOpen, setShowOpen] = useState(false);
@@ -45,7 +50,7 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
 
   // ── Fetch open drawer on mount ──────────────────────────────────────────
 
-  const fetchOpenDrawer = useCallback(async (isRetry = false) => {
+  const fetchOpenDrawer = useCallback(async () => {
     let willRetry = false;
     try {
       const params = new URLSearchParams({ status: 'open' });
@@ -53,18 +58,24 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
       const res = await fetch(`/api/cash-drawers?${params}`);
 
       if (!res.ok) {
-        console.error(`[CashDrawer] Fetch failed: ${res.status}`);
-        if (!isRetry) {
+        console.error(`[CashDrawer] Fetch failed: ${res.status} (retry ${retryCountRef.current}/${MAX_RETRIES})`);
+        if (retryCountRef.current < MAX_RETRIES) {
           willRetry = true;
-          setTimeout(() => fetchOpenDrawer(true), 2000);
+          retryCountRef.current += 1;
+          setTimeout(() => fetchOpenDrawer(), 2000);
+        } else {
+          setFetchError(true);
         }
         return;
       }
 
+      // Success — reset retry counter and clear any prior error
+      retryCountRef.current = 0;
+      setFetchError(false);
+
       const data = await res.json();
 
       if (Array.isArray(data) && data.length > 0) {
-        // If in event mode, filter to only event drawers; in store mode, filter to non-event drawers
         const match = eventId
           ? data.find((d: CashDrawer) => d.event_id === eventId)
           : data.find((d: CashDrawer) => !d.event_id);
@@ -81,13 +92,15 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
         onDrawerChange(null);
       }
     } catch (err) {
-      console.error('[CashDrawer] Fetch error:', err);
-      if (!isRetry) {
+      console.error(`[CashDrawer] Fetch error (retry ${retryCountRef.current}/${MAX_RETRIES}):`, err);
+      if (retryCountRef.current < MAX_RETRIES) {
         willRetry = true;
-        setTimeout(() => fetchOpenDrawer(true), 2000);
+        retryCountRef.current += 1;
+        setTimeout(() => fetchOpenDrawer(), 2000);
+      } else {
+        setFetchError(true);
       }
     } finally {
-      // Keep loading=true while a retry is pending so event auto-prompt doesn't fire prematurely
       if (!willRetry) {
         setLoading(false);
       }
@@ -98,13 +111,13 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
     fetchOpenDrawer();
   }, [fetchOpenDrawer]);
 
-  // Auto-prompt in event mode when no drawer is open
+  // Auto-prompt in event mode when no drawer is open (skip if fetch errored)
   useEffect(() => {
-    if (mode === 'event' && !loading && !drawer) {
+    if (mode === 'event' && !loading && !drawer && !fetchError) {
       const timer = setTimeout(() => setShowOpen(true), 1500);
       return () => clearTimeout(timer);
     }
-  }, [mode, loading, drawer]);
+  }, [mode, loading, drawer, fetchError]);
 
   // ── Refresh drawer data when refreshTrigger changes (e.g. after cash sale) ──
 
@@ -115,7 +128,9 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
         // Drawer is open — fetch detail (includes transactions) so expected balance updates
         fetchDrawerDetail(id);
       } else {
-        // No drawer known — re-discover (handles case where initial fetch failed)
+        // No drawer known — re-discover, but reset retry counter first so it gets a fresh attempt
+        retryCountRef.current = 0;
+        setFetchError(false);
         fetchOpenDrawer();
       }
     }
@@ -261,7 +276,13 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
       {/* ── Header Button ────────────────────────────────────────────────── */}
       <button
         onClick={() => {
-          if (drawer) {
+          if (fetchError) {
+            // Retry on click when in error state
+            retryCountRef.current = 0;
+            setFetchError(false);
+            setLoading(true);
+            fetchOpenDrawer();
+          } else if (drawer) {
             fetchDrawerDetail(drawer.id);
             setShowDetail(true);
           } else {
@@ -269,14 +290,17 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
           }
         }}
         className="relative flex items-center justify-center w-10 h-10 rounded-xl transition-colors hover:bg-[var(--surface-subtle)]"
-        title={drawer ? 'Cash Drawer (Open)' : 'Open Cash Drawer'}
+        title={fetchError ? 'Cash Drawer — tap to retry' : drawer ? 'Cash Drawer (Open)' : 'Open Cash Drawer'}
       >
         {/* Cash register icon */}
-        <svg className={`w-5 h-5 ${drawer ? 'text-emerald-600' : 'text-[var(--text-tertiary)]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <svg className={`w-5 h-5 ${fetchError ? 'text-amber-500' : drawer ? 'text-emerald-600' : 'text-[var(--text-tertiary)]'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
         </svg>
-        {drawer && (
+        {drawer && !fetchError && (
           <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500" />
+        )}
+        {fetchError && (
+          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" />
         )}
       </button>
 
