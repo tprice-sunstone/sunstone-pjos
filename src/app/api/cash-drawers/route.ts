@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
   // Check for existing open drawer for this tenant (+ event if provided)
   const existingQuery = supabase
-    .from('cash_drawers')
+    .from('cash_drawer_sessions')
     .select('id')
     .eq('tenant_id', member.tenant_id)
     .eq('status', 'open');
@@ -59,13 +59,13 @@ export async function POST(request: NextRequest) {
   const insertPayload = {
     tenant_id: member.tenant_id,
     event_id: eventId || null,
-    opening_balance: openingBalance,
+    opening_amount: openingBalance,
     opened_by: user.id,
   };
   console.log('[CashDrawer POST] Inserting:', JSON.stringify(insertPayload));
 
   const { data: drawer, error } = await supabase
-    .from('cash_drawers')
+    .from('cash_drawer_sessions')
     .insert(insertPayload)
     .select()
     .single();
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
   const eventId = url.searchParams.get('event_id');
 
   let query = supabase
-    .from('cash_drawers')
+    .from('cash_drawer_sessions')
     .select('*')
     .eq('tenant_id', member.tenant_id)
     .order('opened_at', { ascending: false })

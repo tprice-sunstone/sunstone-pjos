@@ -785,10 +785,10 @@ export interface CashDrawer {
   event_id: string | null;
   opened_at: string;
   closed_at: string | null;
-  opening_balance: number;
-  closing_balance: number | null;
-  expected_balance: number | null;
-  over_short: number | null;
+  opening_amount: number;
+  actual_amount: number | null;
+  expected_amount: number | null;
+  variance: number | null;
   notes: string | null;
   status: CashDrawerStatus;
   opened_by: string | null;
@@ -801,11 +801,11 @@ export interface CashDrawer {
 
 export interface CashDrawerTransaction {
   id: string;
-  cash_drawer_id: string;
+  session_id: string;
+  tenant_id: string;
   sale_id: string | null;
   type: CashDrawerTransactionType;
   amount: number;
-  note: string | null;
+  description: string | null;
   created_at: string;
-  created_by: string | null;
 }

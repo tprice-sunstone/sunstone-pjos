@@ -28,7 +28,7 @@ export async function GET(
   if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
 
   const { data: drawer, error } = await supabase
-    .from('cash_drawers')
+    .from('cash_drawer_sessions')
     .select('*')
     .eq('id', id)
     .eq('tenant_id', member.tenant_id)
@@ -43,7 +43,7 @@ export async function GET(
   const { data: transactions } = await supabase
     .from('cash_drawer_transactions')
     .select('*')
-    .eq('cash_drawer_id', id)
+    .eq('session_id', id)
     .order('created_at', { ascending: true });
 
   return NextResponse.json({ ...drawer, transactions: transactions || [] });
@@ -69,7 +69,7 @@ export async function PATCH(
   if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
 
   const { data: drawer } = await supabase
-    .from('cash_drawers')
+    .from('cash_drawer_sessions')
     .select('*')
     .eq('id', id)
     .eq('tenant_id', member.tenant_id)
@@ -90,10 +90,10 @@ export async function PATCH(
   const { data: transactions } = await supabase
     .from('cash_drawer_transactions')
     .select('type, amount')
-    .eq('cash_drawer_id', id);
+    .eq('session_id', id);
 
   const txns = transactions || [];
-  let cashIn = Number(drawer.opening_balance);
+  let cashIn = Number(drawer.opening_amount);
   for (const txn of txns) {
     const amt = Number(txn.amount);
     if (txn.type === 'sale' || txn.type === 'tip' || txn.type === 'pay_in') {
@@ -111,14 +111,14 @@ export async function PATCH(
   const overShort = Math.round((closingBalance - expectedBalance) * 100) / 100;
 
   const { data: closed, error } = await supabase
-    .from('cash_drawers')
+    .from('cash_drawer_sessions')
     .update({
       status: 'closed',
       closed_at: new Date().toISOString(),
       closed_by: user.id,
-      closing_balance: closingBalance,
-      expected_balance: expectedBalance,
-      over_short: overShort,
+      actual_amount: closingBalance,
+      expected_amount: expectedBalance,
+      variance: overShort,
       notes: notes || null,
     })
     .eq('id', id)

@@ -240,7 +240,7 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
 
   const computeExpected = (): number => {
     if (!drawer) return 0;
-    let balance = Number(drawer.opening_balance);
+    let balance = Number(drawer.opening_amount);
     for (const txn of drawer.transactions || []) {
       const amt = Number(txn.amount);
       if (txn.type === 'sale' || txn.type === 'tip' || txn.type === 'pay_in') {
@@ -368,7 +368,7 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-[var(--surface-subtle)] p-3">
                 <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">Opening</p>
-                <p className="text-lg font-semibold text-[var(--text-primary)]">${Number(drawer?.opening_balance || 0).toFixed(2)}</p>
+                <p className="text-lg font-semibold text-[var(--text-primary)]">${Number(drawer?.opening_amount || 0).toFixed(2)}</p>
               </div>
               <div className="rounded-xl bg-[var(--surface-subtle)] p-3">
                 <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider">Expected</p>
@@ -387,7 +387,7 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
                     <div key={txn.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-[var(--surface-subtle)]">
                       <div>
                         <p className="text-sm font-medium text-[var(--text-primary)]">{txnLabel(txn.type)}</p>
-                        {txn.note && <p className="text-xs text-[var(--text-tertiary)]">{txn.note}</p>}
+                        {txn.description && <p className="text-xs text-[var(--text-tertiary)]">{txn.description}</p>}
                         <p className="text-xs text-[var(--text-tertiary)]">{new Date(txn.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
                       </div>
                       <span className={`text-sm font-medium ${txn.type === 'pay_out' ? 'text-red-600' : 'text-emerald-600'}`}>

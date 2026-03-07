@@ -27,7 +27,7 @@ export async function POST(
 
   // Verify drawer exists, belongs to tenant, and is open
   const { data: drawer } = await supabase
-    .from('cash_drawers')
+    .from('cash_drawer_sessions')
     .select('id, status')
     .eq('id', id)
     .eq('tenant_id', member.tenant_id)
@@ -50,12 +50,12 @@ export async function POST(
   const { data: txn, error } = await supabase
     .from('cash_drawer_transactions')
     .insert({
-      cash_drawer_id: id,
+      session_id: id,
+      tenant_id: member.tenant_id,
       sale_id: saleId || null,
       type,
       amount,
-      note: note || null,
-      created_by: user.id,
+      description: note || null,
     })
     .select()
     .single();

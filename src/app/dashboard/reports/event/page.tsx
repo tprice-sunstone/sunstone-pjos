@@ -363,9 +363,9 @@ function EventPLReportPage() {
         let opening = 0, cdSales = 0, cdTips = 0, payIns = 0, payOuts = 0;
         let counted: number | null = null, overShort: number | null = null;
         for (const d of drawers) {
-          opening += Number(d.opening_balance) || 0;
-          if (d.closing_balance != null) counted = (counted || 0) + Number(d.closing_balance);
-          if (d.over_short != null) overShort = (overShort || 0) + Number(d.over_short);
+          opening += Number(d.opening_amount) || 0;
+          if (d.actual_amount != null) counted = (counted || 0) + Number(d.actual_amount);
+          if (d.variance != null) overShort = (overShort || 0) + Number(d.variance);
           // Fetch transactions for each drawer
           const txnRes = await fetch(`/api/cash-drawers/${d.id}`);
           const detail = await txnRes.json();
