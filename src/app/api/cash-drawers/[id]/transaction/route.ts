@@ -6,7 +6,7 @@
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase/server';
+import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
 
 export async function POST(
   request: NextRequest,
@@ -25,8 +25,11 @@ export async function POST(
     .single();
   if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
 
+  // Use service role to bypass RLS — auth already verified above
+  const db = await createServiceRoleClient();
+
   // Verify drawer exists, belongs to tenant, and is open
-  const { data: drawer } = await supabase
+  const { data: drawer } = await db
     .from('cash_drawer_sessions')
     .select('id, status')
     .eq('id', id)
@@ -47,7 +50,7 @@ export async function POST(
     return NextResponse.json({ error: 'Amount must be greater than 0' }, { status: 400 });
   }
 
-  const { data: txn, error } = await supabase
+  const { data: txn, error } = await db
     .from('cash_drawer_transactions')
     .insert({
       session_id: id,

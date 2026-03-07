@@ -6,11 +6,12 @@
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase/server';
+import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
 
 // ── POST: Open a new cash drawer ────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
+  // Auth check via user session
   const supabase = await createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -29,8 +30,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Opening balance is required and must be >= 0' }, { status: 400 });
   }
 
+  // Use service role to bypass RLS — auth already verified above
+  const db = await createServiceRoleClient();
+
   // Check for existing open drawer for this tenant (+ event if provided)
-  const existingQuery = supabase
+  const existingQuery = db
     .from('cash_drawer_sessions')
     .select('id')
     .eq('tenant_id', member.tenant_id)
@@ -46,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   if (existingError) {
     console.error('[CashDrawer POST] Error checking existing drawers:', JSON.stringify(existingError));
-    // Table may not exist yet — fall through to insert which will give a clearer error
+    return NextResponse.json({ error: existingError.message }, { status: 500 });
   }
 
   if (existing && existing.length > 0) {
@@ -62,9 +66,8 @@ export async function POST(request: NextRequest) {
     opening_amount: openingBalance,
     opened_by: user.id,
   };
-  console.log('[CashDrawer POST] Inserting:', JSON.stringify(insertPayload));
 
-  const { data: drawer, error } = await supabase
+  const { data: drawer, error } = await db
     .from('cash_drawer_sessions')
     .insert(insertPayload)
     .select()
@@ -90,6 +93,7 @@ export async function POST(request: NextRequest) {
 // ── GET: List cash drawers ──────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
+  // Auth check via user session
   const supabase = await createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -102,11 +106,14 @@ export async function GET(request: NextRequest) {
     .single();
   if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
 
+  // Use service role to bypass RLS — auth already verified above
+  const db = await createServiceRoleClient();
+
   const url = new URL(request.url);
   const status = url.searchParams.get('status');
   const eventId = url.searchParams.get('event_id');
 
-  let query = supabase
+  let query = db
     .from('cash_drawer_sessions')
     .select('*')
     .eq('tenant_id', member.tenant_id)

@@ -30,9 +30,16 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
     drawerIdRef.current = drawer?.id || null;
   }, [drawer]);
 
+  // Stable ref for onDrawerChange — prevents useCallback identity churn
+  const onDrawerChangeRef = useRef(onDrawerChange);
+  onDrawerChangeRef.current = onDrawerChange;
+
   // Retry counter ref — caps retries at 2 to prevent infinite loops
   const retryCountRef = useRef(0);
   const MAX_RETRIES = 2;
+
+  // Track whether initial fetch has run (prevents re-running on useCallback identity changes)
+  const hasFetchedRef = useRef(false);
 
   // Modal states
   const [showOpen, setShowOpen] = useState(false);
@@ -82,14 +89,14 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
 
         if (match) {
           setDrawer(match);
-          onDrawerChange(match.id);
+          onDrawerChangeRef.current(match.id);
         } else {
           setDrawer(null);
-          onDrawerChange(null);
+          onDrawerChangeRef.current(null);
         }
       } else {
         setDrawer(null);
-        onDrawerChange(null);
+        onDrawerChangeRef.current(null);
       }
     } catch (err) {
       console.error(`[CashDrawer] Fetch error (retry ${retryCountRef.current}/${MAX_RETRIES}):`, err);
@@ -105,10 +112,14 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
         setLoading(false);
       }
     }
-  }, [eventId, onDrawerChange]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
 
   useEffect(() => {
-    fetchOpenDrawer();
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchOpenDrawer();
+    }
   }, [fetchOpenDrawer]);
 
   // Auto-prompt in event mode when no drawer is open (skip if fetch errored)
@@ -169,7 +180,7 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
       const data = await res.json();
       if (res.ok) {
         setDrawer(data);
-        onDrawerChange(data.id);
+        onDrawerChangeRef.current(data.id);
         setShowOpen(false);
         setOpeningAmount('');
       }
@@ -223,7 +234,7 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
       });
       if (res.ok) {
         setDrawer(null);
-        onDrawerChange(null);
+        onDrawerChangeRef.current(null);
         setShowClose(false);
         setShowDetail(false);
         setClosingAmount('');

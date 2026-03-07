@@ -6,7 +6,7 @@
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase/server';
+import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
 
 // ── GET: Drawer detail with transactions ────────────────────────────────────
 
@@ -27,7 +27,10 @@ export async function GET(
     .single();
   if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
 
-  const { data: drawer, error } = await supabase
+  // Use service role to bypass RLS — auth already verified above
+  const db = await createServiceRoleClient();
+
+  const { data: drawer, error } = await db
     .from('cash_drawer_sessions')
     .select('*')
     .eq('id', id)
@@ -40,7 +43,7 @@ export async function GET(
   }
 
   // Fetch transactions
-  const { data: transactions } = await supabase
+  const { data: transactions } = await db
     .from('cash_drawer_transactions')
     .select('*')
     .eq('session_id', id)
@@ -68,7 +71,10 @@ export async function PATCH(
     .single();
   if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
 
-  const { data: drawer } = await supabase
+  // Use service role to bypass RLS — auth already verified above
+  const db = await createServiceRoleClient();
+
+  const { data: drawer } = await db
     .from('cash_drawer_sessions')
     .select('*')
     .eq('id', id)
@@ -87,7 +93,7 @@ export async function PATCH(
   }
 
   // Fetch all transactions to compute expected balance
-  const { data: transactions } = await supabase
+  const { data: transactions } = await db
     .from('cash_drawer_transactions')
     .select('type, amount')
     .eq('session_id', id);
@@ -110,7 +116,7 @@ export async function PATCH(
   const expectedBalance = Math.round(cashIn * 100) / 100;
   const overShort = Math.round((closingBalance - expectedBalance) * 100) / 100;
 
-  const { data: closed, error } = await supabase
+  const { data: closed, error } = await db
     .from('cash_drawer_sessions')
     .update({
       status: 'closed',
