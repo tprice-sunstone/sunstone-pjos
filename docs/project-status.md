@@ -137,30 +137,41 @@ This is the single source of truth for the Sunstone Studio project. It contains 
 
 ---
 
-## 3. KNOWN BUGS & ACTIVE ISSUES
+## 3. RECENTLY RESOLVED ISSUES
 
 ### Cash Drawer 500 Error ✅ RESOLVED
 - Root cause: PATCH handler referenced 'actual_amount' column instead of 'closing_amount'. One-line fix deployed March 7, 2026.
 - Also fixed 'variance' → 'difference' and removed nonexistent 'closed_by' column
 - React render loop and retry logic fixed in prior commits
 
-### Duplicate Sunstone Supplier
-- Default suppliers list sometimes shows "Sunstone" twice
-- POST handler now checks for duplicates, but existing data may need cleanup per tenant
+### Sunny Assistant Bubble Contrast ✅ RESOLVED
+- Dedicated CSS variables (--mentor-bubble-*) per theme. All 9 themes pass with 12:1+ contrast ratios. March 7, 2026.
 
-### Getting Started Cards
-- Onboarding checklist cards disappeared for one tester
-- May be a caching issue with the refreshGettingStarted function
+### Platform Fee Copy ✅ RESOLVED
+- Removed misleading "$100 sale → you receive $98.50" example. Updated settings page to note standard processing fees apply separately. March 7, 2026.
+
+### SMS Consent Checkbox on Waiver ✅ RESOLVED
+- Waiver page has explicit SMS opt-in checkbox with required carrier language. sms_consent stored in waivers table.
+
+### Duplicate Sunstone Supplier ✅ RESOLVED
+- Cleanup complete.
+
+### Getting Started Cards ✅ RESOLVED
+- Caching issue fixed.
+
+### Landing Page Polish ✅ RESOLVED
+- Screenshots converted to WebP, placeholder logo replaced, analytics added. Testimonials still pending (need real user quotes post-launch).
+
+### Workflow Enrollment Mobile ✅ RESOLVED
+- Was already fixed before this session.
 
 ---
 
 ## 4. EXTERNAL BLOCKERS
 
-### Stripe Account
-- **Status:** API keys rotated and working. Connect OAuth working. CRM checkout working.
-- **Issue:** "Payouts paused" banner still showing — Stripe reviewing after leaked key incident
-- **Action:** Email thread with Lucas at Stripe. Old keys expired. New secret key created and working.
-- **Impact:** Payment links, subscription checkout, CRM checkout all work. Payouts to bank may be delayed.
+### Stripe Account ✅ RESOLVED
+- **Status:** Identity verification complete. Payouts unblocked. All systems operational.
+- **History:** API keys rotated after leaked key incident. Connect OAuth, payment links, subscription checkout, CRM checkout all working.
 
 ### Twilio A2P 10DLC
 - **Status:** Resubmitted with corrected opt-in information
@@ -259,7 +270,7 @@ This is the single source of truth for the Sunstone Studio project. It contains 
 4. **Capacitor shell + app stores** — wrap Next.js in native iOS/Android shell (after Apple/Google accounts + Mac)
 5. **Stripe Terminal + Tap to Pay** — native SDK via Capacitor plugin (after Capacitor shell)
 6. **Push notifications** — queue alerts, low stock, event reminders (after Capacitor)
-7. **Shopify catalog integration** — browse + reorder supplies in-app
+7. **Shopify catalog integration** — ✅ Read-only sync working (Storefront API). Next: upgrade to API with write access for one-touch reorder feature
 8. **Ambassador Program** — paid affiliate program (20% / 8 months). Two ambassador types (artist + external influencer). Stripe Connect Express payouts. See AMBASSADOR_PROGRAM_ROADMAP.md in project knowledge for full spec.
 9. **Predictive reorder intelligence** — sales velocity modeling, depletion forecasts
 10. **Number porting** — Twilio port-in with LOA for artists with existing business numbers
