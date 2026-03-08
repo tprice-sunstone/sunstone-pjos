@@ -21,15 +21,23 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
       });
+      const data = await res.json();
 
-      if (error) {
-        toast.error(error.message);
+      if (!res.ok) {
+        toast.error(data.error || 'Login failed');
         return;
       }
+
+      // Sync client-side auth state with the server session
+      await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
 
       // Redirect through root page which handles admin check
       router.push('/');
