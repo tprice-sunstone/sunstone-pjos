@@ -49,8 +49,14 @@ export async function GET(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const tenantId = request.nextUrl.searchParams.get('tenantId');
-  if (!tenantId) return NextResponse.json({ error: 'tenantId required' }, { status: 400 });
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
 
   // Seed defaults if none exist
   const { data: existing } = await supabase
@@ -80,11 +86,20 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await request.json();
-  const { tenantId, name, trigger_type, trigger_tag, steps } = body;
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
 
-  if (!tenantId || !name || !trigger_type) {
-    return NextResponse.json({ error: 'tenantId, name, and trigger_type required' }, { status: 400 });
+  const body = await request.json();
+  const { name, trigger_type, trigger_tag, steps } = body;
+
+  if (!name || !trigger_type) {
+    return NextResponse.json({ error: 'name and trigger_type required' }, { status: 400 });
   }
 
   // Create workflow
@@ -129,10 +144,28 @@ export async function PATCH(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
+
   const body = await request.json();
   const { id, is_active, name, trigger_type, trigger_tag, steps } = body;
 
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+  // Verify workflow belongs to user's tenant
+  const { data: wf } = await supabase
+    .from('workflow_templates')
+    .select('id')
+    .eq('id', id)
+    .eq('tenant_id', tenantId)
+    .single();
+  if (!wf) return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
 
   // Update workflow fields
   const updates: Record<string, any> = {};
@@ -147,7 +180,8 @@ export async function PATCH(request: NextRequest) {
     const { error } = await supabase
       .from('workflow_templates')
       .update(updates)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('tenant_id', tenantId);
     if (error) return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 
@@ -183,13 +217,23 @@ export async function DELETE(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
+
   const id = request.nextUrl.searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
   const { error } = await supabase
     .from('workflow_templates')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('tenant_id', tenantId);
 
   if (error) return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
 

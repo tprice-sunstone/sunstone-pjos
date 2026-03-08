@@ -10,10 +10,20 @@ export async function GET(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
+
   const { data: broadcast, error } = await supabase
     .from('broadcasts')
     .select('*')
     .eq('id', id)
+    .eq('tenant_id', tenantId)
     .single();
 
   if (error) {
@@ -41,10 +51,20 @@ export async function DELETE(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
+
   const { error } = await supabase
     .from('broadcasts')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('tenant_id', tenantId);
 
   if (error) {
     console.error('Broadcast DELETE error:', error);

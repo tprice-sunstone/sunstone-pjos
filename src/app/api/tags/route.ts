@@ -82,8 +82,14 @@ export async function GET(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const tenantId = request.nextUrl.searchParams.get('tenantId');
-  if (!tenantId) return NextResponse.json({ error: 'tenantId required' }, { status: 400 });
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
 
   // Check if tags exist; if not, seed defaults
   const { data: existing } = await supabase
@@ -144,17 +150,26 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await request.json();
-  const { tenant_id, name, color } = body;
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
 
-  if (!tenant_id || !name) {
-    return NextResponse.json({ error: 'tenant_id and name required' }, { status: 400 });
+  const body = await request.json();
+  const { name, color } = body;
+
+  if (!name) {
+    return NextResponse.json({ error: 'name required' }, { status: 400 });
   }
 
   const { data, error } = await supabase
     .from('client_tags')
     .insert({
-      tenant_id,
+      tenant_id: tenantId,
       name: name.trim(),
       color: color || '#7A8B8C',
     })

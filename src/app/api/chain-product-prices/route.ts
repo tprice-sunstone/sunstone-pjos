@@ -20,16 +20,24 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
+
   const body = await request.json();
-  const { inventory_item_id, tenant_id, prices } = body as {
+  const { inventory_item_id, prices } = body as {
     inventory_item_id: string;
-    tenant_id: string;
     prices: PriceConfig[];
   };
 
-  if (!inventory_item_id || !tenant_id || !Array.isArray(prices)) {
+  if (!inventory_item_id || !Array.isArray(prices)) {
     return NextResponse.json(
-      { error: 'inventory_item_id, tenant_id, and prices array required' },
+      { error: 'inventory_item_id and prices array required' },
       { status: 400 }
     );
   }
@@ -43,7 +51,7 @@ export async function POST(request: NextRequest) {
         {
           inventory_item_id,
           product_type_id: price.product_type_id,
-          tenant_id,
+          tenant_id: tenantId,
           sell_price: price.sell_price,
           default_inches: price.default_inches,
           is_active: price.is_active,

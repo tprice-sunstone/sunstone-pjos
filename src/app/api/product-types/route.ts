@@ -12,8 +12,14 @@ export async function GET(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const tenantId = request.nextUrl.searchParams.get('tenantId');
-  if (!tenantId) return NextResponse.json({ error: 'tenantId required' }, { status: 400 });
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
 
   const { data, error } = await supabase
     .from('product_types')
@@ -30,18 +36,27 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await request.json();
-  const { tenant_id, name, default_inches } = body;
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
 
-  if (!tenant_id || !name || !default_inches) {
-    return NextResponse.json({ error: 'tenant_id, name, and default_inches required' }, { status: 400 });
+  const body = await request.json();
+  const { name, default_inches } = body;
+
+  if (!name || !default_inches) {
+    return NextResponse.json({ error: 'name and default_inches required' }, { status: 400 });
   }
 
   // Get next sort_order
   const { data: existing } = await supabase
     .from('product_types')
     .select('sort_order')
-    .eq('tenant_id', tenant_id)
+    .eq('tenant_id', tenantId)
     .order('sort_order', { ascending: false })
     .limit(1);
 
@@ -50,7 +65,7 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase
     .from('product_types')
     .insert({
-      tenant_id,
+      tenant_id: tenantId,
       name: name.trim(),
       default_inches: Number(default_inches),
       jump_rings_required: body.jump_rings_required ?? 1,

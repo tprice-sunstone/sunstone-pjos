@@ -8,11 +8,20 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await request.json();
-  const { workflowId, tagId, tenantId } = body;
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
 
-  if (!workflowId || !tagId || !tenantId) {
-    return NextResponse.json({ error: 'workflowId, tagId, and tenantId required' }, { status: 400 });
+  const body = await request.json();
+  const { workflowId, tagId } = body;
+
+  if (!workflowId || !tagId) {
+    return NextResponse.json({ error: 'workflowId and tagId required' }, { status: 400 });
   }
 
   // Verify workflow exists and belongs to tenant

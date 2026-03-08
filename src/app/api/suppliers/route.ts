@@ -12,8 +12,14 @@ export async function GET(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const tenantId = request.nextUrl.searchParams.get('tenantId');
-  if (!tenantId) return NextResponse.json({ error: 'tenantId required' }, { status: 400 });
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
 
   const { data, error } = await supabase
     .from('suppliers')
@@ -31,18 +37,27 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await request.json();
-  const { tenant_id, name, contact_name, contact_email, contact_phone, website, notes } = body;
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
 
-  if (!tenant_id || !name) {
-    return NextResponse.json({ error: 'tenant_id and name required' }, { status: 400 });
+  const body = await request.json();
+  const { name, contact_name, contact_email, contact_phone, website, notes } = body;
+
+  if (!name) {
+    return NextResponse.json({ error: 'name required' }, { status: 400 });
   }
 
   // Check for existing supplier with same name to prevent duplicates
   const { data: existing } = await supabase
     .from('suppliers')
     .select('*')
-    .eq('tenant_id', tenant_id)
+    .eq('tenant_id', tenantId)
     .ilike('name', name.trim())
     .limit(1)
     .single();
@@ -51,7 +66,7 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase
     .from('suppliers')
     .insert({
-      tenant_id,
+      tenant_id: tenantId,
       name: name.trim(),
       contact_name: contact_name || null,
       contact_email: contact_email || null,

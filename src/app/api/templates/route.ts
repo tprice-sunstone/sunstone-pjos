@@ -105,8 +105,14 @@ export async function GET(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const tenantId = request.nextUrl.searchParams.get('tenantId');
-  if (!tenantId) return NextResponse.json({ error: 'tenantId required' }, { status: 400 });
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
 
   const channel = request.nextUrl.searchParams.get('channel');
   const category = request.nextUrl.searchParams.get('category');
@@ -144,17 +150,26 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await request.json();
-  const { tenant_id, name, channel, subject, body: templateBody, category } = body;
+  const { data: member } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .single();
+  if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+  const tenantId = member.tenant_id;
 
-  if (!tenant_id || !name || !channel || !templateBody) {
-    return NextResponse.json({ error: 'tenant_id, name, channel, and body are required' }, { status: 400 });
+  const body = await request.json();
+  const { name, channel, subject, body: templateBody, category } = body;
+
+  if (!name || !channel || !templateBody) {
+    return NextResponse.json({ error: 'name, channel, and body are required' }, { status: 400 });
   }
 
   const { data, error } = await supabase
     .from('message_templates')
     .insert({
-      tenant_id,
+      tenant_id: tenantId,
       name: name.trim(),
       channel,
       subject: subject || null,

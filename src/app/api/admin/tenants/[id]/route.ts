@@ -15,10 +15,10 @@ export async function GET(
     const { id } = await params;
     const serviceClient = await createServiceRoleClient();
 
-    // Full tenant record
+    // Full tenant record — explicit column list to avoid leaking future sensitive fields
     const { data: tenant, error } = await serviceClient
       .from('tenants')
-      .select('*')
+      .select('id, name, slug, owner_id, subscription_tier, subscription_status, trial_ends_at, stripe_account_id, stripe_customer_id, is_suspended, suspended_at, suspended_reason, crm_enabled, created_at, updated_at, phone, email, website, dedicated_phone_number, dedicated_phone_sid, platform_fee_percent')
       .eq('id', id)
       .single();
 
