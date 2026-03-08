@@ -260,13 +260,14 @@ This is the single source of truth for the Sunstone Studio project. It contains 
 5. **Stripe Terminal + Tap to Pay** — native SDK via Capacitor plugin (after Capacitor shell)
 6. **Push notifications** — queue alerts, low stock, event reminders (after Capacitor)
 7. **Shopify catalog integration** — browse + reorder supplies in-app
-8. **Predictive reorder intelligence** — sales velocity modeling, depletion forecasts
-9. **Number porting** — Twilio port-in with LOA for artists with existing business numbers
-10. **Multi-location phone numbers** — multiple numbers per tenant for salons
-11. **Private party booking engine** — shareable booking page, RSVP, deposits, host rewards
-12. **Lead capture tools** — VIP signup QR, branded landing page, Instagram bio link
-13. **Offline payments** — store transactions locally, forward when internet restored
-14. **Photo capture + watermark** — take photos of finished jewelry with branding
+8. **Ambassador Program** — paid affiliate program (20% / 8 months). Two ambassador types (artist + external influencer). Stripe Connect Express payouts. See AMBASSADOR_PROGRAM_ROADMAP.md in project knowledge for full spec.
+9. **Predictive reorder intelligence** — sales velocity modeling, depletion forecasts
+10. **Number porting** — Twilio port-in with LOA for artists with existing business numbers
+11. **Multi-location phone numbers** — multiple numbers per tenant for salons
+12. **Private party booking engine** — shareable booking page, RSVP, deposits, host rewards
+13. **Lead capture tools** — VIP signup QR, branded landing page, Instagram bio link
+14. **Offline payments** — store transactions locally, forward when internet restored
+15. **Photo capture + watermark** — take photos of finished jewelry with branding
 
 ---
 
