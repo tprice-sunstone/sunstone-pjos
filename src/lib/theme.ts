@@ -332,6 +332,27 @@ export function applyTheme(theme: ThemeDefinition): void {
     root.style.setProperty('--info-600', '#60A5FA');
   }
 
+  // Mentor assistant bubble colors — explicit per light/dark so they never regress
+  if (theme.mode === 'dark') {
+    root.style.setProperty('--mentor-bubble-bg', 'rgba(255,255,255,0.06)');
+    root.style.setProperty('--mentor-bubble-text', '#e8e8e8');
+    root.style.setProperty('--mentor-bubble-bold', '#f0f0f0');
+    root.style.setProperty('--mentor-bubble-link', '#60A5FA');
+    root.style.setProperty('--mentor-bubble-code-bg', 'rgba(255,255,255,0.1)');
+    root.style.setProperty('--mentor-bubble-border', 'rgba(255,255,255,0.08)');
+    root.style.setProperty('--mentor-bubble-dot', 'rgba(255,255,255,0.4)');
+    root.style.setProperty('--mentor-bubble-status', '#B0B0B0');
+  } else {
+    root.style.setProperty('--mentor-bubble-bg', 'rgba(0,0,0,0.04)');
+    root.style.setProperty('--mentor-bubble-text', '#1a1a1a');
+    root.style.setProperty('--mentor-bubble-bold', '#111111');
+    root.style.setProperty('--mentor-bubble-link', '#2563EB');
+    root.style.setProperty('--mentor-bubble-code-bg', 'rgba(0,0,0,0.06)');
+    root.style.setProperty('--mentor-bubble-border', 'rgba(0,0,0,0.08)');
+    root.style.setProperty('--mentor-bubble-dot', 'rgba(0,0,0,0.3)');
+    root.style.setProperty('--mentor-bubble-status', '#555555');
+  }
+
   // Shadow adjustments for dark themes
   if (theme.mode === 'dark') {
     root.style.setProperty('--shadow-sm', '0 1px 3px 0 rgba(0, 0, 0, 0.25), 0 1px 2px -1px rgba(0, 0, 0, 0.25)');
