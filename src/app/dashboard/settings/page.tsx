@@ -1133,13 +1133,8 @@ function SettingsPage() {
             {feeRate > 0 ? (
               <>
                 <p className="text-sm text-[var(--text-secondary)]">
-                  A {(feeRate * 100).toFixed(1)}% platform fee is deducted from your Stripe payouts. Your customers see a clean checkout with no extra fees &mdash; they pay exactly what you quote.
+                  A {(feeRate * 100).toFixed(1)}% platform fee is deducted from your Stripe payouts. Standard card processing fees from Stripe also apply &mdash; just like any payment processor. Your customers see a clean checkout with no extra fees &mdash; they pay exactly what you quote.
                 </p>
-                <div className="rounded-lg bg-[var(--surface-subtle)] border border-[var(--border-default)] px-4 py-3">
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    Example: $100 sale &rarr; customer pays $100 &rarr; you receive ${(100 - 100 * feeRate).toFixed(2)}
-                  </p>
-                </div>
                 <p className="text-xs text-[var(--text-tertiary)]">
                   {tier === 'starter'
                     ? 'Upgrade to Pro to reduce the fee to 1.5%, or Business to eliminate it entirely.'
