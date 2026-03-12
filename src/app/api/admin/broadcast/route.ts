@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPlatformAdmin, AdminAuthError } from '@/lib/admin/verify-platform-admin';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { sendSMS } from '@/lib/twilio';
 
 interface BroadcastBody {
   channel: 'sms' | 'email';
@@ -119,14 +120,8 @@ export async function POST(request: NextRequest) {
             status: 'sent',
           });
         } else if (payload.channel === 'sms' && owner.phone) {
-          if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) continue;
-          const twilio = require('twilio');
-          const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-          await client.messages.create({
-            body: resolvedBody,
-            from: process.env.TWILIO_PHONE_NUMBER,
-            to: owner.phone,
-          });
+          const sid = await sendSMS({ to: owner.phone, body: resolvedBody });
+          if (!sid) continue;
           sentCount++;
 
           // Log to message_log

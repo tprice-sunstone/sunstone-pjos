@@ -113,11 +113,23 @@ export async function sendSMS(params: {
   const twilio = require('twilio');
   const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
-  const message = await client.messages.create({
+  // Build message params — prefer Messaging Service SID for A2P 10DLC compliance
+  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+  const messageParams: Record<string, string> = {
     body,
-    from,
     to: normalizePhone(to),
-  });
+  };
+
+  if (messagingServiceSid) {
+    messageParams.messagingServiceSid = messagingServiceSid;
+    // Include from number so the recipient sees the tenant's dedicated number
+    if (from) messageParams.from = from;
+  } else {
+    // Fallback for dev/testing without a Messaging Service
+    messageParams.from = from;
+  }
+
+  const message = await client.messages.create(messageParams);
 
   return message.sid || null;
 }
