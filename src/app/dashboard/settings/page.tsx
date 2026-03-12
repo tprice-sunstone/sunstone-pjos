@@ -93,7 +93,7 @@ interface TeamMember {
 }
 
 type PaymentProcessor = 'square' | 'stripe';
-type SectionId = 'business' | 'payments' | 'billing' | 'tax' | 'waiver' | 'team';
+type SectionId = 'business' | 'payments' | 'billing' | 'tax' | 'waiver' | 'team' | 'profile';
 
 // ============================================================================
 // Subscription Helpers
@@ -358,6 +358,20 @@ function SettingsPage() {
   // ── Subscription state ──
   const [subscribing, setSubscribing] = useState(false);
 
+  // ── Profile state ──
+  const [profileEnabled, setProfileEnabled] = useState(false);
+  const [showPricing, setShowPricing] = useState(true);
+  const [showEvents, setShowEvents] = useState(true);
+  const [showPartyBooking, setShowPartyBooking] = useState(true);
+  const [showContact, setShowContact] = useState(true);
+  const [bio, setBio] = useState('');
+  const [city, setCity] = useState('');
+  const [stateName, setStateName] = useState('');
+  const [instagramUrl, setInstagramUrl] = useState('');
+  const [facebookUrl, setFacebookUrl] = useState('');
+  const [tiktokUrl, setTiktokUrl] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+
   // ============================================================================
   // OAuth redirect handling
   // ============================================================================
@@ -447,6 +461,22 @@ function SettingsPage() {
 
     // Load default payment processor
     setDefaultProcessor((tenant as any).default_payment_processor || null);
+
+    // Load profile settings
+    const ps = (tenant as any).profile_settings;
+    if (ps && typeof ps === 'object') {
+      setProfileEnabled(ps.enabled ?? false);
+      setShowPricing(ps.show_pricing ?? true);
+      setShowEvents(ps.show_events ?? true);
+      setShowPartyBooking(ps.show_party_booking ?? true);
+      setShowContact(ps.show_contact ?? true);
+    }
+    setBio((tenant as any).bio || '');
+    setCity((tenant as any).city || '');
+    setStateName((tenant as any).state || '');
+    setInstagramUrl((tenant as any).instagram_url || '');
+    setFacebookUrl((tenant as any).facebook_url || '');
+    setTiktokUrl((tenant as any).tiktok_url || '');
 
     supabase
       .from('tax_profiles')
@@ -1862,6 +1892,172 @@ function SettingsPage() {
           </div>
         </AccordionSection>
       )}
+
+      {/* ================================================================ */}
+      {/* Section 7: Public Profile                                        */}
+      {/* ================================================================ */}
+      <AccordionSection
+        icon={
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+          </svg>
+        }
+        title="Public Profile"
+        summary={profileEnabled ? `sunstonepj.app/studio/${tenant?.slug}` : 'Disabled'}
+        isOpen={openSection === 'profile'}
+        onToggle={() => toggleSection('profile')}
+      >
+        <div className="space-y-5 pt-4">
+          {/* Enable toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-[var(--text-primary)]">Enable Public Profile</p>
+              <p className="text-xs text-[var(--text-tertiary)] mt-0.5">Your Instagram bio link — show visitors who you are and let them book parties.</p>
+            </div>
+            <button
+              onClick={() => setProfileEnabled(!profileEnabled)}
+              className={`relative w-11 h-6 rounded-full transition-colors ${profileEnabled ? 'bg-[var(--accent-primary)]' : 'bg-[var(--border-default)]'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${profileEnabled ? 'translate-x-5' : ''}`} />
+            </button>
+          </div>
+
+          {/* Profile URL (when enabled) */}
+          {profileEnabled && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Your Profile URL</label>
+                <div className="flex gap-2">
+                  <input
+                    readOnly
+                    className="flex-1 px-3 py-2 text-sm border border-[var(--border-default)] rounded-lg bg-[var(--surface-base)] text-[var(--text-secondary)]"
+                    value={`sunstonepj.app/studio/${tenant?.slug}`}
+                  />
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`https://sunstonepj.app/studio/${tenant?.slug}`);
+                      toast.success('Profile URL copied!');
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+
+              {/* Bio */}
+              <Textarea
+                label="Bio"
+                placeholder="Tell visitors about your permanent jewelry business..."
+                rows={3}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+              />
+
+              {/* Location */}
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="City"
+                  placeholder="Salt Lake City"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                />
+                <Input
+                  label="State"
+                  placeholder="UT"
+                  value={stateName}
+                  onChange={(e) => setStateName(e.target.value)}
+                />
+              </div>
+
+              {/* Social URLs */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-[var(--text-primary)]">Social Links</p>
+                <Input
+                  label="Instagram URL"
+                  placeholder="https://instagram.com/yourstudio"
+                  value={instagramUrl}
+                  onChange={(e) => setInstagramUrl(e.target.value)}
+                />
+                <Input
+                  label="Facebook URL"
+                  placeholder="https://facebook.com/yourstudio"
+                  value={facebookUrl}
+                  onChange={(e) => setFacebookUrl(e.target.value)}
+                />
+                <Input
+                  label="TikTok URL"
+                  placeholder="https://tiktok.com/@yourstudio"
+                  value={tiktokUrl}
+                  onChange={(e) => setTiktokUrl(e.target.value)}
+                />
+              </div>
+
+              {/* Section visibility toggles */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-[var(--text-primary)]">Show on Profile</p>
+                {[
+                  { label: 'Pricing (services & prices)', value: showPricing, setter: setShowPricing },
+                  { label: 'Upcoming Events', value: showEvents, setter: setShowEvents },
+                  { label: 'Party Booking Form', value: showPartyBooking, setter: setShowPartyBooking },
+                  { label: 'Contact & Social Links', value: showContact, setter: setShowContact },
+                ].map(({ label, value, setter }) => (
+                  <div key={label} className="flex items-center justify-between py-1">
+                    <span className="text-sm text-[var(--text-secondary)]">{label}</span>
+                    <button
+                      onClick={() => setter(!value)}
+                      className={`relative w-9 h-5 rounded-full transition-colors ${value ? 'bg-[var(--accent-primary)]' : 'bg-[var(--border-default)]'}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${value ? 'translate-x-4' : ''}`} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Save button */}
+          <div className="flex justify-end">
+            <Button
+              variant="primary"
+              loading={savingProfile}
+              onClick={async () => {
+                if (!tenant) return;
+                setSavingProfile(true);
+                try {
+                  const { error } = await supabase
+                    .from('tenants')
+                    .update({
+                      bio: bio || null,
+                      city: city || null,
+                      state: stateName || null,
+                      instagram_url: instagramUrl || null,
+                      facebook_url: facebookUrl || null,
+                      tiktok_url: tiktokUrl || null,
+                      profile_settings: {
+                        enabled: profileEnabled,
+                        show_pricing: showPricing,
+                        show_events: showEvents,
+                        show_party_booking: showPartyBooking,
+                        show_contact: showContact,
+                      },
+                    })
+                    .eq('id', tenant.id);
+                  if (error) throw error;
+                  toast.success('Profile settings saved');
+                  refetch();
+                } catch {
+                  toast.error('Failed to save profile settings');
+                } finally {
+                  setSavingProfile(false);
+                }
+              }}
+            >
+              Save Profile
+            </Button>
+          </div>
+        </div>
+      </AccordionSection>
 
       {/* ================================================================ */}
       {/* Invite Modal                                                     */}

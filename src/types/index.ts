@@ -808,3 +808,54 @@ export interface CashDrawerTransaction {
   description: string | null;
   created_at: string;
 }
+
+// ============================================================================
+// Public Profile & Party Booking
+// ============================================================================
+
+export interface ProfileSettings {
+  enabled: boolean;
+  show_pricing: boolean;
+  show_events: boolean;
+  show_party_booking: boolean;
+  show_contact: boolean;
+}
+
+export type PartyRequestStatus = 'new' | 'contacted' | 'confirmed' | 'completed' | 'cancelled';
+
+export interface PartyRequest {
+  id: string;
+  tenant_id: string;
+  client_id: string | null;
+  status: PartyRequestStatus;
+  host_name: string;
+  host_email: string | null;
+  host_phone: string;
+  preferred_date: string | null;
+  preferred_time: string | null;
+  location: string | null;
+  estimated_guests: number | null;
+  occasion: string | null;
+  message: string | null;
+  notes: string | null;
+  event_id: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  rsvp_count?: number;
+  attending_count?: number;
+}
+
+export interface PartyRsvp {
+  id: string;
+  party_request_id: string;
+  tenant_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  attending: boolean;
+  plus_ones: number;
+  waiver_signed: boolean;
+  waiver_id: string | null;
+  created_at: string;
+}

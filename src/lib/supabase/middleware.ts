@@ -42,6 +42,7 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/privacy') ||
     request.nextUrl.pathname.startsWith('/terms') ||
     request.nextUrl.pathname.startsWith('/sms-consent') ||
+    request.nextUrl.pathname.startsWith('/studio') ||
     request.nextUrl.pathname === '/';
 
   if (!user && !isPublicRoute) {

@@ -396,6 +396,42 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
               ))}
             </div>
 
+            {/* Send Party Booking Link — visible when profile + party booking enabled + client has phone + tenant has dedicated number */}
+            {tenant?.dedicated_phone_number && client.phone && (() => {
+              const ps = (tenant as any).profile_settings;
+              const profileEnabled = ps && typeof ps === 'object' && ps.enabled;
+              const partyEnabled = ps && typeof ps === 'object' && ps.show_party_booking !== false;
+              return profileEnabled && partyEnabled;
+            })() && (
+              <button
+                onClick={async () => {
+                  try {
+                    const url = `${window.location.origin}/studio/${tenant!.slug}#book-party`;
+                    const body = `✨ Book a private permanent jewelry party with us! ${url}`;
+                    const res = await fetch(`/api/conversations/${client.id}/send`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ body }),
+                    });
+                    if (res.ok) {
+                      toast.success('Party booking link sent!');
+                    } else {
+                      toast.error('Failed to send link');
+                    }
+                  } catch {
+                    toast.error('Failed to send link');
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-medium border border-[var(--border-default)] rounded-xl text-[var(--accent-primary)] hover:bg-[var(--accent-50)] transition-colors"
+                style={{ minHeight: 44 }}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.87c1.355 0 2.697.055 4.024.165C17.155 8.51 18 9.473 18 10.608v2.513m-3-4.87v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0L3 16.5m15-3.38a48.474 48.474 0 00-6-.37c-2.032 0-4.034.126-6 .37m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.17c0 .62-.504 1.124-1.125 1.124H4.125A1.125 1.125 0 013 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 016 13.12M12.265 3.11a.375.375 0 11-.53 0L12 2.845l.265.265zm-3 0a.375.375 0 11-.53 0L9 2.845l.265.265zm6 0a.375.375 0 11-.53 0L15 2.845l.265.265z" />
+                </svg>
+                Send Party Booking Link
+              </button>
+            )}
+
             {/* Tag dropdown */}
             {showTagDropdown && (
               <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-2 space-y-0.5">
