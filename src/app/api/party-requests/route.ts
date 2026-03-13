@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 import { normalizePhone, sendSMS } from '@/lib/twilio';
+import { handlePartyStatusChange } from '@/lib/party-templates';
 
 // ── POST: Create a party request (public) ──────────────────────────────────
 
@@ -92,6 +93,11 @@ export async function POST(request: Request) {
       skipConsentCheck: true,
     }).catch(() => {});
   }
+
+  // Fire booking confirmation sequence (fire-and-forget, all tiers)
+  handlePartyStatusChange(partyRequest.id, 'new', tenantId).catch((err) => {
+    console.error('Party booking confirmation error:', err);
+  });
 
   return NextResponse.json({ id: partyRequest.id });
 }

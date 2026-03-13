@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase/server';
+import { handlePartyStatusChange } from '@/lib/party-templates';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -42,6 +43,13 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Fetch current state to detect status changes
+  const { data: current } = await supabase
+    .from('party_requests')
+    .select('status, tenant_id')
+    .eq('id', id)
+    .single();
+
   const body = await request.json();
   const updates: Record<string, any> = {};
 
@@ -71,6 +79,13 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (error) {
     console.error('Party request update failed:', error);
     return NextResponse.json({ error: 'Failed to update' }, { status: 500 });
+  }
+
+  // Fire party sequence on status change (fire-and-forget)
+  if (body.status && current && body.status !== current.status) {
+    handlePartyStatusChange(id, body.status, current.tenant_id).catch((err) => {
+      console.error('Party sequence error:', err);
+    });
   }
 
   return NextResponse.json({ partyRequest: data });

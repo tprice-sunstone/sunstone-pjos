@@ -868,6 +868,22 @@ export interface PartyRequest {
   attending_count?: number;
 }
 
+export type PartyMessageStatus = 'pending' | 'sent' | 'cancelled' | 'failed';
+
+export interface PartyScheduledMessage {
+  id: string;
+  tenant_id: string;
+  party_request_id: string;
+  template_name: string;
+  recipient_phone: string;
+  recipient_name: string | null;
+  message_body: string;
+  scheduled_for: string;
+  sent_at: string | null;
+  status: PartyMessageStatus;
+  created_at: string;
+}
+
 export interface PartyRsvp {
   id: string;
   party_request_id: string;

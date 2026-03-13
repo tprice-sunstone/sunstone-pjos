@@ -379,6 +379,10 @@ function SettingsPage() {
   const [rewardMinSpend, setRewardMinSpend] = useState('0');
   const [savingRewards, setSavingRewards] = useState(false);
 
+  // ── Party auto-reminders state ──
+  const [partyAutoReminders, setPartyAutoReminders] = useState(true);
+  const [savingReminders, setSavingReminders] = useState(false);
+
   // ============================================================================
   // OAuth redirect handling
   // ============================================================================
@@ -492,6 +496,9 @@ function SettingsPage() {
       setRewardPercent(String(prs.reward_percent ?? 10));
       setRewardMinSpend(String(prs.minimum_spend ?? 0));
     }
+
+    // Load party auto-reminders
+    setPartyAutoReminders((tenant as any).party_auto_reminders !== false);
 
     supabase
       .from('tax_profiles')
@@ -2116,6 +2123,56 @@ function SettingsPage() {
                   )}
                 </div>
               )}
+
+              {/* Party Auto-Reminders */}
+              <div className="border-t border-[var(--border-subtle)] pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">Automatic Party Reminders</p>
+                    <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
+                      {getCrmStatus(tenant as any).active
+                        ? 'Send reminders to hosts before their party (1 week, day before, morning of).'
+                        : 'Booking confirmations send on all plans. Upgrade to CRM for full reminder sequences.'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const newVal = !partyAutoReminders;
+                      setPartyAutoReminders(newVal);
+                      setSavingReminders(true);
+                      try {
+                        const { error } = await supabase
+                          .from('tenants')
+                          .update({ party_auto_reminders: newVal })
+                          .eq('id', tenant!.id);
+                        if (error) throw error;
+                        toast.success(newVal ? 'Party reminders enabled' : 'Party reminders disabled');
+                        refetch();
+                      } catch {
+                        setPartyAutoReminders(!newVal);
+                        toast.error('Failed to update');
+                      } finally {
+                        setSavingReminders(false);
+                      }
+                    }}
+                    disabled={savingReminders}
+                    className={`relative w-9 h-5 rounded-full transition-colors ${partyAutoReminders ? 'bg-[var(--accent-primary)]' : 'bg-[var(--border-default)]'}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${partyAutoReminders ? 'translate-x-4' : ''}`} />
+                  </button>
+                </div>
+
+                {/* Link to edit party templates */}
+                <a
+                  href="/dashboard/broadcasts?tab=templates&category=party"
+                  className="flex items-center gap-2 text-sm text-[var(--accent-primary)] hover:underline"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                  </svg>
+                  Customize party message templates
+                </a>
+              </div>
             </>
           )}
 

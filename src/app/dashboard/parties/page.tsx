@@ -68,7 +68,24 @@ export default function PartiesPage() {
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [revenueLoading, setRevenueLoading] = useState(false);
   const [redeemingReward, setRedeemingReward] = useState(false);
-  const [detailTab, setDetailTab] = useState<'details' | 'revenue'>('details');
+  const [detailTab, setDetailTab] = useState<'details' | 'revenue' | 'messages'>('details');
+
+  // Messages state
+  interface PartyMessage {
+    id: string;
+    template_name: string;
+    recipient_name: string | null;
+    message_body: string;
+    scheduled_for: string;
+    sent_at: string | null;
+    status: 'pending' | 'sent' | 'cancelled' | 'failed';
+    created_at: string;
+  }
+  const [messages, setMessages] = useState<PartyMessage[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [customMessage, setCustomMessage] = useState('');
+  const [sendingCustom, setSendingCustom] = useState(false);
+  const [cancellingMsgId, setCancellingMsgId] = useState<string | null>(null);
 
   const crmStatus = getCrmStatus(tenant as any);
   const crmActive = crmStatus.active;
@@ -115,6 +132,26 @@ export default function PartiesPage() {
       setTopProducts([]);
     }
   }, [selectedId, requests]);
+
+  // Load messages when switching to messages tab
+  const fetchMessages = useCallback(async (partyId: string) => {
+    setMessagesLoading(true);
+    try {
+      const res = await fetch(`/api/party-messages?partyRequestId=${partyId}`);
+      if (res.ok) {
+        const d = await res.json();
+        setMessages(d.messages || []);
+      }
+    } catch { /* */ }
+    finally { setMessagesLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId || detailTab !== 'messages') return;
+    fetchMessages(selectedId);
+    // Also trigger processor to send any due messages (fire-and-forget)
+    fetch('/api/party-messages/process', { method: 'POST' }).catch(() => {});
+  }, [selectedId, detailTab, fetchMessages]);
 
   // Load revenue when switching to revenue tab
   useEffect(() => {
@@ -175,6 +212,47 @@ export default function PartiesPage() {
     const url = `${window.location.origin}/studio/${tenant?.slug}/party/${id}`;
     navigator.clipboard.writeText(url);
     toast.success('RSVP link copied!');
+  };
+
+  // ── Messages actions ───────────────────────────────────────────────────
+
+  const handleSendCustomMessage = async () => {
+    if (!selectedId || !customMessage.trim()) return;
+    setSendingCustom(true);
+    try {
+      const res = await fetch('/api/party-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ partyRequestId: selectedId, message: customMessage.trim() }),
+      });
+      if (!res.ok) throw new Error('Send failed');
+      setCustomMessage('');
+      toast.success('Message sent!');
+      fetchMessages(selectedId);
+    } catch {
+      toast.error('Failed to send message');
+    } finally {
+      setSendingCustom(false);
+    }
+  };
+
+  const handleCancelMessage = async (msgId: string) => {
+    setCancellingMsgId(msgId);
+    try {
+      const res = await fetch(`/api/party-messages/${msgId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' }),
+      });
+      if (res.ok) {
+        setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, status: 'cancelled' as const } : m));
+        toast.success('Message cancelled');
+      }
+    } catch {
+      toast.error('Failed to cancel message');
+    } finally {
+      setCancellingMsgId(null);
+    }
   };
 
   // ── CRM-gated actions ─────────────────────────────────────────────────
@@ -401,17 +479,25 @@ export default function PartiesPage() {
                 </button>
               </div>
 
-              {/* Detail tabs (CRM-gated revenue tab) */}
-              {crmActive && (
-                <div className="flex gap-1 bg-[var(--surface-subtle)] rounded-lg p-0.5">
-                  <button
-                    onClick={() => setDetailTab('details')}
-                    className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                      detailTab === 'details' ? 'bg-[var(--surface-raised)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)]'
-                    }`}
-                  >
-                    Details
-                  </button>
+              {/* Detail tabs */}
+              <div className="flex gap-1 bg-[var(--surface-subtle)] rounded-lg p-0.5">
+                <button
+                  onClick={() => setDetailTab('details')}
+                  className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    detailTab === 'details' ? 'bg-[var(--surface-raised)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)]'
+                  }`}
+                >
+                  Details
+                </button>
+                <button
+                  onClick={() => setDetailTab('messages')}
+                  className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    detailTab === 'messages' ? 'bg-[var(--surface-raised)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)]'
+                  }`}
+                >
+                  Messages
+                </button>
+                {crmActive && (
                   <button
                     onClick={() => setDetailTab('revenue')}
                     className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${
@@ -420,8 +506,8 @@ export default function PartiesPage() {
                   >
                     Revenue
                   </button>
-                </div>
-              )}
+                )}
+              </div>
 
               {detailTab === 'details' ? (
                 <>
@@ -737,6 +823,89 @@ export default function PartiesPage() {
                     Create Event from this Party →
                   </a>
                 </>
+              ) : detailTab === 'messages' ? (
+                /* ── Messages Tab ─────────────────────────────────────── */
+                <div className="space-y-4">
+                  {messagesLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="w-6 h-6 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="text-center py-8 space-y-2">
+                      <p className="text-sm text-[var(--text-secondary)]">No messages yet</p>
+                      <p className="text-xs text-[var(--text-tertiary)]">
+                        Messages will appear here as they&apos;re sent automatically or manually.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {messages.map((msg) => {
+                        const isSent = msg.status === 'sent';
+                        const isPending = msg.status === 'pending';
+                        const isCancelled = msg.status === 'cancelled';
+                        const isFailed = msg.status === 'failed';
+                        const time = msg.sent_at || msg.scheduled_for;
+                        const timeLabel = isSent ? 'Sent' : isPending ? 'Scheduled' : isCancelled ? 'Cancelled' : 'Failed';
+                        const timeColor = isSent ? 'text-green-600' : isPending ? 'text-blue-600' : isCancelled ? 'text-[var(--text-tertiary)]' : 'text-red-500';
+
+                        return (
+                          <div
+                            key={msg.id}
+                            className={`px-3 py-2.5 rounded-lg border text-sm ${
+                              isCancelled ? 'bg-gray-50 border-gray-200 opacity-60' : 'bg-[var(--surface-subtle)] border-[var(--border-default)]'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+                                {msg.template_name}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-medium ${timeColor}`}>{timeLabel}</span>
+                                {isPending && (
+                                  <button
+                                    onClick={() => handleCancelMessage(msg.id)}
+                                    disabled={cancellingMsgId === msg.id}
+                                    className="text-[10px] text-red-400 hover:text-red-600 transition-colors"
+                                  >
+                                    {cancellingMsgId === msg.id ? '...' : 'Cancel'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <p className={`text-xs leading-relaxed ${isCancelled ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}`}>
+                              {msg.message_body.length > 200 ? msg.message_body.slice(0, 200) + '...' : msg.message_body}
+                            </p>
+                            <p className="text-[10px] text-[var(--text-tertiary)] mt-1">
+                              {new Date(time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Send custom message */}
+                  <div className="border-t border-[var(--border-subtle)] pt-3">
+                    <label className="block text-xs font-medium text-[var(--text-tertiary)] mb-1">Send Custom Message</label>
+                    <Textarea
+                      rows={2}
+                      placeholder={`Message to ${selected.host_name}...`}
+                      value={customMessage}
+                      onChange={(e) => setCustomMessage(e.target.value)}
+                    />
+                    <div className="flex justify-end mt-2">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleSendCustomMessage}
+                        loading={sendingCustom}
+                        disabled={!customMessage.trim()}
+                      >
+                        Send
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 /* ── Revenue Tab ──────────────────────────────────────── */
                 <div className="space-y-4">
