@@ -519,7 +519,7 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
                     const res = await fetch(`/api/conversations/${client.id}/send`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ body }),
+                      body: JSON.stringify({ message: body }),
                     });
                     if (res.ok) {
                       toast.success('Party booking link sent!');
