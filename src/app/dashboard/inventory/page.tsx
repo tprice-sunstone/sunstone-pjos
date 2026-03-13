@@ -13,7 +13,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/hooks/use-tenant';
 import { toast } from 'sonner';
@@ -72,8 +72,16 @@ export default function InventoryPage() {
   const [showProductTypesPrompt, setShowProductTypesPrompt] = useState(false);
   const [hasProductTypes, setHasProductTypes] = useState<boolean | null>(null);
 
+  // Scroll position preservation across modal open/close
+  const savedScrollRef = useRef<number>(0);
+
   // â”€â”€â”€ Load Inventory â”€â”€â”€
-  const loadItems = useCallback(async () => {
+  // Helper: find the scrollable main container (dashboard layout's <main>)
+  const getScrollContainer = useCallback(() => {
+    return document.querySelector('main.overflow-y-auto') as HTMLElement | null;
+  }, []);
+
+  const loadItems = useCallback(async (restoreScroll = false) => {
     if (!tenant) return;
     setLoading(true);
 
@@ -95,7 +103,18 @@ export default function InventoryPage() {
       setItems(data || []);
     }
     setLoading(false);
-  }, [tenant, showInactive, supabase]);
+
+    // Restore scroll position after the DOM re-renders with new data
+    if (restoreScroll && savedScrollRef.current > 0) {
+      requestAnimationFrame(() => {
+        const container = getScrollContainer();
+        if (container) {
+          container.scrollTop = savedScrollRef.current;
+        }
+        savedScrollRef.current = 0;
+      });
+    }
+  }, [tenant, showInactive, supabase, getScrollContainer]);
 
   useEffect(() => {
     loadItems();
@@ -349,6 +368,8 @@ export default function InventoryPage() {
                   !item.is_active ? 'opacity-50' : ''
                 }`}
                 onClick={() => {
+                  const container = getScrollContainer();
+                  if (container) savedScrollRef.current = container.scrollTop;
                   setEditingItem(item);
                   setShowForm(true);
                 }}
@@ -528,11 +549,19 @@ export default function InventoryPage() {
           onClose={() => {
             setShowForm(false);
             setEditingItem(null);
+            // Restore scroll position on cancel/close (no refetch needed)
+            requestAnimationFrame(() => {
+              const container = getScrollContainer();
+              if (container && savedScrollRef.current > 0) {
+                container.scrollTop = savedScrollRef.current;
+                savedScrollRef.current = 0;
+              }
+            });
           }}
           onSaved={() => {
             setShowForm(false);
             setEditingItem(null);
-            loadItems();
+            loadItems(true);
           }}
           onDelete={async (item) => {
             const deleted = await handleDelete(item);
