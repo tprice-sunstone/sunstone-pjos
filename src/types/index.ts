@@ -19,6 +19,9 @@ export type SaleStatus = 'draft' | 'completed' | 'voided';
 export type RefundStatus = 'none' | 'partial' | 'full';
 export type PricingMode = 'per_product' | 'per_inch';
 export type TenantPricingMode = 'flat' | 'per_product' | 'tier';
+export type WarrantyStatus = 'active' | 'claimed' | 'expired' | 'voided';
+export type WarrantyScope = 'per_item' | 'per_invoice';
+export type WarrantyClaimStatus = 'submitted' | 'in_progress' | 'completed' | 'denied';
 
 // Re-export Permission from the canonical source
 export type { Permission, TenantRole as PermissionRole } from '@/lib/permissions';
@@ -90,6 +93,13 @@ export interface Tenant {
   sunny_tone_custom: string | null;
   // Pricing
   pricing_mode: TenantPricingMode;
+  // Warranty
+  warranty_enabled: boolean;
+  warranty_per_item_default: number;
+  warranty_per_invoice_default: number;
+  warranty_taxable: boolean;
+  warranty_coverage_terms: string | null;
+  warranty_duration_days: number | null;
   // Receipts
   auto_email_receipt: boolean;
   auto_sms_receipt: boolean;
@@ -280,6 +290,7 @@ export interface Sale {
   stripe_checkout_session_id: string | null;
   stripe_payment_intent_id: string | null;
   platform_fee_collected: number;
+  warranty_amount: number;
   status: SaleStatus;
   receipt_email: string | null;
   receipt_phone: string | null;
@@ -304,6 +315,7 @@ export interface SaleItem {
   discount_type: 'flat' | 'percentage' | null;
   discount_value: number;
   line_total: number;
+  warranty_amount: number;
   // Chain product fields
   product_type_id: string | null;
   chain_inches: number | null;
@@ -601,6 +613,7 @@ export interface CartItem {
   unit_price: number;
   discount_type: 'flat' | 'percentage' | null;
   discount_value: number;
+  warranty_amount: number;
   line_total: number;
   // Chain product fields
   product_type_id?: string | null;
@@ -618,6 +631,7 @@ export interface CartState {
   items: CartItem[];
   subtotal: number;
   discount_amount: number;
+  warranty_amount: number;
   tax_rate: number;
   tax_amount: number;
   tip_amount: number;
@@ -845,6 +859,43 @@ export interface CashDrawerTransaction {
   amount: number;
   description: string | null;
   created_at: string;
+}
+
+// ============================================================================
+// Warranties
+// ============================================================================
+
+export interface Warranty {
+  id: string;
+  tenant_id: string;
+  sale_id: string;
+  sale_item_id: string | null;
+  client_id: string | null;
+  scope: WarrantyScope;
+  amount: number;
+  coverage_terms: string | null;
+  status: WarrantyStatus;
+  purchased_at: string;
+  expires_at: string | null;
+  photo_url: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WarrantyClaim {
+  id: string;
+  warranty_id: string;
+  tenant_id: string;
+  claim_date: string;
+  description: string;
+  repair_details: string | null;
+  status: WarrantyClaimStatus;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // ============================================================================

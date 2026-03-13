@@ -24,6 +24,7 @@ import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
 import JumpRingPickerModal from '@/components/JumpRingPickerModal';
 import CashDrawerPanel from '@/components/CashDrawerPanel';
+import { createWarrantyRecords } from '@/lib/warranty';
 import { ProductSelector, QueueBadge, CheckoutFlow, PendingPayments, GiftCardModal } from '@/components/pos';
 import type { CompletedSaleData, CheckoutStep, GiftCardData } from '@/components/pos';
 import type { QueueEntry } from '@/components/MiniQueueStrip';
@@ -243,6 +244,7 @@ function EventModePageInner() {
 
       cart.setPlatformFeeRate(PLATFORM_FEE_RATES[tenant.subscription_tier]);
       cart.setFeeHandling(tenant.fee_handling);
+      cart.setWarrantyTaxable((tenant as any).warranty_taxable !== false);
 
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const { data: sales } = await supabase
@@ -364,6 +366,21 @@ function EventModePageInner() {
         p_queue_entry_id: activeQueueEntry?.id || null,
       });
       if (rpcError) throw rpcError;
+
+      // Create warranty records if applicable
+      if (saleId && cart.warranty_amount > 0) {
+        await createWarrantyRecords({
+          supabase,
+          saleId,
+          tenantId: tenant.id,
+          clientId: clientId || null,
+          cartItems: cart.items,
+          cartWarrantyAmount: cart._cartWarrantyAmount || 0,
+          coverageTerms: (tenant as any).warranty_coverage_terms || null,
+          durationDays: (tenant as any).warranty_duration_days ?? null,
+        });
+      }
+
       return saleId || null;
     } catch (err: any) {
       toast.error(err?.message || 'Failed to create sale');
@@ -536,6 +553,20 @@ function EventModePageInner() {
       });
       if (rpcError) throw rpcError;
       if (!saleId) throw new Error('Failed to create sale');
+
+      // Create warranty records if applicable
+      if (cart.warranty_amount > 0) {
+        await createWarrantyRecords({
+          supabase,
+          saleId,
+          tenantId: tenant.id,
+          clientId: clientId || null,
+          cartItems: cart.items,
+          cartWarrantyAmount: cart._cartWarrantyAmount || 0,
+          coverageTerms: (tenant as any).warranty_coverage_terms || null,
+          durationDays: (tenant as any).warranty_duration_days ?? null,
+        });
+      }
 
       // Redeem gift card if applied
       if (giftCardData) {

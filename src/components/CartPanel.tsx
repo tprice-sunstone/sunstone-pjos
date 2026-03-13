@@ -37,6 +37,16 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
   const [cartDiscountType, setCartDiscountType] = useState<'flat' | 'percentage'>('flat');
   const [cartDiscountInput, setCartDiscountInput] = useState('');
 
+  // Per-item warranty state
+  const [warrantyItemId, setWarrantyItemId] = useState<string | null>(null);
+  const [warrantyInput, setWarrantyInput] = useState('');
+
+  // Cart-level (per-invoice) warranty state
+  const [showCartWarranty, setShowCartWarranty] = useState(false);
+  const [cartWarrantyInput, setCartWarrantyInput] = useState('');
+
+  const warrantyEnabled = tenant?.warranty_enabled === true;
+
   const applyItemDiscount = (itemId: string) => {
     const value = Number(discountInput);
     if (!value || value <= 0) {
@@ -70,7 +80,41 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
     setShowCartDiscount(false);
   };
 
+  const applyItemWarranty = (itemId: string) => {
+    const value = Number(warrantyInput);
+    if (!value || value <= 0) {
+      cart.removeItemWarranty(itemId);
+    } else {
+      cart.setItemWarranty(itemId, value);
+    }
+    setWarrantyItemId(null);
+    setWarrantyInput('');
+  };
+
+  const clearItemWarranty = (itemId: string) => {
+    cart.removeItemWarranty(itemId);
+    setWarrantyItemId(null);
+    setWarrantyInput('');
+  };
+
+  const applyCartWarranty = () => {
+    const value = Number(cartWarrantyInput);
+    if (!value || value <= 0) {
+      cart.removeCartWarranty();
+    } else {
+      cart.setCartWarranty(value);
+    }
+    setShowCartWarranty(false);
+  };
+
+  const clearCartWarranty = () => {
+    cart.removeCartWarranty();
+    setCartWarrantyInput('');
+    setShowCartWarranty(false);
+  };
+
   const hasCartDiscount = cart._cartDiscountType && cart._cartDiscountValue > 0;
+  const hasCartWarranty = (cart._cartWarrantyAmount || 0) > 0;
 
   return (
     <>
@@ -139,6 +183,29 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                       </svg>
                     </button>
                   )}
+                  {/* Warranty toggle */}
+                  {warrantyEnabled && (
+                    <button
+                      onClick={() => {
+                        if (warrantyItemId === item.id) {
+                          setWarrantyItemId(null);
+                        } else {
+                          setWarrantyItemId(item.id);
+                          setWarrantyInput(item.warranty_amount > 0 ? item.warranty_amount.toString() : String(tenant?.warranty_per_item_default || ''));
+                        }
+                      }}
+                      className={`p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg transition-colors ${
+                        item.warranty_amount > 0
+                          ? 'text-[var(--accent-primary)] bg-[var(--accent-50)] hover:bg-[var(--accent-100)]'
+                          : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] opacity-0 group-hover:opacity-100'
+                      }`}
+                      title="Item warranty"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                      </svg>
+                    </button>
+                  )}
                   <button
                     onClick={() => cart.removeItem(item.id)}
                     className="text-[var(--text-tertiary)] hover:text-error-500 transition-colors p-1.5 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg hover:bg-error-50 opacity-0 group-hover:opacity-100"
@@ -149,6 +216,19 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                   </button>
                 </div>
               </div>
+
+              {/* Warranty sub-line */}
+              {item.warranty_amount > 0 && (
+                <div className="mx-5 mb-1 flex items-center justify-between text-xs text-[var(--accent-primary)]">
+                  <span className="flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                    </svg>
+                    Warranty
+                  </span>
+                  <span>${item.warranty_amount.toFixed(2)}</span>
+                </div>
+              )}
 
               {/* Inline item discount editor */}
               {canDiscount && discountItemId === item.id && (
@@ -199,6 +279,51 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
                     {item.discount_type && item.discount_value > 0 && (
                       <button
                         onClick={() => clearItemDiscount(item.id)}
+                        className="h-9 px-2 rounded-lg text-error-500 hover:bg-error-50 text-xs font-medium transition-colors"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Inline item warranty editor */}
+              {warrantyEnabled && warrantyItemId === item.id && (
+                <div className="mx-5 mb-2 p-3 bg-[var(--surface-raised)] rounded-xl border border-[var(--accent-subtle)] space-y-2">
+                  <div className="text-xs font-medium text-[var(--accent-primary)] flex items-center gap-1 mb-1">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                    </svg>
+                    Warranty Protection
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-tertiary)]">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={warrantyInput}
+                        onChange={(e) => setWarrantyInput(e.target.value)}
+                        className="w-full h-9 pl-7 pr-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-subtle)]"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') applyItemWarranty(item.id);
+                          if (e.key === 'Escape') setWarrantyItemId(null);
+                        }}
+                      />
+                    </div>
+                    <button
+                      onClick={() => applyItemWarranty(item.id)}
+                      className="h-9 px-3 rounded-lg text-xs font-medium transition-colors" style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
+                    >
+                      Apply
+                    </button>
+                    {item.warranty_amount > 0 && (
+                      <button
+                        onClick={() => clearItemWarranty(item.id)}
                         className="h-9 px-2 rounded-lg text-error-500 hover:bg-error-50 text-xs font-medium transition-colors"
                       >
                         Clear
@@ -325,6 +450,107 @@ export default function CartPanel({ cart, step, setStep, tenant }: {
             <span className="">-${cart.discount_amount.toFixed(2)}</span>
           </div>
         )}
+
+        {/* Per-invoice warranty controls */}
+        {cart.items.length > 0 && warrantyEnabled && (
+          <div>
+            {hasCartWarranty ? (
+              <div className="flex items-center justify-between text-[var(--accent-primary)]">
+                <button
+                  onClick={() => {
+                    setShowCartWarranty(true);
+                    setCartWarrantyInput(cart._cartWarrantyAmount.toString());
+                  }}
+                  className="text-xs underline hover:no-underline font-medium flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                  </svg>
+                  Warranty Protection
+                </button>
+                <span>${cart._cartWarrantyAmount.toFixed(2)}</span>
+              </div>
+            ) : !showCartWarranty ? (
+              <button
+                onClick={() => {
+                  setShowCartWarranty(true);
+                  setCartWarrantyInput(String(tenant?.warranty_per_invoice_default || ''));
+                }}
+                className="text-xs text-[var(--text-tertiary)] hover:text-[var(--accent-primary)] font-medium transition-colors flex items-center gap-1"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                </svg>
+                + Add warranty
+              </button>
+            ) : null}
+
+            {/* Cart warranty editor */}
+            {showCartWarranty && (
+              <div className="mt-2 p-3 bg-[var(--surface-raised)] rounded-xl border border-[var(--accent-subtle)] space-y-2">
+                <div className="text-xs font-medium text-[var(--accent-primary)] flex items-center gap-1 mb-1">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                  </svg>
+                  Invoice Warranty Protection
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-tertiary)]">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={cartWarrantyInput}
+                      onChange={(e) => setCartWarrantyInput(e.target.value)}
+                      className="w-full h-9 pl-7 pr-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-primary)] text-sm focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-subtle)]"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') applyCartWarranty();
+                        if (e.key === 'Escape') setShowCartWarranty(false);
+                      }}
+                    />
+                  </div>
+                  <button
+                    onClick={applyCartWarranty}
+                    className="h-9 px-3 rounded-lg text-xs font-medium transition-colors" style={{ backgroundColor: 'var(--accent-primary)', color: 'white' }}
+                  >
+                    Apply
+                  </button>
+                  {hasCartWarranty && (
+                    <button
+                      onClick={clearCartWarranty}
+                      className="h-9 px-2 rounded-lg text-error-500 hover:bg-error-50 text-xs font-medium transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowCartWarranty(false)}
+                    className="h-9 px-2 rounded-lg text-[var(--text-tertiary)] hover:bg-[var(--surface-subtle)] transition-colors flex items-center justify-center"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Warranty total (item warranties only — shows when per-item warranties exist but no cart warranty) */}
+        {cart.warranty_amount > 0 && !hasCartWarranty && (
+          <div className="flex justify-between text-[var(--accent-primary)]">
+            <span className="flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+              </svg>
+              Warranty
+            </span>
+            <span>${cart.warranty_amount.toFixed(2)}</span>
+          </div>
+        )}
+
         {cart.tax_amount > 0 && (
           <div className="flex justify-between text-[var(--text-tertiary)]">
             <span>Tax ({(cart.tax_rate * 100).toFixed(1)}%)</span>

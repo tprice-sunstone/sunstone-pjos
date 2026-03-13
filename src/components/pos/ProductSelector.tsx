@@ -13,7 +13,7 @@ export interface ProductSelectorProps {
   inventory: InventoryItem[];
   productTypes: ProductType[];
   chainPrices: ChainProductPrice[];
-  onAddToCart: (item: Omit<CartItem, 'id' | 'line_total'>) => void;
+  onAddToCart: (item: Omit<CartItem, 'id' | 'line_total' | 'warranty_amount'> & { warranty_amount?: number }) => void;
   mode: 'store' | 'event';
   tenantPricingMode?: string;
   pricingTiers?: { id: string; name: string }[];

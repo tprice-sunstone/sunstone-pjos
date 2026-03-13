@@ -94,7 +94,7 @@ interface TeamMember {
 }
 
 type PaymentProcessor = 'square' | 'stripe';
-type SectionId = 'business' | 'communications' | 'pricing' | 'payments' | 'billing' | 'tax' | 'waiver' | 'team' | 'profile';
+type SectionId = 'business' | 'communications' | 'pricing' | 'warranty' | 'payments' | 'billing' | 'tax' | 'waiver' | 'team' | 'profile';
 
 // ============================================================================
 // Subscription Helpers
@@ -218,6 +218,12 @@ const IconCommunications = (
 const IconPricing = (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const IconWarranty = (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
   </svg>
 );
 
@@ -400,6 +406,16 @@ function SettingsPage() {
   const [partyGuestSequences, setPartyGuestSequences] = useState(true);
   const [savingGuestSeq, setSavingGuestSeq] = useState(false);
 
+  // ── Warranty state ──
+  const [warrantyEnabled, setWarrantyEnabled] = useState(false);
+  const [warrantyPerItem, setWarrantyPerItem] = useState('0');
+  const [warrantyPerInvoice, setWarrantyPerInvoice] = useState('0');
+  const [warrantyTaxable, setWarrantyTaxable] = useState(true);
+  const [warrantyCoverageTerms, setWarrantyCoverageTerms] = useState('This warranty covers repairs and replacements for your permanent jewelry. Contact your artist to file a claim. Coverage is subject to the terms provided at the time of purchase.');
+  const [warrantyDuration, setWarrantyDuration] = useState<string>('lifetime');
+  const [warrantyCustomDays, setWarrantyCustomDays] = useState('');
+  const [savingWarranty, setSavingWarranty] = useState(false);
+
   // ============================================================================
   // OAuth redirect handling
   // ============================================================================
@@ -518,6 +534,26 @@ function SettingsPage() {
     // Load party auto-reminders
     setPartyAutoReminders((tenant as any).party_auto_reminders !== false);
     setPartyGuestSequences((tenant as any).party_guest_sequences !== false);
+
+    // Load warranty settings
+    setWarrantyEnabled((tenant as any).warranty_enabled ?? false);
+    setWarrantyPerItem(String((tenant as any).warranty_per_item_default ?? 0));
+    setWarrantyPerInvoice(String((tenant as any).warranty_per_invoice_default ?? 0));
+    setWarrantyTaxable((tenant as any).warranty_taxable !== false);
+    setWarrantyCoverageTerms((tenant as any).warranty_coverage_terms || 'This warranty covers repairs and replacements for your permanent jewelry. Contact your artist to file a claim. Coverage is subject to the terms provided at the time of purchase.');
+    const durationDays = (tenant as any).warranty_duration_days;
+    if (durationDays === null || durationDays === undefined) {
+      setWarrantyDuration('lifetime');
+    } else if (durationDays === 180) {
+      setWarrantyDuration('180');
+    } else if (durationDays === 365) {
+      setWarrantyDuration('365');
+    } else if (durationDays === 730) {
+      setWarrantyDuration('730');
+    } else {
+      setWarrantyDuration('custom');
+      setWarrantyCustomDays(String(durationDays));
+    }
 
     supabase
       .from('tax_profiles')
@@ -1165,6 +1201,169 @@ function SettingsPage() {
       >
         <div className="space-y-5 pt-4">
           <PricingTiersSection tenant={tenant} onSaved={refetch} />
+        </div>
+      </AccordionSection>
+
+      {/* ================================================================ */}
+      {/* Section 1d: Warranty Protection                                   */}
+      {/* ================================================================ */}
+      <AccordionSection
+        icon={IconWarranty}
+        title="Warranty Protection"
+        summary={warrantyEnabled ? 'Enabled' : 'Disabled'}
+        isOpen={openSection === 'warranty'}
+        onToggle={() => toggleSection('warranty')}
+      >
+        <div className="space-y-5 pt-4">
+          {/* Enable toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-[var(--text-primary)]">Enable Warranty Protection</p>
+              <p className="text-xs text-[var(--text-tertiary)] mt-0.5">Offer warranty protection on permanent jewelry in the POS</p>
+            </div>
+            <button
+              onClick={async () => {
+                const newVal = !warrantyEnabled;
+                setWarrantyEnabled(newVal);
+                await supabase.from('tenants').update({ warranty_enabled: newVal }).eq('id', tenant!.id);
+                toast.success(newVal ? 'Warranty protection enabled' : 'Warranty protection disabled');
+                refetch();
+              }}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                warrantyEnabled ? 'bg-[var(--accent-primary)]' : 'bg-[var(--border-default)]'
+              }`}
+            >
+              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                warrantyEnabled ? 'translate-x-5' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+
+          {warrantyEnabled && (
+            <>
+              {/* Default amounts */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Per-Item Default ($)"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={warrantyPerItem}
+                  onChange={(e) => setWarrantyPerItem(e.target.value)}
+                  placeholder="15.00"
+                />
+                <Input
+                  label="Per-Invoice Default ($)"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={warrantyPerInvoice}
+                  onChange={(e) => setWarrantyPerInvoice(e.target.value)}
+                  placeholder="25.00"
+                />
+              </div>
+
+              {/* Tax toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">Charge Tax on Warranties</p>
+                  <p className="text-xs text-[var(--text-tertiary)] mt-0.5">Most US states require tax on warranties. Toggle off only if your state exempts service contracts.</p>
+                </div>
+                <button
+                  onClick={() => setWarrantyTaxable(!warrantyTaxable)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                    warrantyTaxable ? 'bg-[var(--accent-primary)]' : 'bg-[var(--border-default)]'
+                  }`}
+                >
+                  <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    warrantyTaxable ? 'translate-x-5' : 'translate-x-0'
+                  }`} />
+                </button>
+              </div>
+
+              {/* Duration */}
+              <div>
+                <label className="text-sm font-medium text-[var(--text-primary)] block mb-2">Warranty Duration</label>
+                <Select
+                  value={warrantyDuration}
+                  onChange={(e) => setWarrantyDuration(e.target.value)}
+                >
+                  <option value="lifetime">Lifetime</option>
+                  <option value="180">6 Months</option>
+                  <option value="365">1 Year</option>
+                  <option value="730">2 Years</option>
+                  <option value="custom">Custom</option>
+                </Select>
+                {warrantyDuration === 'custom' && (
+                  <div className="mt-2">
+                    <Input
+                      label="Custom Duration (days)"
+                      type="number"
+                      min="1"
+                      value={warrantyCustomDays}
+                      onChange={(e) => setWarrantyCustomDays(e.target.value)}
+                      placeholder="e.g., 90"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Coverage Terms */}
+              <div>
+                <label className="text-sm font-medium text-[var(--text-primary)] block mb-2">Coverage Terms</label>
+                <Textarea
+                  value={warrantyCoverageTerms}
+                  onChange={(e) => setWarrantyCoverageTerms(e.target.value)}
+                  rows={4}
+                  placeholder="Describe what the warranty covers..."
+                />
+                <p className="text-xs text-[var(--text-tertiary)] mt-1">These terms are saved with each warranty purchase and shown to clients.</p>
+              </div>
+
+              {/* Photo note */}
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-subtle)] p-3">
+                <p className="text-xs text-[var(--text-tertiary)]">
+                  When the photo capture feature launches, warranty purchases will include a photo of the customer&apos;s jewelry attached to their warranty file.
+                </p>
+              </div>
+
+              {/* Save button */}
+              <div className="flex justify-end">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  loading={savingWarranty}
+                  onClick={async () => {
+                    if (!tenant) return;
+                    setSavingWarranty(true);
+                    let durationDays: number | null = null;
+                    if (warrantyDuration === '180') durationDays = 180;
+                    else if (warrantyDuration === '365') durationDays = 365;
+                    else if (warrantyDuration === '730') durationDays = 730;
+                    else if (warrantyDuration === 'custom' && warrantyCustomDays) durationDays = parseInt(warrantyCustomDays, 10) || null;
+
+                    const { error } = await supabase.from('tenants').update({
+                      warranty_per_item_default: parseFloat(warrantyPerItem) || 0,
+                      warranty_per_invoice_default: parseFloat(warrantyPerInvoice) || 0,
+                      warranty_taxable: warrantyTaxable,
+                      warranty_coverage_terms: warrantyCoverageTerms,
+                      warranty_duration_days: durationDays,
+                    }).eq('id', tenant.id);
+
+                    if (error) {
+                      toast.error('Failed to save warranty settings');
+                    } else {
+                      toast.success('Warranty settings saved');
+                      refetch();
+                    }
+                    setSavingWarranty(false);
+                  }}
+                >
+                  Save Warranty Settings
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </AccordionSection>
 
