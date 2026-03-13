@@ -75,7 +75,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'eq-settings',
     label: 'Weld Settings Chart (Joules by gauge/metal/welder)',
     data: EQUIPMENT_KNOWLEDGE.weldSettings,
-    keywords: ['setting', 'joule', 'power', 'gauge', '20g', '22g', '24g', '26g', 'what setting', 'how many joule'],
+    keywords: ['setting', 'joule', 'power', 'gauge', '20g', '22g', '24g', '26g', 'what setting', 'how many joule', 'weld setting', 'power setting', 'what power', 'jump ring setting', '20 gauge', '22 gauge', '24 gauge', '26 gauge', 'gold fill', 'gold filled', '14k', 'rose gold', 'white gold', 'burn through', 'burning through', 'too hot', 'not fusing', 'weld chart', 'how many weld'],
     priority: 2,
   },
   {

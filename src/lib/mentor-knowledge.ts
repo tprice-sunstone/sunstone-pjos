@@ -173,9 +173,10 @@ export const EQUIPMENT_KNOWLEDGE = {
   // Weld Settings Chart (Joules by gauge, metal, and welder)
   // ---------------------------------------------------------------------------
   weldSettings: {
-    note: 'These are starting-point recommendations. Always start low and increase. "Multiple Welds" means pulse 2–3 times from different angles to ensure penetration — used when already at or near max power for that combination.',
+    note: 'OFFICIAL SUNSTONE WELD SETTINGS CHART (IN JOULES). CRITICAL: Always reference this chart for specific power recommendations. Do NOT approximate or guess joule settings. When an artist asks about weld power, you MUST ask which welder they have (Zapp, Zapp Plus 2, or mPulse) AND what gauge/material their jump ring is, then look up the EXACT value below. Never give a generic number.',
     chartUrl: 'Also available on the Sunstone website for reference.',
     gauge20: {
+      note: 'ALL 20 gauge jump rings require MULTIPLE WELDS on every welder. These need significantly more power than smaller gauges.',
       goldFilled14_20Yellow: { zapp: 'MAX POWER (multiple welds)', zappPlus: '12 (multiple welds)', mPulse: 8 },
       goldFilled14_20Rose:   { zapp: 'MAX POWER (multiple welds)', zappPlus: '15 (multiple welds)', mPulse: 9 },
       gold14kYellow:         { zapp: '8 (multiple welds)',         zappPlus: '8 (multiple welds)',  mPulse: 7 },
@@ -207,12 +208,24 @@ export const EQUIPMENT_KNOWLEDGE = {
       gold14kYellow:         { zapp: 'LOWEST POWER', zappPlus: 2,  mPulse: 2 },
       gold14kRose:           { zapp: 'LOWEST POWER', zappPlus: 4,  mPulse: 2.5 },
     },
+    importantNotes: [
+      'These are STARTING POINTS. Advise artists to start at the chart setting and adjust ±1 from there.',
+      'If an artist reports a setting close to the chart value, help them fine-tune — do NOT tell them to drastically change their power.',
+      '20 gauge rings require significantly more power than 24 or 26 gauge. Do NOT confuse gauge settings.',
+      '"MULTIPLE WELDS" means apply 2–3 separate weld pulses around the joint for a strong connection. ALWAYS mention this when the chart indicates it.',
+      'When an artist reports burn-through, first check if they are using the correct gauge ring for their power setting. A 26g ring at 20g power settings WILL burn through instantly.',
+      'MAX POWER on Zapp = setting 10 (its maximum). MAX POWER on Zapp Plus 2 = setting 30 (typically not needed — see chart values).',
+      'NEVER guess or approximate joule/power settings. ALWAYS reference this chart for the exact welder + gauge + material combination.',
+      'NEVER tell an artist their power is "way too hot" or "way too low" without first checking this chart for their specific combination.',
+      'The rule: start at chart value, adjust in small increments. Easier to add power than fix a burned-through ring.',
+    ],
     quickRuleOfThumb: {
-      note: 'For quick guidance when exact chart lookup is not needed:',
-      gauge26: '~3 joules',
-      gauge24: '~5 joules',
-      gauge22: '~7 joules',
-      always: 'Start low and increase. It is always better to underweld and add power than to overweld.',
+      note: 'WARNING: These are VERY rough ranges ONLY for when the artist has NOT specified their welder. ALWAYS ask for their specific welder model and use the detailed chart above instead of these ranges.',
+      gauge26: '~2–4 joules (varies by welder and material — ask which welder and use chart)',
+      gauge24: '~4–7 joules (varies by welder and material — ask which welder and use chart)',
+      gauge22: '~5–10 joules (varies by welder and material — ask which welder and use chart)',
+      gauge20: '~7–15 joules, MULTIPLE WELDS always required (varies dramatically — ask which welder and use chart)',
+      always: 'ALWAYS ask which welder the artist has before giving a specific joule recommendation. The correct setting varies dramatically by welder model and material.',
     },
   },
 
@@ -484,13 +497,22 @@ export const TROUBLESHOOTING_KNOWLEDGE = {
   // Power Setting Troubleshooting
   // ---------------------------------------------------------------------------
   powerSettings: {
+    importantNote: 'When an artist asks "what power should I use?" — ALWAYS ask which welder they have (Zapp, Zapp Plus 2, or mPulse) AND what gauge/material their jump ring is, then reference the official weld settings chart in EQUIPMENT_KNOWLEDGE.weldSettings. Do NOT give generic approximations. The correct setting varies dramatically by welder model and material.',
+    diagnosticSteps: [
+      '1. Ask: What welder? What gauge jump ring? What material?',
+      '2. Look up the chart value for their exact combination',
+      '3. Compare to what they are currently using',
+      '4. If they are above chart value → reduce gradually toward chart value',
+      '5. If they are below chart value → increase gradually toward chart value',
+      '6. If they are at chart value but still having issues → check electrode sharpness, grounding placement, and ring closure',
+    ],
     tooLow: {
       symptoms: ['Weld doesn\'t hold', 'Jump ring comes apart easily', 'No visible weld mark'],
-      fix: 'Increase power by 0.5–1 joule and try again. Always start low and increase.',
+      fix: 'Look up their welder + gauge + material in the weld settings chart and compare to their current setting. Increase power by 0.5–1 joule toward the chart value and try again.',
     },
     tooHigh: {
       symptoms: ['Burn-through on the jump ring', 'Excessive discoloration', 'Melted or deformed jump ring'],
-      fix: 'Decrease power. Start low and increase gradually. Refer to the weld settings chart for starting points.',
+      fix: 'First verify they are using the correct gauge ring (a 26g ring at 20g settings WILL burn through instantly). Look up the chart value for their combination. Decrease power toward the chart value gradually.',
     },
     goldFilledDarkSpot: {
       symptom: 'Dark or discolored spot at the weld point on gold-filled pieces.',
