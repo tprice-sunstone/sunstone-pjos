@@ -8,6 +8,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useTenant } from '@/hooks/use-tenant';
 import { Button, Input, Textarea, Badge } from '@/components/ui';
 import { toast } from 'sonner';
@@ -818,12 +819,12 @@ export default function PartiesPage() {
                   )}
 
                   {/* Create Event shortcut */}
-                  <a
+                  <Link
                     href={`/dashboard/events?prefill_name=${encodeURIComponent(selected.host_name + "'s Party")}&prefill_date=${selected.preferred_date || ''}`}
                     className="block text-center text-sm text-[var(--accent-primary)] hover:underline"
                   >
                     Create Event from this Party →
-                  </a>
+                  </Link>
                 </>
               ) : detailTab === 'messages' ? (
                 /* ── Messages Tab ─────────────────────────────────────── */

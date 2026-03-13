@@ -6,7 +6,8 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTenant } from '@/hooks/use-tenant';
 import { toast } from 'sonner';
@@ -32,15 +33,39 @@ import { Skeleton } from '@/components/ui';
 import SunnyTutorial from '@/components/SunnyTutorial';
 
 export default function EventsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="animate-spin h-8 w-8 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full" /></div>}>
+      <EventsContent />
+    </Suspense>
+  );
+}
+
+function EventsContent() {
   const { tenant, can } = useTenant();
+  const searchParams = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);
   const [taxProfiles, setTaxProfiles] = useState<TaxProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Event | null>(null);
+  const [prefill, setPrefill] = useState<{ name?: string; date?: string } | null>(null);
   const [qrEvent, setQrEvent] = useState<Event | null>(null);
   const [fullScreenQR, setFullScreenQR] = useState(false);
   const supabase = createClient();
+
+  // Auto-open form when prefill params are present
+  useEffect(() => {
+    const prefillName = searchParams.get('prefill_name');
+    const prefillDate = searchParams.get('prefill_date');
+    if (prefillName || prefillDate) {
+      setPrefill({
+        name: prefillName || undefined,
+        date: prefillDate || undefined,
+      });
+      setEditing(null);
+      setShowForm(true);
+    }
+  }, [searchParams]);
 
   const fetchData = async () => {
     if (!tenant) return;
@@ -301,12 +326,14 @@ export default function EventsPage() {
       <EventFormModal
         isOpen={showForm}
         event={editing}
+        prefill={prefill}
         taxProfiles={taxProfiles}
         tenantId={tenant?.id || ''}
         onSave={handleSave}
         onClose={() => {
           setShowForm(false);
           setEditing(null);
+          setPrefill(null);
         }}
       />
 
@@ -478,6 +505,7 @@ function EventCard({
 function EventFormModal({
   isOpen,
   event,
+  prefill,
   taxProfiles,
   tenantId,
   onSave,
@@ -485,6 +513,7 @@ function EventFormModal({
 }: {
   isOpen: boolean;
   event: Event | null;
+  prefill?: { name?: string; date?: string } | null;
   taxProfiles: TaxProfile[];
   tenantId: string;
   onSave: (data: Partial<Event> & { _productTypeFilter?: { limitProducts: boolean; selectedProductTypeIds: string[] } }) => void;
@@ -510,14 +539,18 @@ function EventFormModal({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Reset event form fields
+    // Reset event form fields — merge prefill values for new events
+    const prefillStartTime = !event && prefill?.date
+      ? format(new Date(prefill.date + 'T18:00'), "yyyy-MM-dd'T'HH:mm")
+      : '';
+
     setForm({
-      name: event?.name || '',
+      name: event?.name || prefill?.name || '',
       description: event?.description || '',
       location: event?.location || '',
       start_time: event?.start_time
         ? format(new Date(event.start_time), "yyyy-MM-dd'T'HH:mm")
-        : '',
+        : prefillStartTime,
       end_time: event?.end_time
         ? format(new Date(event.end_time), "yyyy-MM-dd'T'HH:mm")
         : '',
