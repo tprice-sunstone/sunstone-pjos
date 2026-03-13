@@ -18,11 +18,13 @@ export interface CompletedSaleData {
     quantity: number;
     unitPrice: number;
     lineTotal: number;
+    warrantyAmount?: number;
   }>;
   subtotal: number;
   taxAmount: number;
   taxRate: number;
   tipAmount: number;
+  warrantyAmount: number;
   total: number;
   paymentMethod: string;
   clientId?: string | null;
@@ -105,14 +107,25 @@ export function ReceiptScreen({
         {/* Line items */}
         <div className="space-y-2">
           {sale.items.map((item, i) => (
-            <div key={i} className="flex justify-between text-sm">
-              <span className="text-[var(--text-primary)] font-medium">
-                {item.name}
-                {item.quantity > 1 ? ` x${item.quantity}` : ''}
-              </span>
-              <span className="text-[var(--text-secondary)]">
-                ${item.lineTotal.toFixed(2)}
-              </span>
+            <div key={i}>
+              <div className="flex justify-between text-sm">
+                <span className="text-[var(--text-primary)] font-medium">
+                  {item.name}
+                  {item.quantity > 1 ? ` x${item.quantity}` : ''}
+                </span>
+                <span className="text-[var(--text-secondary)]">
+                  ${item.lineTotal.toFixed(2)}
+                </span>
+              </div>
+              {(item.warrantyAmount ?? 0) > 0 && (
+                <div className="flex justify-between text-xs ml-3 mt-0.5">
+                  <span className="text-[var(--text-tertiary)] flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                    Warranty
+                  </span>
+                  <span className="text-[var(--text-tertiary)]">${item.warrantyAmount!.toFixed(2)}</span>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -135,6 +148,15 @@ export function ReceiptScreen({
             <div className="flex justify-between text-sm text-[var(--text-tertiary)]">
               <span>Tip</span>
               <span>${sale.tipAmount.toFixed(2)}</span>
+            </div>
+          )}
+          {sale.warrantyAmount > 0 && (
+            <div className="flex justify-between text-sm text-[var(--text-tertiary)]">
+              <span className="flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                Warranty
+              </span>
+              <span>${sale.warrantyAmount.toFixed(2)}</span>
             </div>
           )}
         </div>

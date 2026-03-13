@@ -14,6 +14,7 @@ interface ReceiptSmsBody {
   clientId?: string;
   total: number;
   itemCount: number;
+  warrantyAmount?: number;
   paymentMethod: string;
   footer?: string;
 }
@@ -59,7 +60,11 @@ export async function POST(request: NextRequest) {
       other: 'Other',
     };
 
-    let smsBody = `Receipt from ${body.tenantName}\n${body.itemCount} item${body.itemCount !== 1 ? 's' : ''} — $${body.total.toFixed(2)}\nPaid with ${paymentLabel[body.paymentMethod] || body.paymentMethod}\nThank you for your purchase!`;
+    let smsBody = `Receipt from ${body.tenantName}\n${body.itemCount} item${body.itemCount !== 1 ? 's' : ''} — $${body.total.toFixed(2)}`;
+    if ((body.warrantyAmount ?? 0) > 0) {
+      smsBody += `\nWarranty: $${body.warrantyAmount!.toFixed(2)}`;
+    }
+    smsBody += `\nPaid with ${paymentLabel[body.paymentMethod] || body.paymentMethod}\nThank you for your purchase!`;
 
     if (body.footer) {
       smsBody += `\n${body.footer}`;

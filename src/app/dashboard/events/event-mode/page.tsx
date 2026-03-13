@@ -413,9 +413,10 @@ function EventModePageInner() {
 
     const saleData: CompletedSaleData = {
       saleId, saleDate: new Date().toISOString(),
-      items: cart.items.length > 0 ? cart.items.map((i: any) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unit_price, lineTotal: i.line_total })) : [{ name: 'Payment', quantity: 1, unitPrice: 0, lineTotal: 0 }],
+      items: cart.items.length > 0 ? cart.items.map((i: any) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unit_price, lineTotal: i.line_total, warrantyAmount: i.warranty_amount || 0 })) : [{ name: 'Payment', quantity: 1, unitPrice: 0, lineTotal: 0 }],
       subtotal: cart.subtotal, taxAmount: cart.tax_amount,
       taxRate: cart.tax_rate, tipAmount: cart.tip_amount,
+      warrantyAmount: cart.warranty_amount || 0,
       total: cart.total, paymentMethod: 'stripe_link',
     };
 
@@ -475,8 +476,9 @@ function EventModePageInner() {
       if (!clientId && (receiptEmail || receiptPhone)) clientId = await findOrCreateClient(receiptEmail, receiptPhone);
 
       const saleData: CompletedSaleData = {
-        saleId: '', items: cart.items.map((i: any) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unit_price, lineTotal: i.line_total })),
+        saleId: '', items: cart.items.map((i: any) => ({ name: i.name, quantity: i.quantity, unitPrice: i.unit_price, lineTotal: i.line_total, warrantyAmount: i.warranty_amount || 0 })),
         subtotal: cart.subtotal, taxAmount: cart.tax_amount, taxRate: cart.tax_rate, tipAmount: cart.tip_amount,
+        warrantyAmount: cart.warranty_amount || 0,
         total: cart.total, paymentMethod: effectivePaymentMethod, saleDate: new Date().toISOString(), clientId,
       };
 
@@ -675,7 +677,8 @@ function EventModePageInner() {
         body: JSON.stringify({ to: receiptEmail, tenantName: tenant.name, tenantAccentColor: tenant.brand_color || undefined,
           eventName: event?.name || undefined, saleDate: completedSale.saleDate, items: completedSale.items,
           subtotal: completedSale.subtotal, taxAmount: completedSale.taxAmount, taxRate: completedSale.taxRate,
-          tipAmount: completedSale.tipAmount, total: completedSale.total, paymentMethod: completedSale.paymentMethod }) });
+          tipAmount: completedSale.tipAmount, warrantyAmount: completedSale.warrantyAmount || undefined,
+          total: completedSale.total, paymentMethod: completedSale.paymentMethod }) });
       const data = await res.json();
       if (data.sent) { setEmailSent(true); if (completedSale.saleId) await supabase.from('sales').update({ receipt_sent_at: new Date().toISOString() }).eq('id', completedSale.saleId); }
       else setEmailError(data.error || "Couldn't send email.");
@@ -690,6 +693,7 @@ function EventModePageInner() {
       const res = await fetch('/api/receipts/sms', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: receiptPhone.replace(/[^\d+]/g, ''), tenantName: tenant.name,
           total: completedSale.total, itemCount: completedSale.items.reduce((s, i) => s + i.quantity, 0),
+          warrantyAmount: completedSale.warrantyAmount || undefined,
           paymentMethod: completedSale.paymentMethod }) });
       const data = await res.json();
       if (data.sent) { setSmsSent(true); if (completedSale.saleId) await supabase.from('sales').update({ receipt_sent_at: new Date().toISOString() }).eq('id', completedSale.saleId); }

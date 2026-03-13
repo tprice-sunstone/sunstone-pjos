@@ -204,7 +204,8 @@ export default function StoreModePage() {
           tagline: tenant.receipt_tagline || undefined, footer: tenant.receipt_footer || undefined,
           saleDate: completedSale.saleDate, items: completedSale.items,
           subtotal: completedSale.subtotal, taxAmount: completedSale.taxAmount, taxRate: completedSale.taxRate,
-          tipAmount: completedSale.tipAmount, total: completedSale.total, paymentMethod: completedSale.paymentMethod }) });
+          tipAmount: completedSale.tipAmount, warrantyAmount: completedSale.warrantyAmount || undefined,
+          total: completedSale.total, paymentMethod: completedSale.paymentMethod }) });
       const data = await res.json();
       if (data.sent) { setEmailSent(true); if (completedSale.saleId) await supabase.from('sales').update({ receipt_sent_at: new Date().toISOString() }).eq('id', completedSale.saleId); }
       else setEmailError(data.error || "Couldn't send email.");
@@ -220,6 +221,7 @@ export default function StoreModePage() {
         body: JSON.stringify({ to: receiptPhone.replace(/[^\d+]/g, ''), tenantName: tenant.name,
           tenantId: tenant.id, clientId: cart.client_id || undefined,
           total: completedSale.total, itemCount: completedSale.items.reduce((s: number, i: any) => s + i.quantity, 0),
+          warrantyAmount: completedSale.warrantyAmount || undefined,
           paymentMethod: completedSale.paymentMethod, footer: tenant.receipt_footer || undefined }) });
       const data = await res.json();
       if (data.sent) { setSmsSent(true); if (completedSale.saleId) await supabase.from('sales').update({ receipt_sent_at: new Date().toISOString() }).eq('id', completedSale.saleId); }
@@ -333,11 +335,13 @@ export default function StoreModePage() {
       saleDate: new Date().toISOString(),
       items: cart.items.length > 0 ? cart.items.map((item: any) => ({
         name: item.name, quantity: item.quantity, unitPrice: item.unit_price, lineTotal: item.line_total,
+        warrantyAmount: item.warranty_amount || 0,
       })) : [{ name: 'Payment', quantity: 1, unitPrice: 0, lineTotal: 0 }],
       subtotal: cart.subtotal,
       taxAmount: cart.tax_amount,
       taxRate: taxProfile ? Number(taxProfile.rate) : 0,
       tipAmount: cart.tip_amount,
+      warrantyAmount: cart.warranty_amount || 0,
       total: cart.total,
       paymentMethod: 'stripe_link',
     };
@@ -468,11 +472,13 @@ export default function StoreModePage() {
         saleDate: new Date().toISOString(),
         items: cart.items.map((item: any) => ({
           name: item.name, quantity: item.quantity, unitPrice: item.unit_price, lineTotal: item.line_total,
+          warrantyAmount: item.warranty_amount || 0,
         })),
         subtotal: cart.subtotal,
         taxAmount: cart.tax_amount,
         taxRate: taxProfile ? Number(taxProfile.rate) : 0,
         tipAmount: cart.tip_amount,
+        warrantyAmount: cart.warranty_amount || 0,
         total: cart.total,
         paymentMethod: effectivePaymentMethod || 'Unknown',
       };
@@ -514,7 +520,8 @@ export default function StoreModePage() {
             tagline: tenant.receipt_tagline || undefined, footer: tenant.receipt_footer || undefined,
             saleDate: saleData.saleDate, items: saleData.items,
             subtotal: saleData.subtotal, taxAmount: saleData.taxAmount, taxRate: saleData.taxRate,
-            tipAmount: saleData.tipAmount, total: saleData.total, paymentMethod: saleData.paymentMethod,
+            tipAmount: saleData.tipAmount, warrantyAmount: saleData.warrantyAmount || undefined,
+            total: saleData.total, paymentMethod: saleData.paymentMethod,
           }),
         }).then(async (r) => {
           if (r.ok) {

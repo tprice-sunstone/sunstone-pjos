@@ -17,11 +17,13 @@ interface ReceiptEmailBody {
     quantity: number;
     unitPrice: number;
     lineTotal: number;
+    warrantyAmount?: number;
   }>;
   subtotal: number;
   taxAmount: number;
   taxRate: number;
   tipAmount: number;
+  warrantyAmount?: number;
   total: number;
   paymentMethod: string;
 }
@@ -55,7 +57,15 @@ function buildReceiptHTML(data: ReceiptEmailBody): string {
         <td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; color: #374151; text-align: right; font-family: 'SF Mono', Monaco, monospace;">
           $${item.lineTotal.toFixed(2)}
         </td>
-      </tr>`
+      </tr>${(item.warrantyAmount ?? 0) > 0 ? `
+      <tr>
+        <td style="padding: 0 0 8px 12px; border-bottom: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af;">
+          &#x1f6e1; Warranty
+        </td>
+        <td style="padding: 0 0 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; text-align: right; font-family: 'SF Mono', Monaco, monospace;">
+          $${item.warrantyAmount!.toFixed(2)}
+        </td>
+      </tr>` : ''}`
     )
     .join('');
 
@@ -110,6 +120,11 @@ function buildReceiptHTML(data: ReceiptEmailBody): string {
                 <tr>
                   <td style="padding: 6px 0; font-size: 14px; color: #6b7280;">Tip</td>
                   <td style="padding: 6px 0; font-size: 14px; color: #6b7280; text-align: right; font-family: 'SF Mono', Monaco, monospace;">$${data.tipAmount.toFixed(2)}</td>
+                </tr>` : ''}
+                ${(data.warrantyAmount ?? 0) > 0 ? `
+                <tr>
+                  <td style="padding: 6px 0; font-size: 14px; color: #6b7280;">&#x1f6e1; Warranty</td>
+                  <td style="padding: 6px 0; font-size: 14px; color: #6b7280; text-align: right; font-family: 'SF Mono', Monaco, monospace;">$${data.warrantyAmount!.toFixed(2)}</td>
                 </tr>` : ''}
                 <tr>
                   <td colspan="2" style="padding: 12px 0 0;">
