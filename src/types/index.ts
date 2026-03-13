@@ -84,6 +84,9 @@ export interface Tenant {
   auto_reply_enabled: boolean;
   auto_reply_message: string | null;
   sunny_text_mode: 'off' | 'suggest' | 'auto';
+  // Sunny personality (customer-facing SMS tone)
+  sunny_tone_preset: string;
+  sunny_tone_custom: string | null;
   // Receipts
   auto_email_receipt: boolean;
   auto_sms_receipt: boolean;

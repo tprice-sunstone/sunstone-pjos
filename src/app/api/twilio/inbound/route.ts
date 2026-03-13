@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     // Look up tenant by dedicated phone number
     const { data: tenant } = await supabase
       .from('tenants')
-      .select('id, auto_reply_enabled, auto_reply_message, sunny_text_mode, name')
+      .select('id, auto_reply_enabled, auto_reply_message, sunny_text_mode, name, sunny_tone_preset, sunny_tone_custom')
       .eq('dedicated_phone_number', to)
       .single();
 
@@ -254,8 +254,30 @@ Rules:
 - No emojis unless the client uses them first
 - Sound natural and human, not robotic`;
 
+// Personality preset → prompt injection text
+const TONE_PROMPTS: Record<string, string> = {
+  warm_bubbly: 'Use a warm, bubbly, and enthusiastic tone — like texting a friend. Light and upbeat.',
+  polished_professional: 'Use a polished, professional tone — courteous and refined. Think luxury concierge.',
+  luxe_elegant: 'Use an elegant, luxurious tone — sophisticated and aspirational. Think high-end boutique.',
+  fun_playful: 'Use a fun, playful tone — witty and energetic. Keep it casual and lively.',
+  short_sweet: 'Be ultra-concise — short, sweet replies. Minimal words, maximum clarity.',
+};
+
+function buildSunnySystemPrompt(tenant: { sunny_tone_preset?: string | null; sunny_tone_custom?: string | null }): string {
+  let prompt = SUNNY_TEXT_SYSTEM;
+  const preset = tenant.sunny_tone_preset || 'warm_bubbly';
+  const toneText = TONE_PROMPTS[preset];
+  if (toneText) {
+    prompt += `\n\nTone: ${toneText}`;
+  }
+  if (tenant.sunny_tone_custom) {
+    prompt += `\nAdditional style notes from the artist: ${tenant.sunny_tone_custom}`;
+  }
+  return prompt;
+}
+
 async function generateAndSendSunnyResponse(
-  tenant: { id: string; name: string | null },
+  tenant: { id: string; name: string | null; sunny_tone_preset?: string | null; sunny_tone_custom?: string | null },
   clientId: string | null,
   clientPhone: string,
   inboundBody: string,
@@ -266,7 +288,7 @@ async function generateAndSendSunnyResponse(
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 256,
-    system: SUNNY_TEXT_SYSTEM,
+    system: buildSunnySystemPrompt(tenant),
     messages: [{
       role: 'user',
       content: `${context}\n\nNew message from client: "${inboundBody}"\n\nDraft a reply:`,
@@ -304,7 +326,7 @@ async function generateAndSendSunnyResponse(
 }
 
 async function generateSunnySuggestion(
-  tenant: { id: string; name: string | null },
+  tenant: { id: string; name: string | null; sunny_tone_preset?: string | null; sunny_tone_custom?: string | null },
   clientId: string | null,
   clientPhone: string,
   inboundBody: string,
@@ -315,7 +337,7 @@ async function generateSunnySuggestion(
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 256,
-    system: SUNNY_TEXT_SYSTEM,
+    system: buildSunnySystemPrompt(tenant),
     messages: [{
       role: 'user',
       content: `${context}\n\nNew message from client: "${inboundBody}"\n\nDraft a reply:`,
