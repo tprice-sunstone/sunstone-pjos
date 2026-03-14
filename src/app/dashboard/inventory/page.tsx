@@ -624,6 +624,9 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
   );
   const [notes, setNotes] = useState(editingItem?.notes || '');
 
+  // Cost entry unit toggle (UI-only, not persisted)
+  const [costEntryUnit, setCostEntryUnit] = useState<'inch' | 'foot'>('inch');
+
   // Chain-specific state
   const [pricingMode, setPricingMode] = useState<PricingMode>(
     (editingItem as any)?.pricing_mode || 'per_product'
@@ -732,7 +735,9 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
         supplier_id: supplierId,
         sku: sku.trim() || null,
         unit: type === 'chain' ? 'in' : unit,
-        cost_per_unit: parseFloat(costPerUnit) || 0,
+        cost_per_unit: type === 'chain' && costEntryUnit === 'foot'
+          ? Math.round(((parseFloat(costPerUnit) || 0) / 12) * 10000) / 10000
+          : parseFloat(costPerUnit) || 0,
         sell_price: type === 'chain' && pricingMode === 'per_product' ? 0 : sellPrice,
         quantity_on_hand: quantity,
         reorder_threshold: reorderThreshold,
@@ -807,7 +812,9 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
   };
 
   // â”€â”€â”€ Cost label â”€â”€â”€
-  const costLabel = type === 'chain' ? 'Your Cost per Inch' : 'Cost per Unit';
+  const costLabel = type === 'chain'
+    ? (costEntryUnit === 'foot' ? 'Your Cost per Foot' : 'Your Cost per Inch')
+    : 'Cost per Unit';
   const quantityLabel = type === 'chain' ? 'Quantity on Hand (inches)' : 'Quantity on Hand';
 
   return (
@@ -962,11 +969,61 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
 
             {/* Cost */}
             <div>
-              <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">
-                {costLabel}
-              </label>
+              <div className="flex items-center gap-3 mb-1">
+                <label className="text-sm font-medium text-[var(--text-primary)]">
+                  {costLabel}
+                </label>
+                {type === 'chain' && (
+                  <div className="inline-flex rounded-lg border border-[var(--border-default)] overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (costEntryUnit === 'foot') {
+                          // Convert displayed per-foot value to per-inch
+                          const val = parseFloat(costPerUnit);
+                          if (val > 0) {
+                            setCostPerUnit(String(Math.round((val / 12) * 10000) / 10000));
+                          }
+                          setCostEntryUnit('inch');
+                        }
+                      }}
+                      className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                        costEntryUnit === 'inch'
+                          ? 'bg-[var(--accent-primary)] text-white'
+                          : 'bg-[var(--surface-base)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      per inch
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (costEntryUnit === 'inch') {
+                          // Convert displayed per-inch value to per-foot
+                          const val = parseFloat(costPerUnit);
+                          if (val > 0) {
+                            setCostPerUnit(String(Math.round(val * 12 * 10000) / 10000));
+                          }
+                          setCostEntryUnit('foot');
+                        }
+                      }}
+                      className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                        costEntryUnit === 'foot'
+                          ? 'bg-[var(--accent-primary)] text-white'
+                          : 'bg-[var(--surface-base)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      per foot
+                    </button>
+                  </div>
+                )}
+              </div>
               {type === 'chain' && (
-                <p className="text-xs text-[var(--text-tertiary)] mb-1.5">What you paid per inch for this chain</p>
+                <p className="text-xs text-[var(--text-tertiary)] mb-1.5">
+                  {costEntryUnit === 'foot'
+                    ? 'Enter the per-foot price from your supplier'
+                    : 'What you paid per inch for this chain'}
+                </p>
               )}
               <div className="relative max-w-[200px]">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[var(--text-tertiary)]">
@@ -982,6 +1039,11 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
                   className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] pl-8 pr-4 py-3 text-[var(--text-primary)] text-base  placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)] min-h-[48px]"
                 />
               </div>
+              {type === 'chain' && costEntryUnit === 'foot' && costPerUnit && parseFloat(costPerUnit) > 0 && (
+                <p className="text-xs text-[var(--text-tertiary)] mt-1.5">
+                  = ${(Math.round((parseFloat(costPerUnit) / 12) * 10000) / 10000).toFixed(4)}/inch
+                </p>
+              )}
             </div>
 
             {/* Unit (non-chain only) */}
