@@ -400,7 +400,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'app-inventory',
     label: 'Managing Inventory',
     data: PJOS_PLATFORM_GUIDE.inventory,
-    keywords: ['add inventory', 'add item', 'add chain', 'add jump ring', 'chain list', 'my chains', 'inventory page', 'stock level', 'restock', 'reorder', 'low stock', 'deactivate', 'product type', 'material setup', 'chain pricing', 'buy by inch', 'sell by piece', 'how to add', 'movement history', 'sku'],
+    keywords: ['add inventory', 'add item', 'add chain', 'add jump ring', 'chain list', 'my chains', 'inventory page', 'stock level', 'restock', 'reorder', 'low stock', 'deactivate', 'product type', 'material setup', 'chain pricing', 'buy by inch', 'sell by piece', 'how to add', 'movement history', 'sku', 'cost per foot', 'per foot', 'per inch', 'chain cost', 'supplier price', 'cost entry', 'cost toggle'],
     priority: 1,
   },
   {
@@ -454,7 +454,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'app-settings',
     label: 'Settings & Configuration',
     data: PJOS_PLATFORM_GUIDE.settingsGuide,
-    keywords: ['settings', 'configure', 'setup', 'tax profile', 'tax rate', 'payment processor', 'connect stripe', 'business info', 'logo', 'waiver text', 'product types', 'materials', 'suppliers', 'fee handling', 'change settings', 'update settings'],
+    keywords: ['settings', 'configure', 'setup', 'tax profile', 'tax rate', 'payment processor', 'connect stripe', 'business info', 'logo', 'waiver text', 'product types', 'materials', 'suppliers', 'fee handling', 'change settings', 'update settings', 'default pricing', 'pricing settings', 'gear icon'],
   },
   {
     id: 'app-subscription',
@@ -494,6 +494,20 @@ const SUBSECTIONS: Subsection[] = [
     label: 'App Troubleshooting',
     data: PJOS_PLATFORM_GUIDE.platformTroubleshooting,
     keywords: ['app problem', 'app issue', 'not working', 'can\'t connect', 'payment not working', 'stripe not working', 'inventory not updating', 'sms not sending', 'text not sending', 'qr not working', 'can\'t invite', 'reports not showing', 'app trouble', 'app broken', 'something wrong', 'app help', 'app error'],
+    priority: 1,
+  },
+  {
+    id: 'app-warranty',
+    label: 'Warranty Protection',
+    data: PJOS_PLATFORM_GUIDE.warrantyProtection,
+    keywords: ['warranty', 'warranties', 'protection', 'coverage', 'claim', 'file claim', 'repair', 'shield', 'receipt warranty', 'warranty settings', 'per item warranty', 'per invoice warranty', 'enable warranty', 'warranty tab', 'warranty duration', 'coverage terms', 'void warranty', 'warranty status'],
+    priority: 1,
+  },
+  {
+    id: 'app-tier-pricing',
+    label: 'Tier Pricing',
+    data: PJOS_PLATFORM_GUIDE.tierPricing,
+    keywords: ['tier', 'tiers', 'pricing tier', 'pricing mode', 'by tier', 'metal tier', 'sterling tier', 'gold tier', 'group chains', 'tier filter', 'tier pricing', 'pricing tiers', 'assign tier', 'select by tier', 'flat rate vs', 'per product vs', 'pricing modes', 'three pricing modes'],
     priority: 1,
   },
   {

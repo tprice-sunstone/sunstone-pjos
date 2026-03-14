@@ -7,7 +7,7 @@
 // Compiled from 45+ official Sunstone documents, training materials, and
 // founder interviews. This is the single source of truth for Sunny's responses.
 //
-// Last updated: 2026-03-03
+// Last updated: 2026-03-14
 // =============================================================================
 
 // =============================================================================
@@ -1602,7 +1602,7 @@ export const PJOS_PLATFORM_GUIDE = {
       byType: 'Set a flat price for all pieces (e.g. $45 per bracelet/anklet). Simple and easy.',
       byMetal: 'Different prices for silver vs gold-filled chains.',
       byMarkup: 'Set a profit margin percentage over your cost. E.g. 50% margin = sell for 2x cost.',
-      individual: 'Skip and set prices individually in the Inventory page later.',
+      individual: 'Skip and set prices individually in Settings → Default Pricing or in the Inventory page later.',
     },
     tips: [
       'You can always come back to Settings to update anything.',
@@ -1686,6 +1686,7 @@ export const PJOS_PLATFORM_GUIDE = {
     ],
     addingOtherItems: 'Jump rings, charms, connectors, and other items appear as quick-add buttons. Just tap them to add to the cart.',
     customItems: 'Need to add something special? Use the Custom Item form — type a name and price, and it goes right into the cart.',
+    warranties: 'If warranty protection is enabled, you can add per-item warranties (tap the shield icon on a cart item) or per-invoice warranties (tap "Add Warranty" in the cart summary). See the Warranty Protection section for full details.',
     discounts: {
       perItem: 'To discount a specific item: tap on it in the cart to expand it, then choose a percentage or dollar amount discount. Great for promotions like "$10 off any anklet today."',
       cartLevel: 'To discount the entire order: look for the discount option near the cart subtotal area. Apply a percentage or dollar amount to the whole cart. Great for event specials or VIP customers like "15% off your whole order."',
@@ -1735,8 +1736,8 @@ export const PJOS_PLATFORM_GUIDE = {
     ],
     chainProducts: {
       overview: 'Chains are special — you buy them by the inch (or foot) and sell them by the piece. The app handles this conversion for you.',
-      buyByInch: 'Enter your chain quantity in inches and your cost per inch.',
-      sellByPiece: 'Set up product types in Settings (like Bracelet, Anklet, Necklace) with prices. When you sell a bracelet, the app calculates the price based on inches measured.',
+      costEntry: 'When adding or editing a chain, you can enter your cost per inch OR per foot using the toggle next to the cost field. If you enter per foot (e.g., $1.68/ft), the system automatically converts to per inch ($0.14/in). A live preview shows the per-inch equivalent as you type. This is helpful because many chain suppliers list prices per foot. The system always stores cost per inch internally.',
+      sellByPiece: 'Set up product types in Settings → Default Pricing (like Bracelet, Anklet, Necklace) with prices. When you sell a bracelet, the app calculates the price based on inches measured.',
       perInchPricing: 'Alternatively, you can price chains per inch and the price scales with the measurement.',
     },
     jumpRingTracking: 'Jump rings track quantity on hand. When you complete a sale, jump rings are automatically deducted based on the product type (most use 1 jump ring, hand chains use 2).',
@@ -1744,7 +1745,7 @@ export const PJOS_PLATFORM_GUIDE = {
     lowStockAlerts: 'When an item drops below its reorder threshold, you will see it flagged. Keep an eye on your chain footage and jump ring counts before events.',
     searchAndFilter: 'Use the search bar to find items by name, material, or SKU. Filter by type (Chain, Jump Ring, etc.) or toggle "Show inactive" to see deactivated items.',
     deactivating: 'Click the eye icon to deactivate an item without deleting it. Deactivated items will not show up in your POS but the data is preserved.',
-    productTypes: 'Set up your product types in Settings (like Bracelet, Anklet, Necklace, Ring, Hand Chain). Each product type defines how many jump rings it needs — most use 1, hand chains use 2.',
+    productTypes: 'Set up your product types in Settings → Default Pricing (like Bracelet, Anklet, Necklace, Ring, Hand Chain). Each product type defines how many jump rings it needs — most use 1, hand chains use 2. You can also get there by tapping the gear icon on the Inventory page.',
     materials: 'Set up your materials in Settings (like Sterling Silver, 14K Gold Filled Yellow, etc.). These help you organize inventory and show the right options during sales.',
   },
 
@@ -1899,17 +1900,19 @@ export const PJOS_PLATFORM_GUIDE = {
   // 9.11 Settings
   // ---------------------------------------------------------------------------
   settingsGuide: {
-    overview: 'Settings is where you configure everything about your Sunstone Studio account. It has three tabs: General, Subscription, and Team.',
-    generalTab: {
-      businessInfo: 'Update your business name, type, phone, and website.',
-      branding: 'Upload your logo (shows on waivers and receipts) and pick your accent color. There are 8 beautiful presets or enter any hex color.',
-      paymentProcessing: 'Connect your Stripe account in the Payments section to accept payments via QR code and text link. No card reader needed — customers pay on their phone through Stripe Checkout.',
-      taxProfiles: 'Add tax profiles with a name and rate (like "State Sales Tax — 6.5%"). Assign them to events so tax calculates automatically.',
-      productTypes: 'Set up product types like Bracelet, Anklet, Necklace, Ring, Hand Chain. Each one defines how many jump rings it uses. You can reorder them.',
-      materials: 'Add your materials (Sterling Silver, 14K Gold Filled, etc.) to organize your inventory.',
-      suppliers: 'Add your suppliers for tracking where your inventory comes from.',
-      waiverText: 'Customize the waiver your customers see and sign. Write it to cover your local requirements.',
+    overview: 'Settings is where you configure everything about your Sunstone Studio account. It is organized as collapsible accordion sections: My Business, Communications, Default Pricing, Payments, Plan & Billing, Tax, Waiver, Team, and Profile.',
+    myBusiness: 'Update your business name, type, phone, website, logo, and theme. Your dedicated phone number (if CRM is active) also shows here.',
+    communications: 'Configure your dedicated phone number, messaging AI (Sunny Text Responder), incoming call handling, and auto-reply settings.',
+    defaultPricing: {
+      overview: 'All pricing configuration lives in Settings → Default Pricing. This single section contains everything related to how you price your jewelry.',
+      productTypes: 'Set up product types like Bracelet, Anklet, Necklace, Ring, Hand Chain. Each one defines how many jump rings it uses and default measurements. You can reorder them.',
+      pricingMode: 'Choose your pricing mode: Flat Rate (one price per product type for all chains), Per Product (individual prices per chain), or By Tier (group chains into pricing tiers by metal type).',
+      warrantyProtection: 'Enable and configure warranty protection — set default per-item and per-invoice amounts, duration, tax settings, and coverage terms.',
+      gearIcon: 'The gear icon on the Inventory page is a shortcut that takes you directly to Settings → Default Pricing.',
     },
+    payments: 'Connect your Stripe account to accept payments via QR code and text link. No card reader needed — customers pay on their phone through Stripe Checkout.',
+    taxProfiles: 'Add tax profiles with a name and rate (like "State Sales Tax — 6.5%"). Assign them to events so tax calculates automatically.',
+    waiverText: 'Customize the waiver your customers see and sign. Write it to cover your local requirements.',
     subscriptionTab: 'See your current plan, trial status, and plan features. Upgrade or manage your subscription here.',
     teamTab: 'View your team members, their roles, and invite new ones. Manage who has access to what.',
     feeHandling: 'A small platform fee is deducted from your Stripe payouts — your customers see a clean checkout with no extra fees. On Starter it is 3%, Pro is 1.5%, and Business is 0%. You can reduce it by upgrading your plan, and Business plan eliminates it entirely.',
@@ -2157,6 +2160,115 @@ export const PJOS_PLATFORM_GUIDE = {
       'Track your outstanding balance to understand your gift card liability.',
       'Resend the notification if a recipient says they lost the code.',
     ],
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.17 Warranty Protection
+  // ---------------------------------------------------------------------------
+  warrantyProtection: {
+    overview: 'Sunstone Studio has a built-in warranty system. Offer warranty protection on permanent jewelry pieces — sell per-item or per-invoice warranties in the POS, manage active warranties, and track claims. Warranty details print on all receipts automatically.',
+    enabling: {
+      steps: [
+        '1. Go to Settings → Default Pricing → Warranty Protection (at the bottom of the section).',
+        '2. Toggle "Enable Warranty Protection" on.',
+        '3. Set your per-item default amount (e.g., $15) — this pre-fills when adding a warranty to a single item.',
+        '4. Set your per-invoice default amount (e.g., $25) — this pre-fills when adding a warranty to the whole order.',
+        '5. Choose a warranty duration: Lifetime (default), 6 Months, 1 Year, 2 Years, or Custom (enter any number of days).',
+        '6. Edit your coverage terms — this text appears on receipts and is saved with each warranty purchase.',
+        '7. Click "Save Warranty Settings."',
+      ],
+      taxSetting: 'Warranties are taxed by default because most US states require it. Only toggle "Charge Tax on Warranties" off if your specific state exempts service contracts.',
+    },
+    sellingInPOS: {
+      perItem: {
+        overview: 'Add a warranty to a specific item in the cart.',
+        steps: [
+          '1. Tap the shield icon on any item in the cart.',
+          '2. Enter the warranty amount (pre-filled with your per-item default).',
+          '3. The warranty shows as a sub-line beneath that item in the cart.',
+        ],
+      },
+      perInvoice: {
+        overview: 'Add a warranty that covers the entire order.',
+        steps: [
+          '1. Tap "Add Warranty" in the cart summary area.',
+          '2. Enter the warranty amount (pre-filled with your per-invoice default).',
+          '3. The warranty shows in the totals section of the cart.',
+        ],
+      },
+      tips: [
+        'You can use both per-item and per-invoice warranties on the same sale.',
+        'Amounts are editable at the time of sale — defaults are just starting points.',
+        'The warranty amount is included in the sale total like any other line item.',
+      ],
+    },
+    managing: {
+      overview: 'All warranties are tracked in the Warranties page.',
+      accessing: 'Go to Dashboard → Warranties (shield icon in the sidebar).',
+      statuses: {
+        active: 'Warranty is valid and can be claimed.',
+        claimed: 'A claim has been filed against this warranty.',
+        expired: 'The warranty duration has passed (does not apply to Lifetime warranties).',
+        voided: 'The warranty was manually voided.',
+      },
+      actions: [
+        'Click any warranty to see full details, coverage terms, and claims history.',
+        'File a claim: describe what happened, track repair details, and mark the claim as completed when done.',
+        'Void a warranty if it was sold in error or needs to be canceled.',
+      ],
+    },
+    receipts: {
+      perItem: 'Per-item warranty shows as a sub-line beneath the warranted item on the receipt.',
+      perInvoice: 'Per-invoice warranty shows in the totals section of the receipt.',
+      coverageTerms: 'When any warranty is purchased, your coverage terms print at the bottom of the receipt.',
+      allTypes: 'Warranty details appear on all receipt types: in-app view, email receipts, and SMS receipts.',
+    },
+    futureFeature: 'When the photo capture feature launches, a photo of the customer\'s jewelry will be attached to their warranty file at the time of purchase.',
+  },
+
+  // ---------------------------------------------------------------------------
+  // 9.18 Tier Pricing
+  // ---------------------------------------------------------------------------
+  tierPricing: {
+    overview: 'Tier Pricing is a third pricing mode alongside Flat Rate and Per Product. It lets you group chains into named pricing tiers (e.g., "Sterling Silver," "Gold Filled," "Premium/14k") with each tier having its own product type prices. This matches how most artists already think about their pricing — by metal type.',
+    settingUp: {
+      steps: [
+        '1. Go to Settings → Default Pricing.',
+        '2. Under Pricing Mode, select "By Tier."',
+        '3. Click "+ Add Tier" to create your first tier.',
+        '4. Name each tier (e.g., "Sterling Silver," "Gold Filled," "14K Gold").',
+        '5. Set the product prices for each tier (bracelet, anklet, ring, necklace per inch, hand chain).',
+        '6. Reorder tiers with the up/down arrows — this controls display order.',
+        '7. Edit or delete tiers anytime.',
+      ],
+      tip: 'Most artists create 2-3 tiers based on metal type. Keep it simple — customers understand "silver tier" vs "gold tier" intuitively.',
+    },
+    assigningChains: {
+      steps: [
+        '1. Go to Inventory and edit any chain.',
+        '2. Select a tier from the "Pricing Tier" dropdown.',
+        '3. Product prices auto-fill from the tier defaults.',
+        '4. You can still override individual prices after assigning a tier.',
+      ],
+      customPricing: 'Choose "None (custom prices)" in the dropdown to set prices manually without a tier.',
+    },
+    inPOS: {
+      overview: 'When using tier pricing, the POS shows tier filter chips alongside the material filter.',
+      howItWorks: 'Tap a tier name to filter the product grid to just that tier\'s chains. Both tier and material filters work together — you can filter by "Gold Filled" material AND "Premium" tier at the same time.',
+    },
+    atEvents: {
+      overview: 'When setting up an event, use "Select by Tier" to quickly check all chains in a tier for that event.',
+      tip: 'Select an entire tier first, then fine-tune with individual checkboxes if needed.',
+    },
+    onStorefront: {
+      overview: 'Your public storefront page can display pricing organized by tier.',
+      howTo: 'Enable "Show pricing by tier" in your storefront settings. Your public page will show tier names with product prices beneath each one.',
+    },
+    comparisonToOtherModes: {
+      flatRate: 'Flat Rate: one price per product type for all chains. Simplest option.',
+      perProduct: 'Per Product: set individual prices per chain per product type. Most flexible.',
+      byTier: 'By Tier: group chains by metal/quality level, each tier has its own prices. Best of both worlds — organized and efficient.',
+    },
   },
 };
 
