@@ -26,40 +26,49 @@ export default async function PayRedirectPage({
   const { sessionId } = await params;
 
   try {
-    // Look up the tenant that owns this checkout session.
-    // Check both sales and party_requests (deposit payments).
     const db = await createServiceRoleClient();
 
-    let tenantId: string | null = null;
-
-    const { data: sale } = await db
-      .from('sales')
-      .select('tenant_id')
-      .eq('stripe_checkout_session_id', sessionId)
+    // Primary lookup: checkout_sessions table (written at session creation time)
+    const { data: checkoutRecord } = await db
+      .from('checkout_sessions')
+      .select('stripe_account_id')
+      .eq('session_id', sessionId)
       .single();
 
-    if (sale) {
-      tenantId = sale.tenant_id;
-    } else {
-      const { data: partyReq } = await db
-        .from('party_requests')
+    let stripeAccountId: string | null = checkoutRecord?.stripe_account_id || null;
+
+    // Fallback: check sales and party_requests (for sessions created before this table)
+    if (!stripeAccountId) {
+      let tenantId: string | null = null;
+
+      const { data: sale } = await db
+        .from('sales')
         .select('tenant_id')
         .eq('stripe_checkout_session_id', sessionId)
         .single();
-      if (partyReq) tenantId = partyReq.tenant_id;
+
+      if (sale) {
+        tenantId = sale.tenant_id;
+      } else {
+        const { data: partyReq } = await db
+          .from('party_requests')
+          .select('tenant_id')
+          .eq('stripe_checkout_session_id', sessionId)
+          .single();
+        if (partyReq) tenantId = partyReq.tenant_id;
+      }
+
+      if (tenantId) {
+        const { data: tenant } = await db
+          .from('tenants')
+          .select('stripe_account_id')
+          .eq('id', tenantId)
+          .single();
+        stripeAccountId = tenant?.stripe_account_id || null;
+      }
     }
 
-    if (!tenantId) {
-      return <ExpiredPage />;
-    }
-
-    const { data: tenant } = await db
-      .from('tenants')
-      .select('stripe_account_id')
-      .eq('id', tenantId)
-      .single();
-
-    if (!tenant?.stripe_account_id) {
+    if (!stripeAccountId) {
       return <ExpiredPage />;
     }
 
@@ -67,7 +76,7 @@ export default async function PayRedirectPage({
     const session = await stripe.checkout.sessions.retrieve(
       sessionId,
       {},
-      { stripeAccount: tenant.stripe_account_id }
+      { stripeAccount: stripeAccountId }
     );
 
     // Only redirect if the session is still open

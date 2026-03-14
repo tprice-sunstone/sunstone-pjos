@@ -111,6 +111,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
       { stripeAccount: tenant.stripe_account_id }
     );
 
+    // ── Store session→tenant mapping for /pay redirect lookup ────────────
+    await db
+      .from('checkout_sessions')
+      .insert({
+        session_id: session.id,
+        tenant_id: tenantId,
+        stripe_account_id: tenant.stripe_account_id,
+        amount_cents: amountCents,
+      });
+
     // ── Update party request with pending deposit ───────────────────────
     await db
       .from('party_requests')
