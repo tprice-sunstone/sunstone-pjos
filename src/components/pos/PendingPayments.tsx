@@ -97,7 +97,7 @@ export function PendingPayments({ tenantId, eventId, onPaymentCompleted }: Pendi
             setSales((prev) => prev.filter((s) => s.id !== updated.id));
             onPaymentCompleted?.(updated.id);
             toast.success('Payment received!');
-          } else if (updated.payment_status === 'expired') {
+          } else if (updated.payment_status === 'failed') {
             setSales((prev) => prev.filter((s) => s.id !== updated.id));
             toast.info('Payment link expired');
           }

@@ -299,7 +299,7 @@ export async function POST(request: NextRequest) {
         if (saleId) {
           await serviceRole
             .from('sales')
-            .update({ payment_status: 'expired', status: 'voided' })
+            .update({ payment_status: 'failed', status: 'voided' })
             .eq('id', saleId);
 
           console.log(`[Webhook] POS payment expired — sale ${saleId} → voided`);

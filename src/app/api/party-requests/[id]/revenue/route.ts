@@ -38,7 +38,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     .eq('party_request_id', partyRequestId)
     .eq('tenant_id', member.tenant_id)
     .eq('status', 'completed')
-    .neq('payment_status', 'expired')
+    .neq('payment_status', 'failed')
     .order('created_at', { ascending: true });
 
   // Fetch sale items for top products
