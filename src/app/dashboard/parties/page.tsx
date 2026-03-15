@@ -123,7 +123,9 @@ export default function PartiesPage() {
       .finally(() => setRsvpsLoading(false));
   }, [selectedId]);
 
-  // Sync notes + guarantee when selecting a party
+  // Sync notes + guarantee when selecting a NEW party
+  // Only depends on selectedId — not requests — so typing in the deposit
+  // input doesn't get reset by unrelated requests updates.
   useEffect(() => {
     if (selectedId) {
       const req = requests.find((r) => r.id === selectedId);
@@ -134,7 +136,8 @@ export default function PartiesPage() {
       setRevenue(null);
       setTopProducts([]);
     }
-  }, [selectedId, requests]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
 
   // Load messages when switching to messages tab
   const fetchMessages = useCallback(async (partyId: string) => {
@@ -261,7 +264,11 @@ export default function PartiesPage() {
   // ── CRM-gated actions ─────────────────────────────────────────────────
 
   const handleSendDeposit = async () => {
-    if (!selectedId || !depositAmount) return;
+    if (!selectedId) return;
+    if (!depositAmount) {
+      toast.error('Enter a deposit amount');
+      return;
+    }
     const amount = parseFloat(depositAmount);
     if (isNaN(amount) || amount <= 0) {
       toast.error('Enter a valid deposit amount');
@@ -272,6 +279,7 @@ export default function PartiesPage() {
       const res = await fetch(`/api/party-requests/${selectedId}/deposit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ depositAmount: amount, sendSmsToHost: true }),
       });
       const data = await res.json();
