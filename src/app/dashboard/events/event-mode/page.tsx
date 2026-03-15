@@ -728,20 +728,78 @@ function EventModePageInner() {
     <div className="fixed inset-0 bg-[var(--surface-base)] flex flex-col">
 
       {/* ── Header ── */}
-      <header className="bg-[var(--surface-base)] border-b border-[var(--border-default)] px-5 py-3.5 flex items-center justify-between shrink-0 z-10 min-h-[56px]" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 14px)' }}>
-        <div className="flex items-center gap-3 min-w-0">
-          <button onClick={() => router.push('/dashboard/events')}
-            className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors">
-            <BackArrow />
-          </button>
-          <div className="min-w-0">
-            <div className="font-semibold text-[var(--text-primary)] text-[15px] truncate">{event.name}</div>
-            {event.location && <div className="text-[11px] text-[var(--text-tertiary)] truncate">{event.location}</div>}
+      <header className="bg-[var(--surface-base)] border-b border-[var(--border-default)] shrink-0 z-10 flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        {/* Row 1: Back | Title | Icon buttons */}
+        <div className="flex items-center justify-between px-4 py-2.5 min-h-[56px]">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <button onClick={() => router.push('/dashboard/events')}
+              className="w-11 h-11 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors shrink-0">
+              <BackArrow />
+            </button>
+            <div className="min-w-0">
+              <div className="font-semibold text-[var(--text-primary)] text-[15px] truncate">{event.name}</div>
+              {event.location && <div className="text-[11px] text-[var(--text-tertiary)] truncate">{event.location}</div>}
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0 ml-3">
+            {/* Cash Drawer */}
+            {tenant && eventId && (
+              <CashDrawerPanel
+                tenantId={tenant.id}
+                eventId={eventId}
+                mode="event"
+                onDrawerChange={setOpenDrawerId}
+                refreshTrigger={drawerRefresh}
+              />
+            )}
+            <button onClick={() => setShowGiftCardModal(true)}
+              className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
+              aria-label="Sell gift card"
+              title="Sell Gift Card">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+              </svg>
+            </button>
+            <button onClick={() => setShowQR(true)}
+              className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
+              aria-label="Show QR code">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm14 3h.01M17 17h.01M14 14h3v3h-3v-3zm0 4h.01M17 20h.01M20 14h.01M20 17h.01M20 20h.01" />
+              </svg>
+            </button>
+            {/* Auto-reply toggle */}
+            {tenant?.dedicated_phone_number && (
+              <button
+                onClick={toggleAutoReply}
+                className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-colors ${
+                  autoReplyOn
+                    ? 'border-[var(--accent-500)] bg-[var(--accent-50)] text-[var(--accent-600)]'
+                    : 'border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]'
+                }`}
+                aria-label={autoReplyOn ? 'Auto-reply on' : 'Auto-reply off'}
+                title={autoReplyOn ? 'Auto-reply ON — clients get an instant response' : 'Auto-reply OFF — tap to enable'}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                </svg>
+              </button>
+            )}
+            <div className="hidden sm:flex items-center gap-5 text-sm ml-2">
+              <div className="text-center">
+                <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.05em] font-semibold">Sales</div>
+                <div className="text-lg font-bold text-[var(--text-primary)]">{todaySales.count}</div>
+              </div>
+              <div className="w-px h-7 bg-[var(--border-default)]" />
+              <div className="text-center">
+                <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.05em] font-semibold">Revenue</div>
+                <div className="text-lg font-bold text-[var(--text-primary)]">${todaySales.total.toFixed(2)}</div>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Queue Badge */}
-          {tenant && eventId && (
+        {/* Row 2: Queue pill */}
+        {tenant && eventId && (
+          <div className="px-4 pb-2.5">
             <QueueBadge
               tenantId={tenant.id}
               eventId={eventId}
@@ -750,63 +808,8 @@ function EventModePageInner() {
               isServingActive={!!activeQueueEntry}
               refreshTrigger={queueRefresh}
             />
-          )}
-
-          {/* Cash Drawer */}
-          {tenant && eventId && (
-            <CashDrawerPanel
-              tenantId={tenant.id}
-              eventId={eventId}
-              mode="event"
-              onDrawerChange={setOpenDrawerId}
-              refreshTrigger={drawerRefresh}
-            />
-          )}
-
-          <button onClick={() => setShowGiftCardModal(true)}
-            className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
-            aria-label="Sell gift card"
-            title="Sell Gift Card">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-            </svg>
-          </button>
-          <button onClick={() => setShowQR(true)}
-            className="w-10 h-10 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
-            aria-label="Show QR code">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm14 3h.01M17 17h.01M14 14h3v3h-3v-3zm0 4h.01M17 20h.01M20 14h.01M20 17h.01M20 20h.01" />
-            </svg>
-          </button>
-          {/* Auto-reply toggle */}
-          {tenant?.dedicated_phone_number && (
-            <button
-              onClick={toggleAutoReply}
-              className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-colors ${
-                autoReplyOn
-                  ? 'border-[var(--accent-500)] bg-[var(--accent-50)] text-[var(--accent-600)]'
-                  : 'border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]'
-              }`}
-              aria-label={autoReplyOn ? 'Auto-reply on' : 'Auto-reply off'}
-              title={autoReplyOn ? 'Auto-reply ON — clients get an instant response' : 'Auto-reply OFF — tap to enable'}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-              </svg>
-            </button>
-          )}
-          <div className="hidden sm:flex items-center gap-5 text-sm">
-            <div className="text-center">
-              <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.05em] font-semibold">Sales</div>
-              <div className="text-lg font-bold text-[var(--text-primary)]">{todaySales.count}</div>
-            </div>
-            <div className="w-px h-7 bg-[var(--border-default)]" />
-            <div className="text-center">
-              <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.05em] font-semibold">Revenue</div>
-              <div className="text-lg font-bold text-[var(--text-primary)] ">${todaySales.total.toFixed(2)}</div>
-            </div>
           </div>
-        </div>
+        )}
       </header>
 
       {/* ── Serving Banner ── */}
