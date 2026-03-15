@@ -239,12 +239,16 @@ export function PaymentScreen({
       // 2. Every 3rd poll, also check Stripe directly as fallback
       if (checkoutSessionId && pollCountRef.current % 3 === 0) {
         try {
-          const res = await fetch(`/api/stripe/session-status?sessionId=${checkoutSessionId}`, {
-            credentials: 'include',
+          const res = await fetch(`/api/stripe/session-status?sessionId=${checkoutSessionId}`);
+          const stripeData = await res.json();
+          console.log('Poll result:', {
+            sessionId: checkoutSessionId,
+            responseOk: res.ok,
+            status: stripeData.status,
+            rawData: stripeData,
           });
           if (res.ok) {
-            const status = await res.json();
-            if (status.status === 'paid') {
+            if (stripeData.status === 'paid') {
               if (pollRef.current) clearInterval(pollRef.current);
               setPaymentComplete(true);
               setTimeout(() => { onPaymentCompleted(saleId); }, 2000);

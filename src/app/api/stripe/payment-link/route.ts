@@ -135,13 +135,15 @@ export async function POST(request: NextRequest) {
     const feeRate = PLATFORM_FEE_RATES[(tenant.subscription_tier as SubscriptionTier)] || 0.03;
     const platformFeeCents = Math.round(subtotalCents * feeRate);
 
-    // ── Determine success/cancel URLs based on POS mode ─────────────────
+    // ── Determine success/cancel URLs ───────────────────────────────────
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://sunstonepj.app';
     const returnPath = mode === 'store'
       ? '/dashboard/pos'
       : '/dashboard/events/event-mode';
 
     // ── Create Checkout Session on the connected account ────────────────
+    // success_url points to a public thank-you page (customer's phone has no auth)
+    // {CHECKOUT_SESSION_ID} is a Stripe template variable replaced automatically
     const sessionParams: Record<string, unknown> = {
       mode: 'payment',
       payment_method_types: ['card'],
@@ -153,7 +155,7 @@ export async function POST(request: NextRequest) {
           tenant_id: tenantId,
         },
       },
-      success_url: `${baseUrl}${returnPath}?payment_success=${saleId}`,
+      success_url: `${baseUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}${returnPath}?payment_cancelled=${saleId}`,
       expires_at: Math.floor(Date.now() / 1000) + (30 * 60), // 30 minutes from now
       metadata: {
