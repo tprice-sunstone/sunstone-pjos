@@ -30,12 +30,14 @@ import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import SunnyTutorial from '@/components/SunnyTutorial';
 import ExpensesSection from '@/components/reports/ExpensesSection';
 import type { ExpenseTotals } from '@/components/reports/ExpensesSection';
+import TransactionList from '@/components/reports/TransactionList';
+import type { TransactionSale } from '@/components/reports/TransactionList';
 
 // ————————————————————————————————————————————————
 // Types
 // ————————————————————————————————————————————————
 
-type ReportsTab = 'overview' | 'events';
+type ReportsTab = 'overview' | 'events' | 'transactions';
 type SourceFilter = 'all' | 'events' | 'store';
 type DatePreset = 'ytd' | 'q1' | 'q2' | 'q3' | 'q4' | 'this_month' | 'last_month' | 'last_3' | 'custom';
 
@@ -218,6 +220,42 @@ function exportOverviewCSV(data: AggregatedData, dateLabel: string, sourceLabel:
 }
 
 // ————————————————————————————————————————————————
+// CSV Export (transactions)
+// ————————————————————————————————————————————————
+
+function exportTransactionsCSV(sales: TransactionSale[], dateLabel: string) {
+  const filename = `Transactions - ${dateLabel}.csv`;
+  const lines: string[] = [];
+
+  lines.push('Date,Time,Client,Items,Subtotal,Discount,Tax,Tip,Warranty,Platform Fee,Total,Payment Method,Status,Notes');
+  for (const sale of sales) {
+    const dt = new Date(sale.created_at);
+    const date = format(dt, 'yyyy-MM-dd');
+    const time = format(dt, 'h:mm a');
+    const client = sale.client_name || 'Walk-in';
+    const items = (sale.sale_items || []).map((i) => i.name).join('; ');
+    const method = paymentMethodLabels[sale.payment_method] || sale.payment_method;
+    const notes = (sale.notes || '').replace(/"/g, '""');
+    lines.push([
+      date, time, `"${client}"`, `"${items}"`,
+      Number(sale.subtotal).toFixed(2), Number(sale.discount_amount).toFixed(2),
+      Number(sale.tax_amount).toFixed(2), Number(sale.tip_amount).toFixed(2),
+      Number(sale.warranty_amount).toFixed(2), Number(sale.platform_fee_amount).toFixed(2),
+      Number(sale.total).toFixed(2), `"${method}"`, sale.payment_status, `"${notes}"`,
+    ].join(','));
+  }
+
+  const csv = lines.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+// ————————————————————————————————————————————————
 // Component
 // ————————————————————————————————————————————————
 
@@ -241,7 +279,7 @@ export default function ReportsPage() {
   const [customEnd, setCustomEnd] = useState('');
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [loading, setLoading] = useState(true);
-  const [sales, setSales] = useState<(Sale & { sale_items: SaleItem[] })[]>([]);
+  const [sales, setSales] = useState<(Sale & { sale_items: SaleItem[]; clients?: { first_name: string; last_name: string } | null })[]>([]);
   const [boothFeeMap, setBoothFeeMap] = useState<Map<string, number>>(new Map());
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [expenseTotals, setExpenseTotals] = useState<ExpenseTotals>({ total: 0, byCategory: {} });
@@ -303,7 +341,7 @@ export default function ReportsPage() {
     // NOTE: fee_handling is included via the * wildcard on sales
     let query = supabase
       .from('sales')
-      .select('*, sale_items(*)')
+      .select('*, sale_items(*), clients(first_name, last_name)')
       .eq('tenant_id', tenant.id)
       .eq('status', 'completed')
       .in('payment_status', ['completed'])
@@ -333,7 +371,7 @@ export default function ReportsPage() {
     });
     setBoothFeeMap(bm);
 
-    setSales((salesRes.data || []) as (Sale & { sale_items: SaleItem[] })[]);
+    setSales((salesRes.data || []) as (Sale & { sale_items: SaleItem[]; clients?: { first_name: string; last_name: string } | null })[]);
     setRefunds((refundsRes.data || []) as Refund[]);
 
     // Fetch closed cash drawers for the date range
@@ -537,6 +575,31 @@ export default function ReportsPage() {
     }).filter((ev) => ev.salesCount > 0 || new Date(ev.date) >= dateRange.start);
   }, [events, sales, boothFeeMap, activeTab, dateRange]);
 
+  // Memoize transaction list (most recent first, with client names)
+  const transactionSales: TransactionSale[] = useMemo(() => {
+    return [...sales]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .map((sale) => ({
+        id: sale.id,
+        created_at: sale.created_at,
+        client_name: sale.clients
+          ? `${sale.clients.first_name} ${sale.clients.last_name}`.trim()
+          : null,
+        sale_items: sale.sale_items,
+        subtotal: sale.subtotal,
+        discount_amount: sale.discount_amount,
+        tax_amount: sale.tax_amount,
+        tip_amount: sale.tip_amount,
+        warranty_amount: sale.warranty_amount,
+        platform_fee_amount: sale.platform_fee_amount,
+        total: sale.total,
+        payment_method: sale.payment_method,
+        payment_status: sale.payment_status,
+        notes: sale.notes,
+        fee_handling: (sale as any).fee_handling,
+      }));
+  }, [sales]);
+
   if (!tenant) {
     return <div className="text-text-tertiary py-12 text-center">Loading…</div>;
   }
@@ -622,6 +685,16 @@ export default function ReportsPage() {
           }`}
         >
           Events
+        </button>
+        <button
+          onClick={() => setActiveTab('transactions')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'transactions'
+              ? 'bg-[var(--surface-base)] text-[var(--text-primary)] shadow-sm'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+          }`}
+        >
+          Transactions
         </button>
       </div>
 
@@ -1004,6 +1077,103 @@ export default function ReportsPage() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ================================================================ */}
+      {/* Transactions Tab                                                  */}
+      {/* ================================================================ */}
+      {activeTab === 'transactions' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-text-secondary">
+              {loading ? 'Loading…' : `${transactionSales.length} transaction${transactionSales.length !== 1 ? 's' : ''} in this period`}
+            </p>
+            {!loading && transactionSales.length > 0 && (
+              <Button variant="secondary" size="sm" onClick={() => exportTransactionsCSV(transactionSales, dateLabel)}>
+                <span className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                  Export CSV
+                </span>
+              </Button>
+            )}
+          </div>
+
+          {/* Filters (same as overview — date + source) */}
+          <Card>
+            <CardContent className="px-5 py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-text-tertiary uppercase tracking-wide mb-2">Period</label>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ['ytd', 'YTD'],
+                    ['this_month', 'This Month'],
+                    ['last_month', 'Last Month'],
+                    ['last_3', 'Last 3 Mo'],
+                    ['q1', 'Q1'],
+                    ['q2', 'Q2'],
+                    ['q3', 'Q3'],
+                    ['q4', 'Q4'],
+                    ['custom', 'Custom'],
+                  ] as [DatePreset, string][]).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setDatePreset(key)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        datePreset === key
+                          ? 'bg-accent-500 text-white'
+                          : 'bg-[var(--surface-raised)] text-text-secondary hover:text-text-primary hover:bg-[var(--surface-subtle)]'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {datePreset === 'custom' && (
+                <div className="flex gap-3 items-end">
+                  <div className="flex-1">
+                    <Input label="From" type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} />
+                  </div>
+                  <div className="flex-1">
+                    <Input label="To" type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-text-tertiary uppercase tracking-wide mb-2">Source</label>
+                <div className="flex gap-2">
+                  {([
+                    ['all', 'All Sales'],
+                    ['events', 'Events'],
+                    ['store', 'Store'],
+                  ] as [SourceFilter, string][]).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setSourceFilter(key)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        sourceFilter === key
+                          ? 'bg-accent-500 text-white'
+                          : 'bg-[var(--surface-raised)] text-text-secondary hover:text-text-primary hover:bg-[var(--surface-subtle)]'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="px-3 py-2 sm:px-5 sm:py-4">
+              <TransactionList sales={transactionSales} loading={loading} />
+            </CardContent>
+          </Card>
         </div>
       )}
 

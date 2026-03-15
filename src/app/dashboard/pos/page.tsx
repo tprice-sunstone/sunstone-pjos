@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { QRCode, FullScreenQR } from '@/components/QRCode';
 import CartPanel from '@/components/CartPanel';
-import { ProductSelector, QueueBadge, CheckoutFlow, PendingPayments, GiftCardModal } from '@/components/pos';
+import { ProductSelector, QueueBadge, CheckoutFlow, PendingPayments, GiftCardModal, SalesPanel } from '@/components/pos';
 import type { CompletedSaleData, CheckoutStep, GiftCardData } from '@/components/pos';
 import { calculateJumpRingNeeds, getLowStockWarnings } from '@/lib/jump-rings';
 import SunnyTutorial from '@/components/SunnyTutorial';
@@ -57,6 +57,7 @@ export default function StoreModePage() {
   const [processing, setProcessing] = useState(false);
   const [todaySales, setTodaySales] = useState({ count: 0, total: 0 });
   const [showCart, setShowCart] = useState(false);
+  const [showSalesPanel, setShowSalesPanel] = useState(false);
 
   // QR code state
   const [showQR, setShowQR] = useState(false);
@@ -658,7 +659,11 @@ export default function StoreModePage() {
           </button>
 
           {/* Desktop stats */}
-          <div className="hidden sm:flex items-center gap-5 text-sm">
+          <button
+            onClick={() => setShowSalesPanel(true)}
+            className="hidden sm:flex items-center gap-5 text-sm px-3 py-1.5 rounded-lg hover:bg-[var(--surface-subtle)] transition-colors cursor-pointer"
+            title="View today's sales"
+          >
             <div className="text-center">
               <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.05em] font-semibold">Sales</div>
               <div className="text-lg font-bold text-[var(--text-primary)]">{todaySales.count}</div>
@@ -666,9 +671,9 @@ export default function StoreModePage() {
             <div className="w-px h-7 bg-[var(--border-default)]" />
             <div className="text-center">
               <div className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.05em] font-semibold">Revenue</div>
-              <div className="text-lg font-bold text-[var(--text-primary)] ">${todaySales.total.toFixed(2)}</div>
+              <div className="text-lg font-bold text-[var(--text-primary)]">${todaySales.total.toFixed(2)}</div>
             </div>
-          </div>
+          </button>
         </div>
       </header>
 
@@ -706,10 +711,13 @@ export default function StoreModePage() {
 
         <div className="flex-1 overflow-y-auto bg-[var(--surface-raised)]">
           {/* Mobile stats */}
-          <div className="sm:hidden flex items-center justify-between px-4 py-2 bg-[var(--surface-base)] border-b border-[var(--border-subtle)] text-xs">
+          <button
+            onClick={() => setShowSalesPanel(true)}
+            className="sm:hidden flex items-center justify-between w-full px-4 py-2 bg-[var(--surface-base)] border-b border-[var(--border-subtle)] text-xs hover:bg-[var(--surface-subtle)] transition-colors cursor-pointer min-h-[44px]"
+          >
             <span className="text-[var(--text-tertiary)]"><span className="font-semibold text-[var(--text-primary)]">{todaySales.count}</span> sales today</span>
-            <span className="text-[var(--text-tertiary)]">Revenue: <span className="font-bold text-[var(--text-primary)] ">${todaySales.total.toFixed(2)}</span></span>
-          </div>
+            <span className="text-[var(--text-tertiary)]">Revenue: <span className="font-bold text-[var(--text-primary)]">${todaySales.total.toFixed(2)}</span></span>
+          </button>
 
           <div className="p-5 pb-28 md:pb-5 max-w-[720px] mx-auto">
 
@@ -893,6 +901,17 @@ export default function StoreModePage() {
           onGiftCardSold={() => {
             toast.success('Gift card sold!');
           }}
+        />
+      )}
+
+      {/* ── Sales Panel ── */}
+      {tenant && (
+        <SalesPanel
+          isOpen={showSalesPanel}
+          onClose={() => setShowSalesPanel(false)}
+          tenantId={tenant.id}
+          eventId={null}
+          mode="store"
         />
       )}
 

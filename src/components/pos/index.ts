@@ -9,4 +9,5 @@ export { CheckoutFlow } from './checkout';
 export { PendingPayments } from './PendingPayments';
 export { GiftCardModal } from './GiftCardModal';
 export { GiftCardRedeemModal } from './GiftCardRedeemModal';
+export { SalesPanel } from './SalesPanel';
 export type { CompletedSaleData, CheckoutStep, GiftCardData } from './checkout';
