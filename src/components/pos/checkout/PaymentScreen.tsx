@@ -168,6 +168,7 @@ export function PaymentScreen({
       const res = await fetch('/api/stripe/payment-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           saleId,
           mode: mode || 'event',
@@ -238,7 +239,9 @@ export function PaymentScreen({
       // 2. Every 3rd poll, also check Stripe directly as fallback
       if (checkoutSessionId && pollCountRef.current % 3 === 0) {
         try {
-          const res = await fetch(`/api/stripe/session-status?sessionId=${checkoutSessionId}`);
+          const res = await fetch(`/api/stripe/session-status?sessionId=${checkoutSessionId}`, {
+            credentials: 'include',
+          });
           if (res.ok) {
             const status = await res.json();
             if (status.status === 'paid') {
@@ -264,6 +267,7 @@ export function PaymentScreen({
       const res = await fetch('/api/stripe/send-payment-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           phone: smsPhone.trim(),
           url: checkoutUrl,

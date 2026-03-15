@@ -23,31 +23,47 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { data: member } = await supabase
-      .from('tenant_members')
-      .select('tenant_id')
-      .eq('user_id', user.id)
-      .limit(1)
-      .single();
-    if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
-
-    const tenantId = member.tenant_id;
-
     // ── Get sessionId from query params ─────────────────────────────────
     const sessionId = request.nextUrl.searchParams.get('sessionId');
     if (!sessionId) {
       return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 });
     }
 
-    // ── Get tenant's Stripe account ─────────────────────────────────────
+    // ── Look up stripe_account_id from checkout_sessions table ──────────
     const db = await createServiceRoleClient();
-    const { data: tenant } = await db
-      .from('tenants')
+
+    let stripeAccountId: string | null = null;
+
+    const { data: checkoutRecord } = await db
+      .from('checkout_sessions')
       .select('stripe_account_id')
-      .eq('id', tenantId)
+      .eq('session_id', sessionId)
       .single();
 
-    if (!tenant?.stripe_account_id) {
+    if (checkoutRecord?.stripe_account_id) {
+      stripeAccountId = checkoutRecord.stripe_account_id;
+    }
+
+    // Fallback: look up via tenant membership
+    if (!stripeAccountId) {
+      const { data: member } = await supabase
+        .from('tenant_members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+
+      if (member) {
+        const { data: tenant } = await db
+          .from('tenants')
+          .select('stripe_account_id')
+          .eq('id', member.tenant_id)
+          .single();
+        stripeAccountId = tenant?.stripe_account_id || null;
+      }
+    }
+
+    if (!stripeAccountId) {
       return NextResponse.json({ error: 'Stripe not connected' }, { status: 400 });
     }
 
@@ -55,7 +71,7 @@ export async function GET(request: NextRequest) {
     const session = await stripe.checkout.sessions.retrieve(
       sessionId,
       {},
-      { stripeAccount: tenant.stripe_account_id }
+      { stripeAccount: stripeAccountId }
     );
 
     return NextResponse.json({

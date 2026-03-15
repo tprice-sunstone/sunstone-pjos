@@ -137,6 +137,7 @@ export function PendingPayments({ tenantId, eventId, onPaymentCompleted }: Pendi
       const res = await fetch('/api/stripe/payment-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           saleId: sale.id,
         }),
@@ -148,6 +149,7 @@ export function PendingPayments({ tenantId, eventId, onPaymentCompleted }: Pendi
       await fetch('/api/stripe/send-payment-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           phone: sale.receipt_phone,
           url: data.url,
