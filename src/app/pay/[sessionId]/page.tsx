@@ -25,22 +25,32 @@ export default async function PayRedirectPage({
 }) {
   const { sessionId } = await params;
 
+  // Resolve the Stripe checkout URL — redirect() must be called OUTSIDE
+  // try/catch because Next.js redirect() throws internally.
+  let redirectUrl: string | null = null;
+
   try {
     const db = await createServiceRoleClient();
 
-    // Primary lookup: checkout_sessions table (written at session creation time)
-    const { data: checkoutRecord } = await db
+    let stripeAccountId: string | null = null;
+
+    // 1. Primary lookup: checkout_sessions table
+    const { data: checkoutRecord, error: csError } = await db
       .from('checkout_sessions')
       .select('stripe_account_id')
       .eq('session_id', sessionId)
       .single();
 
-    let stripeAccountId: string | null = checkoutRecord?.stripe_account_id || null;
+    if (csError) {
+      console.log('[Pay Redirect] checkout_sessions lookup:', csError.message);
+    }
 
-    // Fallback: check sales and party_requests (for sessions created before this table)
+    if (checkoutRecord?.stripe_account_id) {
+      stripeAccountId = checkoutRecord.stripe_account_id;
+    }
+
+    // 2. Fallback: sales table
     if (!stripeAccountId) {
-      let tenantId: string | null = null;
-
       const { data: sale } = await db
         .from('sales')
         .select('tenant_id')
@@ -48,27 +58,35 @@ export default async function PayRedirectPage({
         .single();
 
       if (sale) {
-        tenantId = sale.tenant_id;
-      } else {
-        const { data: partyReq } = await db
-          .from('party_requests')
-          .select('tenant_id')
-          .eq('stripe_checkout_session_id', sessionId)
-          .single();
-        if (partyReq) tenantId = partyReq.tenant_id;
-      }
-
-      if (tenantId) {
         const { data: tenant } = await db
           .from('tenants')
           .select('stripe_account_id')
-          .eq('id', tenantId)
+          .eq('id', sale.tenant_id)
+          .single();
+        stripeAccountId = tenant?.stripe_account_id || null;
+      }
+    }
+
+    // 3. Fallback: party_requests table
+    if (!stripeAccountId) {
+      const { data: partyReq } = await db
+        .from('party_requests')
+        .select('tenant_id')
+        .eq('stripe_checkout_session_id', sessionId)
+        .single();
+
+      if (partyReq) {
+        const { data: tenant } = await db
+          .from('tenants')
+          .select('stripe_account_id')
+          .eq('id', partyReq.tenant_id)
           .single();
         stripeAccountId = tenant?.stripe_account_id || null;
       }
     }
 
     if (!stripeAccountId) {
+      console.error('[Pay Redirect] No stripe_account_id found for session:', sessionId);
       return <ExpiredPage />;
     }
 
@@ -79,15 +97,19 @@ export default async function PayRedirectPage({
       { stripeAccount: stripeAccountId }
     );
 
-    // Only redirect if the session is still open
     if (session.status === 'open' && session.url) {
-      redirect(session.url);
+      redirectUrl = session.url;
     }
-
-    return <ExpiredPage />;
-  } catch {
-    return <ExpiredPage />;
+  } catch (error) {
+    console.error('[Pay Redirect] Error:', error);
   }
+
+  // redirect() called outside try/catch — it throws internally in Next.js
+  if (redirectUrl) {
+    redirect(redirectUrl);
+  }
+
+  return <ExpiredPage />;
 }
 
 function ExpiredPage() {

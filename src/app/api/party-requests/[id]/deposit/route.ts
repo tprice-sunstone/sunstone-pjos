@@ -112,7 +112,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
 
     // ── Store session→tenant mapping for /pay redirect lookup ────────────
-    await db
+    const { error: sessionInsertError } = await db
       .from('checkout_sessions')
       .insert({
         session_id: session.id,
@@ -120,6 +120,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
         stripe_account_id: tenant.stripe_account_id,
         amount_cents: amountCents,
       });
+    if (sessionInsertError) {
+      console.error('[Party Deposit] checkout_sessions insert failed:', sessionInsertError);
+    }
 
     // ── Update party request with pending deposit ───────────────────────
     await db

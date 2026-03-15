@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
     );
 
     // ── Store session→tenant mapping for /pay redirect lookup ────────────
-    await db
+    const { error: sessionInsertError } = await db
       .from('checkout_sessions')
       .insert({
         session_id: session.id,
@@ -176,6 +176,9 @@ export async function POST(request: NextRequest) {
         stripe_account_id: tenant.stripe_account_id,
         amount_cents: subtotalCents + Math.round(taxAmount * 100) + Math.round(tipAmount * 100),
       });
+    if (sessionInsertError) {
+      console.error('[Payment Link] checkout_sessions insert failed:', sessionInsertError);
+    }
 
     // ── Update sale with checkout session ID and pending status ──────────
     await db
