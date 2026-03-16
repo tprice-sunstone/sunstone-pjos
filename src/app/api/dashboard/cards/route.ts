@@ -214,7 +214,8 @@ async function refreshGettingStarted(
     const hasEvents = (eventsCount.count || 0) > 0;
     const hasInventory = (inventoryCount.count || 0) > 0;
     const hasPayment = !!(tenant?.square_merchant_id || tenant?.stripe_account_id);
-    const hasTheme = tenant?.theme_id && tenant.theme_id !== 'rose-gold';
+    const onboardingData = (tenant?.onboarding_data as Record<string, any>) || {};
+    const hasTheme = (tenant?.theme_id && tenant.theme_id !== 'rose-gold') || onboardingData.theme_customized === true;
     const hasTaxRate = (taxCount.count || 0) > 0;
 
     const steps = [
@@ -227,8 +228,6 @@ async function refreshGettingStarted(
 
     const completedCount = steps.filter((s) => s.done).length;
     const otherCards = cachedCards.filter((c) => c.type !== 'getting_started');
-
-    const onboardingData = (tenant?.onboarding_data as Record<string, any>) || {};
     if (onboardingData.getting_started_dismissed === true) {
       return otherCards;
     }
@@ -440,7 +439,7 @@ async function generateCards(
       const hasEvents = (allEventsCountResult.count || 0) > 0;
       const hasInventory = (inventoryCountResult.count || 0) > 0;
       const hasPayment = !!(tenant?.square_merchant_id || tenant?.stripe_account_id);
-      const hasTheme = tenant?.theme_id && tenant.theme_id !== 'rose-gold';
+      const hasTheme = (tenant?.theme_id && tenant.theme_id !== 'rose-gold') || onboardingData.theme_customized === true;
       const hasTaxRate = (taxProfilesCountResult.count || 0) > 0;
 
       const steps = [

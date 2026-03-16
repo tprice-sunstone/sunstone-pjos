@@ -1,22 +1,57 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { GettingStartedData } from '@/types';
 
 export function GettingStartedCard({ data }: { data: GettingStartedData }) {
   const router = useRouter();
-  if (!data || !Array.isArray(data.steps)) return null;
+  const [dismissed, setDismissed] = useState(false);
+  if (!data || !Array.isArray(data.steps) || dismissed) return null;
 
   const { steps, completedCount, totalCount } = data;
   const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const allDone = completedCount >= totalCount;
   const encouragement =
     completedCount === 0
       ? "Let's get started!"
-      : completedCount >= totalCount
+      : allDone
         ? "All done \u2014 you're ready to go!"
         : completedCount >= totalCount - 1
           ? 'Almost there!'
           : "You're making great progress!";
+
+  async function handleDismiss() {
+    setDismissed(true);
+    try {
+      await fetch('/api/dashboard/getting-started', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'dismiss' }),
+      });
+    } catch {
+      // Non-critical — card is already hidden locally
+    }
+  }
+
+  async function handleStepClick(step: { label: string; done: boolean; href: string }) {
+    if (step.done) return;
+
+    // If this is the theme step, mark it as done before navigating
+    if (step.label === 'Customize your theme') {
+      try {
+        await fetch('/api/dashboard/getting-started', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'mark_theme_done' }),
+        });
+      } catch {
+        // Non-critical — navigate anyway
+      }
+    }
+
+    router.push(step.href);
+  }
 
   return (
     <div
@@ -26,10 +61,38 @@ export function GettingStartedCard({ data }: { data: GettingStartedData }) {
         boxShadow: 'var(--shadow-card)',
         padding: 18,
         background: 'linear-gradient(135deg, var(--accent-50), var(--surface-raised))',
+        position: 'relative',
       }}
     >
+      {/* Dismiss button */}
+      <button
+        onClick={handleDismiss}
+        aria-label="Dismiss Getting Started"
+        className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          width: 44,
+          height: 44,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: 'none',
+          background: 'transparent',
+          cursor: 'pointer',
+          borderRadius: 8,
+          transition: 'color 0.15s',
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 6L6 18" />
+          <path d="M6 6l12 12" />
+        </svg>
+      </button>
+
       {/* Header */}
-      <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+      <div className="flex items-center justify-between" style={{ marginBottom: 12, paddingRight: 36 }}>
         <span
           className="text-text-tertiary uppercase"
           style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em' }}
@@ -79,7 +142,7 @@ export function GettingStartedCard({ data }: { data: GettingStartedData }) {
         {steps.map((step) => (
           <button
             key={step.href + step.label}
-            onClick={() => !step.done && router.push(step.href)}
+            onClick={() => handleStepClick(step)}
             disabled={step.done}
             className={step.done ? '' : 'hover:bg-accent-50'}
             style={{
