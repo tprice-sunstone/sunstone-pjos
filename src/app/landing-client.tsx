@@ -319,7 +319,7 @@ function SunnyChat() {
             fontFamily: FONT.body,
           }}
         >
-          Ask Sunny \u2726
+          Ask Sunny {'\u2726'}
         </button>
       )}
 
@@ -368,7 +368,7 @@ function SunnyChat() {
                 fontWeight: 700,
               }}
             >
-              \u2726
+              {'\u2726'}
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: 15, color: B.blackBrown }}>Sunny</div>
