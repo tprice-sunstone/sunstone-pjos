@@ -22,7 +22,6 @@ const B = {
   cloudyBlue: '#D2E1F0',
   sage: '#DFE0B0',
   pjRose: '#E1598F',
-  orange: '#FF8200',
   white: '#ffffff',
 }
 
@@ -633,7 +632,7 @@ export default function LandingPageClient() {
                 marginBottom: 28,
               }}
             >
-              <span style={{ color: B.orange, fontSize: 12 }}>{'\u2726'}</span>
+              <span style={{ color: B.pjRose, fontSize: 12 }}>{'\u2726'}</span>
               <span style={{ fontSize: 12, fontWeight: 500, color: B.blackBrown, fontFamily: FONT.body }}>
                 From the Pioneers of Permanent Jewelry
               </span>
@@ -648,15 +647,12 @@ export default function LandingPageClient() {
               <span style={{ display: 'block', fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: 700, color: B.blackBrown }}>
                 with Confidence.
               </span>
-              <span style={{ display: 'block', fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: 400, fontStyle: 'italic', color: B.deepWine, marginTop: 4 }}>
-                The Platform That Grows With You.
-              </span>
             </h1>
           </Reveal>
 
           <Reveal delay={0.2}>
             <p style={{ fontSize: 17, fontWeight: 500, color: B.softBrown, maxWidth: 600, margin: '24px auto 0', lineHeight: 1.6, fontFamily: FONT.body }}>
-              Sell more. Stay organized. Look professional &mdash; all from one place built for PJ artists.
+              From your first weld to your busiest event &mdash; a platform that grows with you.
             </p>
           </Reveal>
 
@@ -673,11 +669,11 @@ export default function LandingPageClient() {
 
           <Reveal delay={0.35}>
             <p style={{ fontSize: 13, color: B.softBrown, marginTop: 20, fontFamily: FONT.body }}>
-              <span style={{ color: B.orange }}>{'\u25C6'}</span> 60-Day Free Pro Trial{' '}
+              <span style={{ color: B.pjRose }}>{'\u25C6'}</span> 60-Day Free Pro Trial{' '}
               <span style={{ margin: '0 10px', color: B.taupe }}>|</span>
-              <span style={{ color: B.orange }}>{'\u25C6'}</span> No Credit Card Required{' '}
+              <span style={{ color: B.pjRose }}>{'\u25C6'}</span> No Credit Card Required{' '}
               <span style={{ margin: '0 10px', color: B.taupe }}>|</span>
-              <span style={{ color: B.orange }}>{'\u25C6'}</span> Cancel Anytime
+              <span style={{ color: B.pjRose }}>{'\u25C6'}</span> Cancel Anytime
             </p>
           </Reveal>
 
