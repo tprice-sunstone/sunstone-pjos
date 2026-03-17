@@ -735,11 +735,11 @@ export default function LandingPageClient() {
             `}</style>
             <div className="hero-photo-break" style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
               <Image
-                src="/landing/hero-lifestyle.webp"
+                src="/landing/hero-lifestyle-wide.webp"
                 alt="Permanent jewelry artist managing her business with Sunstone Studio"
-                width={1400}
-                height={550}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 30%', display: 'block' }}
+                width={2800}
+                height={1200}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center center', display: 'block' }}
               />
             </div>
           </Reveal>
@@ -952,12 +952,12 @@ export default function LandingPageClient() {
             `}</style>
             <div className="lifestyle-photo-break" style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
               <Image
-                src="/landing/lifestyle-business.webp"
+                src="/landing/lifestyle-business-wide.webp"
                 alt="Permanent jewelry artist checking her business on the go"
-                width={1400}
-                height={500}
+                width={2800}
+                height={1200}
                 loading="lazy"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 25%', display: 'block' }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center center', display: 'block' }}
               />
             </div>
           </Reveal>
