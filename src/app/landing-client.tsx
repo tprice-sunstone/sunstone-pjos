@@ -633,8 +633,8 @@ export default function LandingPageClient() {
             .hero-dashboard-wrap { border-radius: 12px; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04); }
             @media (min-width: 900px) {
               .hero-layout { flex-direction: row; text-align: left; gap: 48px; align-items: center; }
-              .hero-text { flex: 0 0 45%; min-width: 0; }
-              .hero-images { flex: 0 0 55%; min-width: 0; margin-top: 0; max-width: 55%; }
+              .hero-text { flex: 0 0 38%; min-width: 0; }
+              .hero-images { flex: 0 0 60%; min-width: 0; margin-top: 0; max-width: 60%; }
               .hero-ctas { justify-content: flex-start !important; }
             }
           `}</style>
@@ -720,13 +720,17 @@ export default function LandingPageClient() {
       <section style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
           <Reveal>
-            <div style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', maxHeight: 400 }}>
+            <style>{`
+              .hero-photo-break { height: 350px; }
+              @media (min-width: 768px) { .hero-photo-break { height: 550px; } }
+            `}</style>
+            <div className="hero-photo-break" style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
               <Image
                 src="/landing/hero-artist-clients.jpg"
                 alt="Permanent jewelry artist sizing a bracelet on a client"
                 width={1200}
-                height={400}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxHeight: 400 }}
+                height={550}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 25%', display: 'block' }}
               />
             </div>
           </Reveal>
@@ -924,17 +928,21 @@ export default function LandingPageClient() {
         </div>
       </section>
 
-      {/* ─── PHOTO BREAK: Welding Closeup ─── */}
+      {/* ─── PHOTO BREAK: Lifestyle (IMG-154) ─── */}
       <section style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
           <Reveal>
-            <div style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', maxHeight: 500 }}>
+            <style>{`
+              .lifestyle-photo-break { height: 350px; }
+              @media (min-width: 768px) { .lifestyle-photo-break { height: 500px; } }
+            `}</style>
+            <div className="lifestyle-photo-break" style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
               <Image
-                src="/landing/craft-closeup-bracelet.jpg"
-                alt="Close-up of a permanent jewelry bracelet being welded"
+                src="/landing/IMG-154.jpg"
+                alt="Permanent jewelry artist relaxing with laptop and phone, planning her business"
                 width={1200}
                 height={500}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxHeight: 500 }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center center', display: 'block' }}
               />
             </div>
           </Reveal>
@@ -1134,13 +1142,17 @@ export default function LandingPageClient() {
       <section style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
           <Reveal>
-            <div style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', maxHeight: 400 }}>
+            <style>{`
+              .weld-photo-break { height: 350px; }
+              @media (min-width: 768px) { .weld-photo-break { height: 500px; } }
+            `}</style>
+            <div className="weld-photo-break" style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
               <Image
                 src="/landing/weld-moment-necklace.jpg"
                 alt="Artist welding a permanent necklace with visible weld flash"
                 width={1200}
-                height={400}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxHeight: 400 }}
+                height={500}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 30%', display: 'block' }}
               />
             </div>
           </Reveal>
