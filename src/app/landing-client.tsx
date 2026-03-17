@@ -623,14 +623,12 @@ export default function LandingPageClient() {
           <style>{`
             .hero-layout { display: flex; flex-direction: column; align-items: center; text-align: center; }
             .hero-text { max-width: 560px; }
-            .hero-images { position: relative; width: 100%; max-width: 600px; margin-top: 40px; }
+            .hero-images { width: 100%; max-width: 600px; margin-top: 40px; }
             .hero-dashboard-wrap { border-radius: 12px; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04); }
-            .hero-photo-wrap { margin-top: 20px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
             @media (min-width: 900px) {
               .hero-layout { flex-direction: row; text-align: left; gap: 48px; align-items: center; }
               .hero-text { flex: 1; min-width: 0; }
               .hero-images { flex: 1; min-width: 0; margin-top: 0; max-width: none; }
-              .hero-photo-wrap { position: absolute; bottom: -30px; left: -40px; width: 200px; z-index: 2; }
               .hero-ctas { justify-content: flex-start !important; }
             }
           `}</style>
@@ -695,7 +693,7 @@ export default function LandingPageClient() {
             </div>
 
             <Reveal delay={0.4}>
-              <div className="hero-images" style={{ position: 'relative' }}>
+              <div className="hero-images">
                 <div className="hero-dashboard-wrap">
                   <Image
                     src="/landing/hero-dashboard.webp"
@@ -706,19 +704,26 @@ export default function LandingPageClient() {
                     style={{ width: '100%', height: 'auto', display: 'block' }}
                   />
                 </div>
-                <div className="hero-photo-wrap">
-                  <Image
-                    src="/landing/hero-pj-artist-client.jpg"
-                    alt="Permanent jewelry artist welding a bracelet on a happy client"
-                    width={600}
-                    height={400}
-                    priority
-                    style={{ width: '100%', height: 'auto', display: 'block' }}
-                  />
-                </div>
               </div>
             </Reveal>
           </div>
+        </div>
+      </section>
+
+      {/* ─── PHOTO BREAK: Hero Human Photo ─── */}
+      <section style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+          <Reveal>
+            <div style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', maxHeight: 400 }}>
+              <Image
+                src="/landing/hero-pj-artist-client.jpg"
+                alt="Permanent jewelry artist welding a bracelet on a happy client"
+                width={1200}
+                height={400}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxHeight: 400 }}
+              />
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -857,8 +862,8 @@ export default function LandingPageClient() {
                 ),
               },
               {
-                img: '/landing/qr-code.webp',
-                imgAlt: 'QR code check-in flow for events with digital waiver and queue management',
+                img: '/landing/client-profile.webp',
+                imgAlt: 'Client profile showing booking history and party RSVPs',
                 title: 'Fill your calendar with private parties',
                 body: 'Your own booking page with deposits, RSVPs, and guest marketing \u2014 more revenue per hour than any farmers market.',
                 icon: (
@@ -917,13 +922,13 @@ export default function LandingPageClient() {
       <section style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
           <Reveal>
-            <div style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', maxHeight: 400 }}>
+            <div style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', maxHeight: 500 }}>
               <Image
                 src="/landing/pj-welding-closeup.jpg"
                 alt="Close-up of permanent jewelry welding process"
                 width={1200}
-                height={400}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxHeight: 400 }}
+                height={500}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxHeight: 500 }}
               />
             </div>
           </Reveal>
@@ -988,10 +993,9 @@ export default function LandingPageClient() {
 
           {/* ─── Phone Mockup Demos ─── */}
           <style>{`
-            .sunny-phones { display: flex; gap: 24px; justify-content: center; margin-bottom: 48px; overflow-x: auto; padding: 8px 0; -webkit-overflow-scrolling: touch; }
-            .sunny-phones::-webkit-scrollbar { display: none; }
-            .sunny-phone { flex: 0 0 310px; min-width: 310px; }
-            @media (min-width: 1024px) { .sunny-phone { flex: 1; min-width: 0; max-width: 320px; } }
+            .sunny-phones { display: flex; flex-direction: column; gap: 24px; align-items: center; margin-bottom: 48px; padding: 8px 0; }
+            .sunny-phone { width: 100%; max-width: 380px; }
+            @media (min-width: 1024px) { .sunny-phones { flex-direction: row; justify-content: center; } .sunny-phone { flex: 1; min-width: 0; max-width: 320px; } }
           `}</style>
           <Reveal delay={0.2}>
             <div className="sunny-phones">
@@ -1316,20 +1320,20 @@ export default function LandingPageClient() {
       </section>
 
       {/* ═══════ SECTION 9: FOOTER ═══════ */}
-      <footer style={{ background: B.blackBrown, padding: '48px 0 32px' }}>
+      <footer style={{ background: '#FAF7F0', padding: '48px 0 32px' }}>
         <div style={{ ...wrap, textAlign: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 20 }}>
             <Image src="/landing/sunstone-logo.webp" alt="Sunstone" width={28} height={28} style={{ borderRadius: 6 }} />
-            <span style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 16, color: '#fff' }}>Sunstone Permanent Jewelry</span>
+            <span style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 16, color: '#1F1F1F' }}>Sunstone Permanent Jewelry</span>
           </div>
-          <p style={{ fontSize: 13, color: B.taupe, lineHeight: 1.7, marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: '#1F1F1F', lineHeight: 1.7, marginBottom: 16, opacity: 0.7 }}>
             588 S 2000 W, Ste 400, Springville, UT 84663 &nbsp;|&nbsp; 385-999-5240
           </p>
           <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginBottom: 24 }}>
-            <a href="/privacy" style={{ fontSize: 13, color: B.taupe, textDecoration: 'none' }}>Privacy Policy</a>
-            <a href="/terms" style={{ fontSize: 13, color: B.taupe, textDecoration: 'none' }}>Terms of Service</a>
+            <a href="/privacy" style={{ fontSize: 13, color: '#1F1F1F', textDecoration: 'none', opacity: 0.7 }}>Privacy Policy</a>
+            <a href="/terms" style={{ fontSize: 13, color: '#1F1F1F', textDecoration: 'none', opacity: 0.7 }}>Terms of Service</a>
           </div>
-          <p style={{ fontSize: 12, color: `${B.taupe}90` }}>
+          <p style={{ fontSize: 12, color: '#1F1F1F', opacity: 0.5 }}>
             &copy; 2026 Sunstone Permanent Jewelry. All rights reserved.
           </p>
         </div>
