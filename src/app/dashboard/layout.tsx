@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import type { Permission } from '@/lib/permissions';
 import MentorChat from '@/components/MentorChat';
 import QuickReplyToast from '@/components/QuickReplyToast';
+import DemoBanner from '@/components/DemoBanner';
 import { getSubscriptionTier, isTrialActive } from '@/lib/subscription';
 import { getCrmStatus } from '@/lib/crm-status';
 
@@ -208,6 +209,9 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
 
         {/* Trial banner */}
         <TrialBanner />
+
+        {/* Demo mode banner */}
+        <DemoBanner />
 
         {/* Mobile spotlight banner (below md) */}
         {showSpotlight && <SpotlightBanner spotlight={spotlight} onDismiss={() => setSpotlightDismissed(true)} />}
