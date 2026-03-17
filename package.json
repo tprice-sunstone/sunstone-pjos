@@ -9,7 +9,10 @@
     "lint": "next lint",
     "db:migrate": "supabase db push",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types typescript --local > src/types/database.ts"
+    "db:types": "supabase gen types typescript --local > src/types/database.ts",
+    "test:sunny:retrieval": "npx tsx scripts/test-sunny-knowledge.ts",
+    "test:sunny:responses": "npx tsx scripts/test-sunny-responses.ts",
+    "test:sunny": "npx tsx scripts/test-sunny-knowledge.ts && echo '---' && npx tsx scripts/test-sunny-responses.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

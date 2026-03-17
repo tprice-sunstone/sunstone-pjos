@@ -5,6 +5,8 @@
 
 # testing
 /coverage
+scripts/test-results/*.json
+.env.test
 
 # next.js
 /.next/

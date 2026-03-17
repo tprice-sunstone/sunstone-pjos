@@ -90,7 +90,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'eq-electrode',
     label: 'Electrode Maintenance',
     data: EQUIPMENT_KNOWLEDGE.electrode,
-    keywords: ['electrode', 'tungsten', 'sharpen', 'sharpening', 'pilot', 'protrusion', 'maintenance'],
+    keywords: ['electrode', 'tungsten', 'sharpen', 'sharpening', 'pilot', 'protrusion', 'maintenance', 'dull', 'tip'],
   },
   {
     id: 'eq-settings',
@@ -117,7 +117,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'wt-fundamentals',
     label: 'Fundamental Welding Process',
     data: WELDING_TECHNIQUE_KNOWLEDGE.fundamentalProcess,
-    keywords: ['how to weld', 'welding process', 'basic', 'beginner', 'first weld', 'learn', 'start welding', 'touch and release'],
+    keywords: ['how to weld', 'welding process', 'basic', 'beginner', 'first weld', 'learn', 'start welding', 'touch and release', 'solder', 'micro tig', 'tig welding', 'what is welding', 'laser'],
   },
   {
     id: 'wt-jumpring',
@@ -167,7 +167,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'ts-top',
     label: 'Top Troubleshooting Issues',
     data: TROUBLESHOOTING_KNOWLEDGE.topIssues,
-    keywords: ['problem', 'issue', 'troubleshoot', 'not working', 'help', 'break', 'broke', 'abort', 'won\'t', 'doesn\'t'],
+    keywords: ['problem', 'issue', 'troubleshoot', 'not working', 'help', 'break', 'broke', 'abort', 'won\'t', 'doesn\'t', 'wont fire', 'wont weld', 'wont spark', 'blowing out', 'no spark', 'no fire', 'no weld', 'sparking', 'blob', 'balling', 'weak weld', 'inconsistent', 'not fusing', 'dull electrode', 'contaminated', 'click but', 'keeps clicking', 'arc wanders'],
     priority: 1,
   },
   {
@@ -186,7 +186,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'ts-ground',
     label: 'Grounding Issues',
     data: TROUBLESHOOTING_KNOWLEDGE.grounding,
-    keywords: ['grounding issue', 'inconsistent', 'links fusing', 'chain fuse'],
+    keywords: ['grounding issue', 'inconsistent', 'links fusing', 'chain fuse', 'fusing', 'fusing together', 'chains fusing'],
   },
   {
     id: 'ts-escalation',
@@ -218,7 +218,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'pr-chainselect',
     label: 'Chain Selection Guidance',
     data: PRODUCTS_KNOWLEDGE.chainGuidance,
-    keywords: ['chain select', 'which chain', 'recommend', 'popular', 'best seller', 'display', 'variety'],
+    keywords: ['chain select', 'which chain', 'recommend', 'popular', 'best seller', 'display', 'variety', 'start with', 'what chain should', 'chain for beginner'],
   },
   {
     id: 'pr-jumpring-inv',
@@ -237,7 +237,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'pr-suppliers',
     label: 'Supplier Guidance',
     data: PRODUCTS_KNOWLEDGE.suppliers,
-    keywords: ['supplier', 'supply', 'sunstone welders', 'order', 'imprinted', 'stuller', 'rio grande', 'where to buy'],
+    keywords: ['supplier', 'supply', 'sunstone welders', 'order', 'imprinted', 'stuller', 'rio grande', 'where to buy', 'where can i buy', 'buy more', 'buy chain', 'buy jump ring', 'from sunstone'],
   },
 
   // ── BUSINESS STRATEGY ──
@@ -245,7 +245,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'biz-pricing',
     label: 'Pricing Strategy',
     data: BUSINESS_STRATEGY_KNOWLEDGE.pricing,
-    keywords: ['price', 'pricing', 'charge', 'how much', 'cost', 'tier', 'margin', 'discount', 'value'],
+    keywords: ['price', 'pricing', 'charge', 'how much', 'cost', 'tier', 'margin', 'discount', 'value', 'precut', 'pre-cut', 'average sale', 'upsell', 'increase sale'],
     priority: 2,
   },
   {
@@ -284,7 +284,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'biz-houseparty',
     label: 'House Party Strategy',
     data: BUSINESS_STRATEGY_KNOWLEDGE.houseParties,
-    keywords: ['house party', 'host', 'home', 'party', 'hostess', 'incentive'],
+    keywords: ['house party', 'host', 'home', 'party', 'hostess', 'incentive', 'house parties', 'parties'],
   },
   {
     id: 'biz-financial',
@@ -298,25 +298,25 @@ const SUBSECTIONS: Subsection[] = [
     id: 'cx-flow',
     label: '12-Step Customer Experience Flow',
     data: CLIENT_EXPERIENCE_KNOWLEDGE.experienceFlow,
-    keywords: ['experience', 'flow', 'step', 'customer journey', 'consultation', 'walk through', 'service flow', 'client flow'],
+    keywords: ['experience', 'flow', 'step', 'customer journey', 'consultation', 'walk through', 'service flow', 'client flow', 'appointment', 'nervous', 'stacking', 'before welding', 'customer experience', 'how to start', 'greeting', 'welcome', 'stylist', 'discovery', 'selection', 'measuring', 'sizing', 'pre-weld', 'reveal', 'cleanup', 'cut the chain', 'display', 'mirror', 'pricing conversation', 'how much', 'upsell connectors', 'suggest charms'],
   },
   {
     id: 'cx-aftercare',
     label: 'Aftercare',
     data: CLIENT_EXPERIENCE_KNOWLEDGE.aftercare,
-    keywords: ['aftercare', 'care', 'clean', 'maintain', 'tarnish', 'shower', 'pool', 'ocean', 'remove'],
+    keywords: ['aftercare', 'care', 'clean', 'maintain', 'tarnish', 'shower', 'pool', 'ocean', 'remove', 'last', 'how long does it last', 'durable', 'durability', 'lifetime'],
   },
   {
     id: 'cx-safety',
     label: 'Safety',
     data: CLIENT_EXPERIENCE_KNOWLEDGE.safety,
-    keywords: ['safety', 'eye', 'protection', 'burn', 'risk', 'glasses', 'mri', 'hospital'],
+    keywords: ['safety', 'eye', 'protection', 'burn', 'risk', 'glasses', 'mri', 'hospital', 'safe', 'pacemaker', 'allergic', 'allergy', 'nickel', 'hurt', 'shock', 'leather patch', 'watch the weld', 'eye protection', 'eyes', 'wet skin', 'dry skin', 'dangerous', 'pain', 'feel it', 'feel anything', 'minor', 'minors', 'children', 'kid', 'waiver'],
   },
   {
     id: 'cx-reweld',
     label: 'Re-Weld Policy',
     data: BUSINESS_STRATEGY_KNOWLEDGE.reWeldPolicy,
-    keywords: ['reweld', 're-weld', 'broke off', 'fell off', 'came apart', 'warranty', 'free fix', 'walk-in repair', 'repair fee', 'reweld fee', 'not my customer'],
+    keywords: ['reweld', 're-weld', 'broke off', 'fell off', 'came apart', 'warranty', 'free fix', 'walk-in repair', 'repair fee', 'reweld fee', 'not my customer', 'broke', 'lost', 'replacement', 'free replacement'],
   },
   {
     id: 'cx-waiver',
@@ -342,7 +342,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'mk-eventmarket',
     label: 'Event Marketing',
     data: MARKETING_KNOWLEDGE.eventMarketing,
-    keywords: ['event market', 'promote event', 'advertise', 'find event', 'vendor', 'application', 'find pop'],
+    keywords: ['event market', 'promote event', 'advertise', 'find event', 'vendor', 'application', 'find pop', 'promote'],
   },
   {
     id: 'mk-network',
@@ -493,7 +493,7 @@ const SUBSECTIONS: Subsection[] = [
     id: 'app-troubleshooting',
     label: 'App Troubleshooting',
     data: PJOS_PLATFORM_GUIDE.platformTroubleshooting,
-    keywords: ['app problem', 'app issue', 'not working', 'can\'t connect', 'payment not working', 'stripe not working', 'inventory not updating', 'sms not sending', 'text not sending', 'qr not working', 'can\'t invite', 'reports not showing', 'app trouble', 'app broken', 'something wrong', 'app help', 'app error'],
+    keywords: ['app problem', 'app issue', 'not working', 'can\'t connect', 'payment not working', 'stripe not working', 'inventory not updating', 'sms not sending', 'text not sending', 'qr not working', 'can\'t invite', 'reports not showing', 'app trouble', 'app broken', 'something wrong', 'app help', 'app error', 'isnt working', 'app isnt', 'not loading'],
     priority: 1,
   },
   {
@@ -529,35 +529,35 @@ const SUBSECTIONS: Subsection[] = [
     id: 'wt-ring-welding',
     label: 'Ring Welding Technique',
     data: WELDING_TECHNIQUE_KNOWLEDGE.ringWelding,
-    keywords: ['ring weld', 'ring technique', 'off hand', 'chain ring', 'finger chain', 'weld ring', 'ring off hand', 'ring sizing', 'ring add-on', 'ring sales'],
+    keywords: ['ring weld', 'ring technique', 'off hand', 'chain ring', 'finger chain', 'weld ring', 'ring off hand', 'ring sizing', 'ring add-on', 'ring sales', 'weld a ring', 'welding rings', 'do rings', 'size a ring', 'measure ring', 'off the finger', 'slide on', 'permanent ring', 'toe ring', 'finger', 'rings as upsell', 'suggest a ring', 'add on ring', 'rings', 'sell rings', 'on and off'],
     priority: 1,
   },
   {
     id: 'cx-removal',
     label: 'Removal Guidance',
     data: CLIENT_EXPERIENCE_KNOWLEDGE.removalGuidance,
-    keywords: ['remove', 'take off', 'cut off', 'scissors', 'cut jump ring', 'removal', 'take it off', 'snip', 'clip off', 'nail clipper'],
+    keywords: ['remove', 'take off', 'cut off', 'scissors', 'cut jump ring', 'removal', 'take it off', 'snip', 'clip off', 'nail clipper', 'bracelet off', 'want it off', 'get it off'],
     priority: 1,
   },
   {
     id: 'cx-journey',
     label: 'Customer Journey & Identity Coaching',
     data: CLIENT_EXPERIENCE_KNOWLEDGE.customerJourney,
-    keywords: ['scared', 'overwhelmed', 'new artist', 'beginner', 'milestone', 'coaching', 'identity', 'phase', 'setback', 'struggling', 'want to quit'],
+    keywords: ['scared', 'overwhelmed', 'new artist', 'beginner', 'milestone', 'coaching', 'identity', 'phase', 'setback', 'struggling', 'want to quit', 'feel like', 'cant do this', 'afraid', 'not good enough', 'imposter', 'doubt', 'give up', 'frustrated', 'discouraged', 'first weld', 'first event', 'first sale', 'new to this', 'just started', 'transformation'],
     priority: 1,
   },
   {
     id: 'biz-objections',
     label: 'Objection Handling',
     data: BUSINESS_STRATEGY_KNOWLEDGE.objectionHandling,
-    keywords: ['objection', 'hesitant', 'too expensive', 'fad', 'discount code', 'carty', 'scared', 'can\'t afford', 'not technical', 'is pj a fad', 'which kit'],
+    keywords: ['objection', 'hesitant', 'too expensive', 'fad', 'discount code', 'carty', 'scared', 'can\'t afford', 'not technical', 'is pj a fad', 'which kit', 'too high', 'prices too high', 'promo code', 'promo', 'coupon code', 'money back', 'make it back', 'worth it', 'expensive'],
     priority: 2,
   },
   {
     id: 'biz-shipping',
     label: 'Shipping, Returns & Policies',
     data: BUSINESS_STRATEGY_KNOWLEDGE.shippingAndPolicies,
-    keywords: ['ship', 'shipping', 'return', 'refund', 'warranty', 'circle protection', 'pj pro', 'financing', 'restocking', 'exchange', 'how long to ship', 'international'],
+    keywords: ['ship', 'shipping', 'return', 'refund', 'warranty', 'circle protection', 'pj pro', 'financing', 'restocking', 'exchange', 'how long to ship', 'international', 'finance', 'arrived', 'delivery', 'hasnt arrived'],
     priority: 1,
   },
   {
