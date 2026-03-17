@@ -602,19 +602,25 @@ export default function LandingPageClient() {
             <Image src="/landing/sunstone-logo.webp" alt="Sunstone Studio" width={34} height={34} style={{ borderRadius: 8 }} />
             <span style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 18, color: B.blackBrown }}>Sunstone Studio</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <button onClick={() => scrollTo('features')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: B.softBrown, fontFamily: FONT.body, display: 'none' }} className="md-show">Features</button>
-            <button onClick={() => scrollTo('pricing')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: B.softBrown, fontFamily: FONT.body, display: 'none' }} className="md-show">Pricing</button>
-            <button onClick={() => scrollTo('faq')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: B.softBrown, fontFamily: FONT.body, display: 'none' }} className="md-show">FAQ</button>
+          <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <button onClick={() => scrollTo('features')} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: B.softBrown, fontFamily: FONT.body, padding: 0 }}>Features</button>
+            <button onClick={() => scrollTo('pricing')} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: B.softBrown, fontFamily: FONT.body, padding: 0 }}>Pricing</button>
+            <button onClick={() => scrollTo('faq')} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: B.softBrown, fontFamily: FONT.body, padding: 0 }}>FAQ</button>
             <a href="/auth/login" style={{ fontSize: 13, fontWeight: 500, color: B.softBrown, textDecoration: 'none', fontFamily: FONT.body }}>Log In</a>
-            <a href="/auth/signup" style={{ ...ctaStyle, padding: '10px 22px', fontSize: 13, background: B.redrock, color: '#fff' }}>Start Free</a>
+            <a href="/auth/signup" className="nav-cta" style={{ ...ctaStyle, padding: '10px 22px', fontSize: 13, background: B.redrock, color: '#fff' }}>Start Free</a>
           </div>
         </div>
       </nav>
 
       <style>{`
-        .md-show { display: none !important; }
-        @media (min-width: 768px) { .md-show { display: inline-flex !important; } }
+        .nav-links { gap: 10px !important; }
+        .nav-link { font-size: 12px !important; }
+        .nav-cta { padding: 8px 14px !important; font-size: 12px !important; }
+        @media (min-width: 768px) {
+          .nav-links { gap: 24px !important; }
+          .nav-link { font-size: 13px !important; }
+          .nav-cta { padding: 10px 22px !important; font-size: 13px !important; }
+        }
       `}</style>
 
       {/* ═══════ SECTION 1: HERO ═══════ */}
@@ -623,12 +629,12 @@ export default function LandingPageClient() {
           <style>{`
             .hero-layout { display: flex; flex-direction: column; align-items: center; text-align: center; }
             .hero-text { max-width: 560px; }
-            .hero-images { width: 100%; max-width: 600px; margin-top: 40px; }
+            .hero-images { width: 100%; max-width: 600px; margin-top: 40px; overflow: hidden; }
             .hero-dashboard-wrap { border-radius: 12px; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04); }
             @media (min-width: 900px) {
               .hero-layout { flex-direction: row; text-align: left; gap: 48px; align-items: center; }
-              .hero-text { flex: 1; min-width: 0; }
-              .hero-images { flex: 1; min-width: 0; margin-top: 0; max-width: none; }
+              .hero-text { flex: 0 0 45%; min-width: 0; }
+              .hero-images { flex: 0 0 55%; min-width: 0; margin-top: 0; max-width: 55%; }
               .hero-ctas { justify-content: flex-start !important; }
             }
           `}</style>
@@ -895,13 +901,13 @@ export default function LandingPageClient() {
                     transition: 'box-shadow 0.3s',
                   }}
                 >
-                  <div style={{ position: 'relative', width: '100%', aspectRatio: '16/10', overflow: 'hidden', background: '#f8f6f4' }}>
+                  <div style={{ position: 'relative', width: '100%', aspectRatio: '16/10', overflow: 'hidden', background: '#F9F7F4', border: '1px solid rgba(0,0,0,0.08)', borderBottom: 'none', borderRadius: '16px 16px 0 0' }}>
                     <Image
                       src={card.img}
                       alt={card.imgAlt}
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
-                      style={{ objectFit: 'cover' }}
+                      style={{ objectFit: 'contain', padding: 8, maxHeight: 280 }}
                     />
                   </div>
                   <div style={{ padding: '20px 22px 24px' }}>
