@@ -1,5 +1,5 @@
 # Sunstone Studio — Project Status & Context Document
-## Last Updated: March 15, 2026 (Evening)
+## Last Updated: March 17, 2026 (Late Evening)
 
 ---
 
@@ -313,6 +313,18 @@ Landing Page (3 full overhaul passes):
 - ✅ Mobile nav links restored (Features, Pricing, FAQ)
 - ✅ CRM page colors updated to match
 
+Landing Page (continued — March 17 evening):
+- ✅ Photo composition fixes: all divider images given proper container heights (500-550px desktop, 350px mobile) and object-position values to prevent aggressive cropping that was cutting off faces/compositions
+- ✅ Hero layout: restored split layout on desktop (text 38% left, dashboard 60% right), stacked centered on mobile
+- ✅ Hero dashboard screenshot: upgraded to 4320×2837 (3x DPR), fills 60% column with shadow and 12px radius
+- ✅ Hero subline copy updated: "The all-in-one app for POS, inventory, clients, and AI-powered business intelligence — built by Sunstone for permanent jewelry artists."
+- ✅ "From the Pioneers of Permanent Jewelry" pill: centered on desktop above fold, left-aligned within text column on split layout
+- ✅ IMG-154 (woman on couch with laptop) swapped in to replace welding tutorial closeup between Features and Artist Storefront — communicates "manage your business anywhere" instead of "how to weld"
+- ✅ 6 of 7 feature card screenshots replaced with 3x DPR high-res versions (3600×2832 average): POS, Inventory, CRM, Sunny, Reports, Hero Dashboard. Auto-converted from PNG to WebP at quality 85 — total size reduced from 4.7MB to 1.0MB
+- ✅ Storefront screenshot diagnosed: source file was 494px wide (needs 640+ for Retina). Storefront section DOES look sharp now after earlier fix — no action needed unless retaking for even higher res
+- ✅ Party Booking feature card screenshot replaced with 3x DPR version (3600×3954), converted to WebP q85
+- ✅ Champagne toast (final CTA) photo confirmed working, no changes needed
+
 Bug Fixes:
 - ✅ Migration 053: auto_email_receipt + receipt columns on tenants table
 - ✅ Duplicate Sunstone supplier: dropdown dedup by name (case-insensitive)
@@ -609,7 +621,7 @@ Full pre-launch security audit performed. All Critical and High issues fixed.
 ## 10. UPCOMING FEATURE ROADMAP (Priority Order)
 
 ### RIGHT NOW — Pre-Launch Gate
-1. **Landing page screenshots** — retake without sidebar for inventory/CRM, then final review with marketing team
+1. **Landing page** — all screenshots now 3x DPR high-res. Final visual QA pass needed.
 2. **Emoji toggle** in Sunny personality Settings (small feature, backlogged)
 3. **Run 50 Sunny response quality tests** against live API
 4. **Manual QA Gauntlet** — 180-test checklist + tier pricing + warranty + payment flow testing. LAST GATE BEFORE LAUNCH.
