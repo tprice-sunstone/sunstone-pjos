@@ -28,22 +28,22 @@ export function generateProSeed(tenantId: string): { data: SeedData; tenantOverr
   const pricingTiers = [
     {
       id: uuid(), tenant_id: tenantId, name: 'Standard',
-      bracelet_price: 55, anklet_price: 65, ring_price: 35,
-      necklace_price_per_inch: 5.50, hand_chain_price: 75,
+      bracelet_price: 25, anklet_price: 28, ring_price: 15,
+      necklace_price_per_inch: 2.00, hand_chain_price: 32,
       sort_order: 0, is_active: true,
       created_at: daysAgo(730), updated_at: daysAgo(60),
     },
     {
       id: uuid(), tenant_id: tenantId, name: 'Premium',
-      bracelet_price: 75, anklet_price: 85, ring_price: 45,
-      necklace_price_per_inch: 7.50, hand_chain_price: 95,
+      bracelet_price: 30, anklet_price: 35, ring_price: 18,
+      necklace_price_per_inch: 2.75, hand_chain_price: 40,
       sort_order: 1, is_active: true,
       created_at: daysAgo(730), updated_at: daysAgo(60),
     },
     {
       id: uuid(), tenant_id: tenantId, name: 'Luxe',
-      bracelet_price: 95, anklet_price: 110, ring_price: 60,
-      necklace_price_per_inch: 10.00, hand_chain_price: 125,
+      bracelet_price: 40, anklet_price: 46, ring_price: 25,
+      necklace_price_per_inch: 3.75, hand_chain_price: 52,
       sort_order: 2, is_active: true,
       created_at: daysAgo(730), updated_at: daysAgo(60),
     },
@@ -58,7 +58,7 @@ export function generateProSeed(tenantId: string): { data: SeedData; tenantOverr
     created_at: daysAgo(730), updated_at: daysAgo(730),
   }));
 
-  // ── Inventory Items (72: 44 chains + 8 jump rings + 20 charms) ─────────
+  // ── Inventory Items (72: 12 gold + 13 silver + 11 rose + 8 luxe chains + 8 jump rings + 20 charms)
   const allGold = CHAIN_NAMES_GOLD.map((name) => ({
     name, material: '14K Gold Fill', costRange: [4.00, 7.00] as [number, number],
     tier: pricingTiers[1], // Premium

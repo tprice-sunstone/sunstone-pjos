@@ -80,12 +80,14 @@ export const CHAIN_NAMES_SILVER = [
   'Box Sterling Silver','Curb Sterling Silver','Paperclip Sterling Silver',
   'Singapore Sterling Silver','Satellite Sterling Silver','Rolo Sterling Silver',
   'Ball Sterling Silver','Wheat Sterling Silver',
+  'Herringbone Sterling Silver','Mariner Sterling Silver',
 ];
 
 export const CHAIN_NAMES_ROSE = [
   'Figaro 14K Rose Gold Fill','Cable 14K Rose Gold Fill','Rope 14K Rose Gold Fill',
   'Box 14K Rose Gold Fill','Curb 14K Rose Gold Fill','Paperclip 14K Rose Gold Fill',
   'Singapore 14K Rose Gold Fill','Satellite 14K Rose Gold Fill',
+  'Rolo 14K Rose Gold Fill','Herringbone 14K Rose Gold Fill','Ball 14K Rose Gold Fill',
 ];
 
 export const CHARM_NAMES = [
