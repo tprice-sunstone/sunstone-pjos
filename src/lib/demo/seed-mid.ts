@@ -47,7 +47,7 @@ export function generateMidSeed(tenantId: string): { data: SeedData; tenantOverr
       id: uuid(), tenant_id: tenantId, name: c.name, type: 'chain' as const,
       material: c.material, supplier: 'Sunstone Supply', supplier_id: null, sku: null,
       unit: 'ft', cost_per_unit: randomAmount(...c.costRange),
-      sell_price: null, // per_product pricing uses chain_product_prices
+      sell_price: 0, // per_product pricing uses chain_product_prices
       quantity_on_hand: randomAmount(20, 60), reorder_threshold: 8,
       is_active: true, notes: null, pricing_mode: 'per_product', pricing_tier_id: null,
       created_at: daysAgo(240), updated_at: daysAgo(randomInt(1, 60)),
@@ -59,7 +59,7 @@ export function generateMidSeed(tenantId: string): { data: SeedData; tenantOverr
       unit: 'each', cost_per_unit: randomAmount(2.00, 8.00),
       sell_price: randomAmount(15, 35), quantity_on_hand: randomInt(10, 40),
       reorder_threshold: 5, is_active: true, notes: null,
-      pricing_mode: null, pricing_tier_id: null,
+      pricing_mode: 'flat', pricing_tier_id: null,
       created_at: daysAgo(240), updated_at: daysAgo(randomInt(1, 60)),
     })),
   ];
