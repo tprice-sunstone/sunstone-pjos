@@ -21,6 +21,7 @@ export default function DemoPage() {
   const router = useRouter();
   const [credentials, setCredentials] = useState<Credentials[]>([]);
   const [loading, setLoading] = useState<PersonaKey | null>(null);
+  const [loadingPhase, setLoadingPhase] = useState<'auth' | 'reset'>('auth');
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -46,6 +47,7 @@ export default function DemoPage() {
     }
 
     setLoading(personaKey);
+    setLoadingPhase('auth');
     try {
       const supabase = createClient();
 
@@ -58,6 +60,22 @@ export default function DemoPage() {
       });
 
       if (error) throw error;
+
+      // Auto-reset demo data so the account is fully populated
+      setLoadingPhase('reset');
+      try {
+        const res = await fetch('/api/demo/reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenantId: cred.tenantId }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          console.warn('Demo reset warning:', body.error || res.statusText);
+        }
+      } catch (resetErr) {
+        console.warn('Demo reset failed, continuing to dashboard:', resetErr);
+      }
 
       router.push('/dashboard');
       router.refresh();
@@ -131,8 +149,11 @@ export default function DemoPage() {
               `}
             >
               {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-800/90 rounded-xl z-10">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800/90 rounded-xl z-10">
                   <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <p className="text-sm text-slate-300 mt-3">
+                    {loadingPhase === 'auth' ? 'Signing in...' : 'Setting up demo...'}
+                  </p>
                 </div>
               )}
 
@@ -157,7 +178,9 @@ export default function DemoPage() {
               </div>
 
               <div className={`mt-4 w-full py-3 rounded-lg text-center text-sm font-semibold text-white ${colors.bg} transition-colors`}>
-                {isLoading ? 'Signing in...' : `Explore ${persona.name.split(' ')[0]}'s Account`}
+                {isLoading
+                  ? (loadingPhase === 'auth' ? 'Signing in...' : 'Setting up demo...')
+                  : `Explore ${persona.name.split(' ')[0]}'s Account`}
               </div>
             </button>
           );
