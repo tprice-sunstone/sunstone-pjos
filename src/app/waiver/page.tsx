@@ -14,6 +14,7 @@ import { useSearchParams } from 'next/navigation';
 import { Button, Input, Select, Card, CardContent } from '@/components/ui';
 import { applyTheme } from '@/lib/theme';
 import { getThemeById, DEFAULT_THEME_ID } from '@/lib/themes';
+import { generateWaiverPDF } from '@/lib/generate-waiver-pdf';
 import type { Tenant, Event } from '@/types';
 
 function WaiverPageInner() {
@@ -283,6 +284,41 @@ function WaiverPageInner() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ clientId, type: 'waiver' }),
         }).catch(() => {});
+      }
+
+      // Fire-and-forget: email signed waiver PDF copy to customer
+      if (form.email && waiver?.id) {
+        (async () => {
+          try {
+            const themeAccent = tenant!.theme_id
+              ? getThemeById(tenant!.theme_id).accent
+              : undefined;
+            const pdfData = {
+              tenantName: tenant!.name,
+              tenantAccentColor: themeAccent || tenant!.brand_color || undefined,
+              tenantLogoUrl: tenant!.logo_url || undefined,
+              clientName: form.name,
+              clientEmail: form.email || undefined,
+              clientPhone: form.phone || undefined,
+              waiverText: tenant!.waiver_text,
+              signatureDataUrl: signatureData,
+              signedAt: waiver.signed_at,
+              eventName: resolvedEventId
+                ? events.find((e) => e.id === resolvedEventId)?.name
+                : undefined,
+              smsConsent,
+            };
+            const doc = await generateWaiverPDF(pdfData);
+            const pdfBase64 = doc.output('datauristring');
+            await fetch('/api/waivers/send-copy', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ waiverId: waiver.id, pdfBase64 }),
+            });
+          } catch {
+            // Silent — never block waiver submission
+          }
+        })();
       }
 
       setStep('done');

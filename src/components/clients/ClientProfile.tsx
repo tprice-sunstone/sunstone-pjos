@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui';
 import { getTagColor } from '@/lib/tag-colors';
-import { downloadWaiverPDF } from '@/lib/generate-waiver-pdf';
+import { downloadWaiverPDF, generateWaiverPDF } from '@/lib/generate-waiver-pdf';
 import { getThemeById } from '@/lib/themes';
 import type { Client, ClientTag, ClientPhoneNumber, Waiver, Sale, SaleItem } from '@/types';
 import type { WaiverPDFData } from '@/lib/generate-waiver-pdf';
@@ -68,6 +68,7 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
   const [loading, setLoading] = useState(true);
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [resendingWaiverId, setResendingWaiverId] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [showWaiverModal, setShowWaiverModal] = useState(false);
   const [composeChannel, setComposeChannel] = useState<'sms' | 'email' | null>(null);
@@ -184,6 +185,51 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
       toast.error('Failed to generate PDF');
     } finally {
       setDownloadingId(null);
+    }
+  };
+
+  const handleResendWaiver = async (waiver: Waiver) => {
+    if (!tenant || !client) return;
+    setResendingWaiverId(waiver.id);
+    try {
+      let eventName: string | undefined;
+      if (waiver.event_id) {
+        const { data: eventData } = await supabase
+          .from('events').select('name').eq('id', waiver.event_id).single();
+        if (eventData) eventName = eventData.name;
+      }
+      const themeAccent = tenant.theme_id ? getThemeById(tenant.theme_id).accent : undefined;
+      const pdfData: WaiverPDFData = {
+        tenantName: tenant.name,
+        tenantAccentColor: themeAccent || tenant.brand_color || undefined,
+        tenantLogoUrl: tenant.logo_url || undefined,
+        clientName: waiver.signer_name,
+        clientEmail: waiver.signer_email || undefined,
+        clientPhone: client.phone || undefined,
+        waiverText: waiver.waiver_text,
+        signatureDataUrl: waiver.signature_data,
+        signedAt: waiver.signed_at,
+        eventName,
+      };
+      const doc = await generateWaiverPDF(pdfData);
+      const pdfBase64 = doc.output('datauristring');
+      const res = await fetch('/api/waivers/send-copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ waiverId: waiver.id, pdfBase64 }),
+      });
+      const result = await res.json();
+      if (res.ok && result.sent) {
+        toast.success(`Waiver sent to ${waiver.signer_email}`);
+      } else if (result.reason === 'no_email') {
+        toast.error('No email address on this waiver');
+      } else {
+        toast.error(result.error || 'Failed to send waiver');
+      }
+    } catch {
+      toast.error('Failed to send waiver');
+    } finally {
+      setResendingWaiverId(null);
     }
   };
 
@@ -757,14 +803,26 @@ export default function ClientProfile({ clientId, tenantId, onClose, onEdit, onT
                         Signed on {format(new Date(waivers[0].signed_at), 'MMM d, yyyy')}
                       </span>
                     </div>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleDownloadPDF(waivers[0])}
-                      disabled={downloadingId === waivers[0].id}
-                    >
-                      {downloadingId === waivers[0].id ? 'Generating...' : 'View Waiver PDF'}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleDownloadPDF(waivers[0])}
+                        disabled={downloadingId === waivers[0].id}
+                      >
+                        {downloadingId === waivers[0].id ? 'Generating...' : 'View Waiver PDF'}
+                      </Button>
+                      {waivers[0].signer_email && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleResendWaiver(waivers[0])}
+                          disabled={resendingWaiverId === waivers[0].id}
+                        >
+                          {resendingWaiverId === waivers[0].id ? 'Sending...' : 'Resend Waiver'}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
