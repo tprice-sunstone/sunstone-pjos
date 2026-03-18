@@ -75,7 +75,13 @@ export async function POST(request: NextRequest) {
     await tryDeleteTable('inventory_movements');
     await deleteTable('inventory_items');
     await deleteTable('pricing_tiers');
-    await deleteTable('product_types');
+    // Only delete non-default product types — a DB trigger protects is_default rows
+    const { error: ptErr } = await supabase
+      .from('product_types')
+      .delete()
+      .eq('tenant_id', tenantId)
+      .eq('is_default', false);
+    if (ptErr) console.warn('[demo-reset] delete non-default product_types:', ptErr.message);
     await deleteTable('tax_profiles');
 
     // ── GENERATE seed data ──────────────────────────────────────────────────
