@@ -42,6 +42,8 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
   const [quantity, setQuantity] = useState(1);
   const [placing, setPlacing] = useState(false);
   const [result, setResult] = useState<OrderResult | null>(null);
+  const [needsResync, setNeedsResync] = useState(false);
+  const [resyncing, setResyncing] = useState(false);
 
   // Load product from catalog cache
   useEffect(() => {
@@ -50,6 +52,7 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
     const loadProduct = async () => {
       setLoading(true);
       setResult(null);
+      setNeedsResync(false);
       try {
         const { data: cache } = await supabase
           .from('sunstone_catalog_cache')
@@ -61,10 +64,16 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
           const products = cache.products as SunstoneProduct[];
           const match = products.find((p) => p.id === item.sunstone_product_id);
           if (match) {
-            setProduct(match);
-            setSelectedVariantIdx(0);
-            // Smart quantity suggestion
-            suggestQuantity(match);
+            // Check if variants have IDs (stale cache detection)
+            const hasVariantIds = match.variants.some((v) => !!v.id);
+            if (!hasVariantIds && match.variants.length > 0) {
+              setNeedsResync(true);
+              setProduct(null);
+            } else {
+              setProduct(match);
+              setSelectedVariantIdx(0);
+              suggestQuantity(match);
+            }
           } else {
             setProduct(null);
           }
@@ -138,8 +147,52 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
   const unitPrice = selectedVariant ? parseFloat(selectedVariant.price) : 0;
   const estimatedTotal = unitPrice * quantity;
 
+  const handleResync = async () => {
+    setResyncing(true);
+    try {
+      const res = await fetch('/api/shopify/sync?force=true');
+      if (res.ok) {
+        toast.success('Catalog synced — reloading product...');
+        setNeedsResync(false);
+        // Re-trigger the product load effect
+        setLoading(true);
+        const { data: cache } = await supabase
+          .from('sunstone_catalog_cache')
+          .select('products')
+          .limit(1)
+          .single();
+        if (cache?.products) {
+          const products = cache.products as SunstoneProduct[];
+          const match = products.find((p) => p.id === item.sunstone_product_id);
+          if (match && match.variants.some((v) => !!v.id)) {
+            setProduct(match);
+            setSelectedVariantIdx(0);
+            suggestQuantity(match);
+          } else {
+            setProduct(null);
+            toast.error('Product still missing variant data after sync.');
+          }
+        }
+        setLoading(false);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Catalog sync failed');
+      }
+    } catch {
+      toast.error('Catalog sync failed');
+    } finally {
+      setResyncing(false);
+    }
+  };
+
   const handlePlaceOrder = async () => {
     if (!product || !selectedVariant) return;
+    if (!selectedVariant.id) {
+      toast.error('Missing variant ID — re-sync the Shopify catalog first.');
+      setNeedsResync(true);
+      setProduct(null);
+      return;
+    }
     setPlacing(true);
 
     try {
@@ -187,6 +240,7 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
   const handleClose = () => {
     setResult(null);
     setProduct(null);
+    setNeedsResync(false);
     setLoading(true);
     onClose();
   };
@@ -209,8 +263,18 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
         ) : !product ? (
           <div className="py-8 text-center space-y-3">
             <p className="text-sm text-[var(--text-secondary)]">
-              Product not found in catalog. The catalog may need to be synced.
+              {needsResync
+                ? 'The Shopify catalog needs to be re-synced to include product variant data.'
+                : 'Product not found in catalog. The catalog may need to be synced.'}
             </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleResync}
+              loading={resyncing}
+            >
+              {resyncing ? 'Syncing...' : 'Re-sync Catalog'}
+            </Button>
             <p className="text-xs text-[var(--text-tertiary)]">
               Shopify Product ID: {item.sunstone_product_id}
             </p>
