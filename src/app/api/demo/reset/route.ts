@@ -35,7 +35,10 @@ export async function POST(request: NextRequest) {
         .from(table)
         .delete()
         .eq('tenant_id', tenantId);
-      if (error) console.warn(`[demo-reset] delete ${table}:`, error.message);
+      if (error) {
+        console.error(`[demo-reset] delete ${table}:`, error.message);
+        throw new Error(`Failed to delete ${table}: ${error.message}`);
+      }
     };
 
     // warranty_claims → delete by tenant_id
@@ -88,8 +91,21 @@ export async function POST(request: NextRequest) {
       }
     };
 
+    const upsertBatch = async (table: string, rows: any[], onConflict: string) => {
+      if (!rows.length) return;
+      for (let i = 0; i < rows.length; i += 500) {
+        const chunk = rows.slice(i, i + 500);
+        const { error } = await supabase.from(table).upsert(chunk, { onConflict, ignoreDuplicates: true });
+        if (error) {
+          console.error(`[demo-reset] upsert ${table} (chunk ${i}):`, error.message);
+          throw new Error(`Failed to upsert ${table}: ${error.message}`);
+        }
+      }
+    };
+
     await insertBatch('tax_profiles', data.taxProfiles);
-    await insertBatch('product_types', data.productTypes);
+    // Upsert product_types — belt-and-suspenders against tenant_id+name unique constraint
+    await upsertBatch('product_types', data.productTypes, 'tenant_id,name');
     await insertBatch('pricing_tiers', data.pricingTiers);
     await insertBatch('inventory_items', data.inventoryItems);
     await insertBatch('chain_product_prices', data.chainProductPrices);
