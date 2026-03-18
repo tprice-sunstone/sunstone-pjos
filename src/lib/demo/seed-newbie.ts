@@ -137,7 +137,7 @@ export function generateNewbieSeed(tenantId: string): { data: SeedData; tenantOv
           quantity: 1, unit_price: lineTotal, discount_type: null,
           discount_value: 0, line_total: lineTotal,
           warranty_amount: 0, product_type_id: itemPt.id,
-          chain_inches: itemInches, cost_snapshot: itemChain.cost_per_unit * (itemInches / 12),
+          inches_used: itemInches,
           created_at: randomTimeOnDay(dayOffset),
         });
       }
@@ -161,8 +161,7 @@ export function generateNewbieSeed(tenantId: string): { data: SeedData; tenantOv
         payment_method: pm,
         payment_status: 'completed', payment_provider: pm === 'stripe_link' ? 'stripe' : null,
         payment_provider_id: null, platform_fee_rate: feeRate, fee_handling: 'absorb',
-        warranty_amount: 0, refund_status: 'none', refund_amount: 0,
-        refunded_at: null, refunded_by: null,
+        warranty_amount: 0,
         stripe_checkout_session_id: null, stripe_payment_intent_id: null,
         platform_fee_collected: pm === 'stripe_link' ? feeAmt : 0,
         gift_card_id: null, gift_card_amount_applied: 0,

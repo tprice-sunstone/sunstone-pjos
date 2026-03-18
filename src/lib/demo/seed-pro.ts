@@ -238,7 +238,7 @@ export function generateProSeed(tenantId: string): { data: SeedData; tenantOverr
         quantity: 1, unit_price: basePrice, discount_type: null,
         discount_value: 0, line_total: basePrice,
         warranty_amount: 0, product_type_id: pt.id,
-        chain_inches: inches, cost_snapshot: chain.cost_per_unit * (inches / 12),
+        inches_used: inches,
         created_at: randomTimeOnDay(daysAgoN),
       }];
 
@@ -250,7 +250,7 @@ export function generateProSeed(tenantId: string): { data: SeedData; tenantOverr
           quantity: 1, unit_price: charm.sell_price, discount_type: null,
           discount_value: 0, line_total: charm.sell_price,
           warranty_amount: 0, product_type_id: null,
-          chain_inches: null, cost_snapshot: charm.cost_per_unit,
+          inches_used: null,
           created_at: randomTimeOnDay(daysAgoN),
         });
       }
@@ -275,7 +275,7 @@ export function generateProSeed(tenantId: string): { data: SeedData; tenantOverr
           quantity: 1, unit_price: price2, discount_type: null,
           discount_value: 0, line_total: price2,
           warranty_amount: 0, product_type_id: pt2.id,
-          chain_inches: inches2, cost_snapshot: chain2.cost_per_unit * (inches2 / 12),
+          inches_used: inches2,
           created_at: randomTimeOnDay(daysAgoN),
         });
       }
@@ -305,8 +305,7 @@ export function generateProSeed(tenantId: string): { data: SeedData; tenantOverr
         payment_method: pm,
         payment_status: 'completed', payment_provider: pm === 'stripe_link' ? 'stripe' : null,
         payment_provider_id: null, platform_fee_rate: feeRate, fee_handling: 'absorb',
-        warranty_amount: warrantyAmt, refund_status: 'none', refund_amount: 0,
-        refunded_at: null, refunded_by: null,
+        warranty_amount: warrantyAmt,
         stripe_checkout_session_id: null, stripe_payment_intent_id: null,
         platform_fee_collected: 0,
         gift_card_id: null, gift_card_amount_applied: 0,
@@ -334,7 +333,8 @@ export function generateProSeed(tenantId: string): { data: SeedData; tenantOverr
       status: used >= amount ? 'fully_redeemed' : 'active',
       purchaser_name: `${purchaser.first_name} ${purchaser.last_name}`,
       purchaser_email: purchaser.email, purchaser_phone: purchaser.phone,
-      recipient_name: null, recipient_email: null, recipient_phone: null,
+      recipient_name: `${purchaser.first_name} ${purchaser.last_name}`,
+      recipient_email: null, recipient_phone: null,
       personal_message: null, delivery_method: pick(['sms', 'email', 'print']),
       delivered_at: null, payment_method: 'stripe_link', sale_id: null,
       purchased_at: daysAgo(randomInt(10, 300)), expires_at: daysFromNow(365),
@@ -347,7 +347,7 @@ export function generateProSeed(tenantId: string): { data: SeedData; tenantOverr
     .filter((gc) => gc.remaining_balance < gc.amount)
     .map((gc) => ({
       id: uuid(), gift_card_id: gc.id,
-      sale_id: sales[randomInt(0, Math.min(sales.length - 1, 100))]?.id || null,
+      sale_id: sales[randomInt(0, Math.min(sales.length - 1, 100))].id,
       tenant_id: tenantId, amount: gc.amount - gc.remaining_balance,
       redeemed_at: daysAgo(randomInt(3, 60)), redeemed_by: null,
       created_at: daysAgo(randomInt(3, 60)),
