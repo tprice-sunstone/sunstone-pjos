@@ -617,7 +617,7 @@ export const SUNNY_TOOL_DEFINITIONS = [
   // 37. create_reorder
   {
     name: 'create_reorder',
-    description: 'Create a supply reorder from Sunstone for the artist. Searches their inventory for items linked to Sunstone products, then creates a Shopify draft order. The artist completes checkout on the Sunstone store. Use this when an artist wants to restock chains or supplies, or when you notice they are running low.',
+    description: 'Create a supply reorder from Sunstone for the artist. Searches their inventory for items linked to Sunstone products, then creates a draft reorder. The artist reviews and pays with their card on file from the Inventory page. Use this when an artist wants to restock chains or supplies, or when you notice they are running low.',
     input_schema: {
       type: 'object',
       properties: {
@@ -2717,7 +2717,7 @@ export async function executeSunnyTool(
             item: `${shopifyProduct.title}${variantLabel}`,
             quantity: suggestedQty,
             estimated_total: `$${estimatedTotal.toFixed(2)}`,
-            message: `I've added ${suggestedQty} ${inventoryItem.unit} of ${shopifyProduct.title} to your reorder draft (est. $${estimatedTotal.toFixed(2)}). Open the Inventory page and click "Reorder History" to review and complete payment.`,
+            message: `I've added ${suggestedQty} ${inventoryItem.unit} of ${shopifyProduct.title} to your reorder draft (est. $${estimatedTotal.toFixed(2)}). Head to Inventory → Reorder to review and pay with your card on file.`,
           },
         };
       }

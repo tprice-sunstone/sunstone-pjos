@@ -1,18 +1,14 @@
 // ============================================================================
 // SF Create Reorder — src/app/api/salesforce/create-reorder/route.ts
 // ============================================================================
-// POST: Called AFTER Stripe payment succeeds. Verifies the PaymentIntent,
-// creates SF Opportunity + Quote + QuoteLineItems, syncs the Quote.
+// POST: Creates SF Opportunity (Quote Sent stage) + Quote + QuoteLineItems,
+// syncs the Quote. Called BEFORE payment — Opp is moved to Closed Won
+// only after payment succeeds via the /finalize endpoint.
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
 import { sfQuery, sfCreate, sfUpdate, sfGet } from '@/lib/salesforce';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia' as any,
-});
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -39,21 +35,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { reorderId, stripePaymentIntentId } = body;
+    const { reorderId, contactId } = body;
 
-    if (!reorderId || !stripePaymentIntentId) {
-      return NextResponse.json({ error: 'Missing reorderId or stripePaymentIntentId' }, { status: 400 });
-    }
-
-    // Step 1: Verify PaymentIntent status
-    const paymentIntent = await stripe.paymentIntents.retrieve(stripePaymentIntentId);
-    if (paymentIntent.status !== 'succeeded') {
-      return NextResponse.json({ error: `Payment not yet succeeded (status: ${paymentIntent.status})` }, { status: 400 });
+    if (!reorderId) {
+      return NextResponse.json({ error: 'Missing reorderId' }, { status: 400 });
     }
 
     const serviceClient = await createServiceRoleClient();
 
-    // Step 2: Load reorder + tenant
+    // Load reorder + tenant
     const { data: reorder } = await serviceClient
       .from('reorder_history')
       .select('*')
@@ -71,45 +61,19 @@ export async function POST(request: NextRequest) {
       .eq('id', member.tenant_id)
       .single();
 
-    // Step 3: Find SF Account
-    let sfAccountId = tenant?.sf_account_id;
-
-    if (!sfAccountId && user.email) {
-      const accounts = await sfQuery<any>(
-        `SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact WHERE Email = '${user.email.replace(/'/g, "\\'")}')`
-      );
-      if (accounts.length > 0) {
-        sfAccountId = accounts[0].Id;
-        await serviceClient
-          .from('tenants')
-          .update({ sf_account_id: sfAccountId })
-          .eq('id', member.tenant_id);
-      }
-    }
+    const sfAccountId = tenant?.sf_account_id;
 
     if (!sfAccountId) {
-      // Can't create SF records without an account — mark for manual reconciliation
-      await serviceClient
-        .from('reorder_history')
-        .update({ status: 'sf_pending' })
-        .eq('id', reorderId);
-
-      return NextResponse.json({
-        success: true,
-        warning: 'Payment succeeded but no Salesforce account found. Order will be reconciled manually.',
-        reorderId,
-      });
+      return NextResponse.json({ error: 'No Salesforce account linked. Match your account first.' }, { status: 400 });
     }
 
-    // Step 4: Match SF Product2 records
+    // Match SF Product2 records
     const items = reorder.items as any[];
     const skus = items.map((i: any) => i.variant_id).filter(Boolean);
-    const names = items.map((i: any) => i.name);
 
-    // Try SKU match first
     let sfProducts: any[] = [];
     if (skus.length > 0) {
-      const skuList = skus.map((s: string) => `'${s}'`).join(',');
+      const skuList = skus.map((s: string) => `'${s.replace(/'/g, "\\'")}'`).join(',');
       sfProducts = await sfQuery<any>(
         `SELECT Id, Name, ProductCode FROM Product2 WHERE ProductCode IN (${skuList})`
       );
@@ -121,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     if (unmatchedItems.length > 0) {
       for (const item of unmatchedItems) {
-        const nameClean = item.name.replace(/'/g, "\\'");
+        const nameClean = item.name.replace(/'/g, "\\'").split(' — ')[0];
         const nameMatches = await sfQuery<any>(
           `SELECT Id, Name, ProductCode FROM Product2 WHERE Name LIKE '%${nameClean}%' LIMIT 1`
         );
@@ -131,7 +95,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 5: Get PricebookEntry IDs
+    // Get PricebookEntry IDs
     const sfProductIds = sfProducts.map((p: any) => `'${p.Id}'`).join(',');
     let pricebookEntries: any[] = [];
     if (sfProductIds) {
@@ -142,22 +106,23 @@ export async function POST(request: NextRequest) {
 
     const pbeByProductId = new Map(pricebookEntries.map((e: any) => [e.Product2Id, e]));
 
-    // Step 6: Create Opportunity (Closed Won)
+    // Create Opportunity (Quote Sent — NOT Closed Won until payment succeeds)
     const today = new Date().toISOString().split('T')[0];
     const oppName = `Studio Reorder — ${tenant?.name || 'Artist'} — ${today}`;
 
     const oppId = await sfCreate('Opportunity', {
       Name: oppName,
       AccountId: sfAccountId,
-      StageName: 'Closed Won',
+      StageName: 'Quote Sent',
       CloseDate: today,
       Amount: reorder.total_amount,
       Direct_Order__c: true,
       LeadSource: 'Sunstone Studio',
-      Description: `Supply reorder via Sunstone Studio. Stripe PI: ${stripePaymentIntentId}`,
+      Industry__c: 'Permanent Jewelry',
+      Description: `Supply reorder via Sunstone Studio`,
     });
 
-    // Step 7: Parse shipping from notes
+    // Parse shipping from notes
     const noteParts = (reorder.notes || '').replace('Shipping to: ', '').split(', ');
     const shippingStreet = noteParts[0] || '';
     const shippingCity = noteParts[1] || '';
@@ -165,8 +130,8 @@ export async function POST(request: NextRequest) {
     const shippingState = stateZip[0] || '';
     const shippingPostalCode = stateZip[1] || '';
 
-    // Step 8: Create Quote (Accepted)
-    const quoteId = await sfCreate('Quote', {
+    // Create Quote (Accepted) — include ContactId for validation rules
+    const quoteFields: Record<string, any> = {
       Name: `Q-${oppName}`,
       OpportunityId: oppId,
       Status: 'Accepted',
@@ -176,12 +141,18 @@ export async function POST(request: NextRequest) {
       ShippingState: shippingState,
       ShippingPostalCode: shippingPostalCode,
       ShippingCountry: 'US',
-      Description: `Auto-created from Sunstone Studio reorder`,
-    });
+      Description: 'Auto-created from Sunstone Studio reorder',
+    };
 
-    // Step 9: Create QuoteLineItems
+    // Add ContactId if provided (required for Closed Won validation)
+    if (contactId) {
+      quoteFields.ContactId = contactId;
+    }
+
+    const quoteId = await sfCreate('Quote', quoteFields);
+
+    // Create QuoteLineItems
     for (const item of items) {
-      // Find the matching SF product
       const sfProd = sfProducts.find(
         (p: any) => p.ProductCode === item.variant_id || p.Name.includes(item.name.split(' — ')[0])
       );
@@ -195,15 +166,14 @@ export async function POST(request: NextRequest) {
           UnitPrice: item.unit_price,
         });
       } else {
-        // No SF product match — log but don't fail
         console.warn(`[SF Reorder] No SF product match for item: ${item.name}`);
       }
     }
 
-    // Step 10: Sync Quote
+    // Sync Quote
     await sfUpdate('Quote', quoteId, { IsSyncing: true });
 
-    // Wait for sync to propagate, then read back tax/shipping
+    // Wait for sync, then read back tax/shipping
     await sleep(3000);
 
     let sfTax = reorder.tax_amount;
@@ -221,13 +191,12 @@ export async function POST(request: NextRequest) {
       console.warn('[SF Reorder] Could not re-read quote after sync:', err);
     }
 
-    // Step 11: Update reorder_history
+    // Update reorder_history with SF IDs (status stays pending_payment until charged)
     await serviceClient
       .from('reorder_history')
       .update({
         sf_opportunity_id: oppId,
         sf_quote_id: quoteId,
-        status: 'confirmed',
         tax_amount: sfTax,
         shipping_amount: sfShipping,
         total_amount: sfGrandTotal,
@@ -237,7 +206,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       opportunityId: oppId,
-      quoteId: quoteId,
+      quoteId,
       opportunityName: oppName,
       tax: sfTax,
       shipping: sfShipping,
@@ -245,22 +214,64 @@ export async function POST(request: NextRequest) {
     });
   } catch (err: any) {
     console.error('[SF Create Reorder] Error:', err);
-
-    // If SF fails after payment, mark for manual reconciliation
-    try {
-      const serviceClient = await createServiceRoleClient();
-      const body = await request.clone().json().catch(() => ({}));
-      if (body.reorderId) {
-        await serviceClient
-          .from('reorder_history')
-          .update({ status: 'sf_pending' })
-          .eq('id', body.reorderId);
-      }
-    } catch { /* best effort */ }
-
     return NextResponse.json({
-      error: 'Salesforce order creation failed. Payment was successful — order will be reconciled manually.',
+      error: 'Salesforce order creation failed.',
       sfError: err.message,
     }, { status: 500 });
+  }
+}
+
+// ── PATCH: Finalize — move Opportunity to Closed Won after payment ──────
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const supabase = await createServerSupabase();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const { data: member } = await supabase
+      .from('tenant_members')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .single();
+
+    if (!member) {
+      return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { reorderId } = body;
+
+    if (!reorderId) {
+      return NextResponse.json({ error: 'Missing reorderId' }, { status: 400 });
+    }
+
+    const serviceClient = await createServiceRoleClient();
+
+    const { data: reorder } = await serviceClient
+      .from('reorder_history')
+      .select('sf_opportunity_id')
+      .eq('id', reorderId)
+      .eq('tenant_id', member.tenant_id)
+      .single();
+
+    if (!reorder?.sf_opportunity_id) {
+      return NextResponse.json({ error: 'No SF Opportunity to finalize' }, { status: 400 });
+    }
+
+    // Move Opportunity to Closed Won
+    await sfUpdate('Opportunity', reorder.sf_opportunity_id, {
+      StageName: 'Closed Won',
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error('[SF Finalize] Error:', err);
+    // Non-critical — Opp can be finalized manually
+    return NextResponse.json({ success: true, warning: 'Could not move Opportunity to Closed Won' });
   }
 }

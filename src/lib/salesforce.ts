@@ -150,3 +150,100 @@ export async function sfGet<T = Record<string, any>>(
   const fieldParam = fields?.length ? `?fields=${fields.join(',')}` : '';
   return sfFetch(`/sobjects/${objectType}/${id}${fieldParam}`) as Promise<T>;
 }
+
+// ── Apex REST (Studio Reorder API) ────────────────────────────────────────
+
+/**
+ * Call the custom SF Apex REST endpoint: /services/apexrest/studio/reorder
+ */
+export async function sfApexRest(action: string, data: Record<string, any> = {}): Promise<any> {
+  const token = await getToken();
+  const url = `${token.instanceUrl}/services/apexrest/studio/reorder`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token.accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ action, ...data }),
+  });
+
+  // Auto-refresh on 401 and retry once
+  if (res.status === 401) {
+    cachedToken = null;
+    const retryToken = await getToken();
+    const retryRes = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${retryToken.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action, ...data }),
+    });
+    if (!retryRes.ok) {
+      const body = await retryRes.text();
+      console.error(`[SF ApexRest] ${retryRes.status}:`, body);
+      throw new Error(`SF Apex REST error ${retryRes.status}: ${body}`);
+    }
+    return retryRes.json();
+  }
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`[SF ApexRest] ${res.status}:`, body);
+    throw new Error(`SF Apex REST error ${res.status}: ${body}`);
+  }
+
+  return res.json();
+}
+
+/**
+ * Find SF Account by Contact email. Returns account info + payment methods flag.
+ */
+export async function sfFindAccount(email: string) {
+  return sfApexRest('findAccount', { email });
+}
+
+/**
+ * Get saved Authorize.net payment methods for an SF Account.
+ */
+export async function sfGetPaymentMethods(accountId: string) {
+  return sfApexRest('getPaymentMethods', { accountId });
+}
+
+/**
+ * Charge a saved card on an Opportunity via Authorize.net.
+ */
+export async function sfChargeSavedCard(
+  opportunityId: string,
+  amount: number,
+  cardId: string,
+  accountId: string
+) {
+  return sfApexRest('chargeSavedCard', {
+    opportunityId,
+    amount,
+    cardId,
+    accountId,
+  });
+}
+
+/**
+ * Add a new card to an SF Account via Authorize.net.
+ */
+export async function sfAddCard(
+  accountId: string,
+  cardData: {
+    nameOnCard: string;
+    cardNumber: string;
+    expirationMonth: number;
+    expirationYear: number;
+    cvv: string;
+  }
+) {
+  return sfApexRest('addCard', {
+    accountId,
+    ...cardData,
+  });
+}
