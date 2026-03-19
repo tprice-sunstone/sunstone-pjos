@@ -265,7 +265,8 @@ export async function POST(request: NextRequest) {
       grandTotal: sfGrandTotal,
     });
   } catch (err: any) {
-    console.error('[SF Create Reorder] Error:', err);
+    console.error('[SF Create Reorder] Error:', err.message);
+    console.error('[SF Create Reorder] Error data:', JSON.stringify(err.data || err));
     return NextResponse.json({
       error: 'Salesforce order creation failed.',
       sfError: err.message,
