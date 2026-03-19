@@ -77,6 +77,11 @@ export default function InventoryPage() {
   const [showReorderHistory, setShowReorderHistory] = useState(false);
   const [receivingId, setReceivingId] = useState<string | null>(null);
   const [autoLinking, setAutoLinking] = useState(false);
+  // Pending reorder map: inventory_item_id → { quantity, status, trackingNumber, reorderId, shippingStatus }
+  const [pendingReorders, setPendingReorders] = useState<Record<string, { quantity: number; status: string; trackingNumber: string | null; reorderId: string; shippingStatus: string | null; itemName: string }>>({});
+  // Receive modal
+  const [receiveModalReorder, setReceiveModalReorder] = useState<ReorderHistory | null>(null);
+  const [receiveQtyOverrides, setReceiveQtyOverrides] = useState<Record<string, number>>({});
 
   // Scroll position preservation across modal open/close
   const savedScrollRef = useRef<number>(0);
@@ -140,28 +145,62 @@ export default function InventoryPage() {
     checkProductTypes();
   }, [tenant, supabase]);
 
-  // Load reorder history
+  // Load reorder history + build pending reorder map
   const loadReorderHistory = useCallback(async () => {
     try {
       const res = await fetch('/api/reorders');
       if (res.ok) {
         const data = await res.json();
-        setReorderHistory(data.reorders || []);
+        const reorders: ReorderHistory[] = data.reorders || [];
+        setReorderHistory(reorders);
+
+        // Build pending reorders map (inventory_item_id → order info)
+        const pending: typeof pendingReorders = {};
+        for (const r of reorders) {
+          if (['completed', 'cancelled', 'pending_payment'].includes(r.status)) continue;
+          const orderItems = (r.items as any[]) || [];
+          for (const item of orderItems) {
+            if (!item.inventory_item_id) continue;
+            // If multiple pending reorders for same item, show the most recent (first in list)
+            if (!pending[item.inventory_item_id]) {
+              pending[item.inventory_item_id] = {
+                quantity: item.quantity,
+                status: r.status,
+                trackingNumber: r.tracking_number || null,
+                reorderId: r.id,
+                shippingStatus: r.shipping_status || null,
+                itemName: item.name,
+              };
+            }
+          }
+        }
+        setPendingReorders(pending);
       }
     } catch { /* non-critical */ }
   }, []);
+
+  // Load pending reorders on mount (always, not just when panel is open)
+  useEffect(() => {
+    loadReorderHistory();
+  }, [loadReorderHistory]);
 
   useEffect(() => {
     if (showReorderHistory) loadReorderHistory();
   }, [showReorderHistory, loadReorderHistory]);
 
-  const handleMarkReceived = async (reorderId: string) => {
+  const handleMarkReceived = async (reorderId: string, overrides?: Record<string, number>) => {
     setReceivingId(reorderId);
     try {
-      const res = await fetch(`/api/reorders/${reorderId}/receive`, { method: 'PATCH' });
+      const res = await fetch(`/api/reorders/${reorderId}/receive`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantityOverrides: overrides || {} }),
+      });
       const data = await res.json();
       if (res.ok) {
         toast.success(data.message || 'Marked as received');
+        setReceiveModalReorder(null);
+        setReceiveQtyOverrides({});
         loadReorderHistory();
         loadItems();
       } else {
@@ -172,6 +211,18 @@ export default function InventoryPage() {
     } finally {
       setReceivingId(null);
     }
+  };
+
+  const openReceiveModal = (reorder: ReorderHistory) => {
+    const overrides: Record<string, number> = {};
+    const orderItems = (reorder.items as any[]) || [];
+    for (const item of orderItems) {
+      if (item.inventory_item_id) {
+        overrides[item.inventory_item_id] = item.quantity;
+      }
+    }
+    setReceiveQtyOverrides(overrides);
+    setReceiveModalReorder(reorder);
   };
 
   // â”€â”€â”€ Filter items â”€â”€â”€
@@ -440,7 +491,16 @@ export default function InventoryPage() {
 
           {/* Table Rows */}
           <div className="divide-y divide-[var(--border-subtle)]">
-            {filteredItems.map((item) => (
+            {filteredItems.map((item) => {
+              const pending = pendingReorders[item.id];
+              const isShippedOrDelivered = pending && (pending.shippingStatus === 'shipped' || pending.status === 'shipped');
+              const pendingStatusLabel = !pending ? null
+                : pending.shippingStatus === 'shipped' || pending.status === 'shipped' ? 'Shipped'
+                : pending.shippingStatus === 'approved' ? 'Shipping Soon'
+                : pending.shippingStatus === 'preparing' ? 'Preparing to Ship'
+                : 'Processing';
+
+              return (
               <div
                 key={item.id}
                 className={`px-4 py-3 sm:grid sm:grid-cols-[1fr_100px_100px_100px_80px] sm:gap-4 sm:items-center cursor-pointer hover:bg-[var(--surface-raised)] transition-colors ${
@@ -455,7 +515,7 @@ export default function InventoryPage() {
               >
                 {/* Item info */}
                 <div className="mb-2 sm:mb-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium text-[var(--text-primary)]">
                       {item.name}
                     </span>
@@ -470,8 +530,23 @@ export default function InventoryPage() {
                         Inactive
                       </Badge>
                     )}
+                    {/* Pending reorder indicator */}
+                    {pending && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowReorderHistory(true);
+                        }}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[10px] font-medium hover:bg-blue-100 transition-colors"
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                        </svg>
+                        {pending.quantity} ordered · {pendingStatusLabel}
+                      </button>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     {item.material && (
                       <span className="text-xs text-[var(--text-tertiary)]">
                         {item.material}
@@ -482,19 +557,31 @@ export default function InventoryPage() {
                         · SKU: {item.sku}
                       </span>
                     )}
+                    {/* Tracking link */}
+                    {pending?.trackingNumber && (
+                      <a
+                        href={`https://www.google.com/search?q=${encodeURIComponent(pending.trackingNumber)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs text-[var(--accent-primary)] hover:underline"
+                      >
+                        Track: {pending.trackingNumber}
+                      </a>
+                    )}
                   </div>
                 </div>
 
                 {/* Cost */}
                 <div className="hidden sm:block text-right">
-                  <span className="text-sm  text-[var(--text-secondary)]">
+                  <span className="text-sm text-[var(--text-secondary)]">
                     ${Number(item.cost_per_unit).toFixed(2)}
                   </span>
                 </div>
 
                 {/* Price */}
                 <div className="hidden sm:block text-right">
-                  <span className="text-sm  text-[var(--text-primary)]">
+                  <span className="text-sm text-[var(--text-primary)]">
                     {formatPrice(item)}
                   </span>
                 </div>
@@ -502,7 +589,7 @@ export default function InventoryPage() {
                 {/* Stock */}
                 <div className="hidden sm:block text-right">
                   <span
-                    className={`text-sm  ${
+                    className={`text-sm ${
                       item.quantity_on_hand <= item.reorder_threshold
                         ? 'text-[var(--error-600)] font-semibold'
                         : 'text-[var(--text-primary)]'
@@ -515,15 +602,31 @@ export default function InventoryPage() {
                   </span>
                 </div>
 
-                {/* Actions */}
+                {/* Desktop actions */}
                 <div className="hidden sm:flex items-center gap-1 justify-end">
+                  {/* Mark Received — prominent when shipped */}
+                  {isShippedOrDelivered && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        const r = reorderHistory.find((rh) => rh.id === pending.reorderId);
+                        if (r) openReceiveModal(r);
+                      }}
+                      disabled={receivingId === pending?.reorderId}
+                      className="text-xs"
+                    >
+                      {receivingId === pending?.reorderId ? 'Restocking...' : 'Mark Received'}
+                    </Button>
+                  )}
                   {item.sunstone_product_id && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setReorderItem(item);
                       }}
-                      className="text-[var(--text-tertiary)] hover:text-[var(--accent-primary)] p-1.5 rounded-lg hover:bg-[var(--accent-50)] transition-colors"
+                      className="text-[var(--text-tertiary)] hover:text-[var(--accent-primary)] p-1.5 rounded-lg hover:bg-[var(--accent-50)] transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
                       title="Reorder from Sunstone"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -564,13 +667,13 @@ export default function InventoryPage() {
                   </button>
                 </div>
 
-                {/* Mobile price/stock row */}
-                <div className="flex items-center justify-between sm:hidden mt-1">
-                  <span className="text-sm  text-[var(--text-primary)]">
+                {/* Mobile: price, stock, and actions row */}
+                <div className="flex items-center justify-between sm:hidden mt-1 gap-2">
+                  <span className="text-sm text-[var(--text-primary)]">
                     {formatPrice(item)}
                   </span>
                   <span
-                    className={`text-sm  ${
+                    className={`text-sm ${
                       item.quantity_on_hand <= item.reorder_threshold
                         ? 'text-[var(--error-600)]'
                         : 'text-[var(--text-secondary)]'
@@ -578,9 +681,43 @@ export default function InventoryPage() {
                   >
                     {item.quantity_on_hand} {item.unit}
                   </span>
+                  <div className="flex items-center gap-1 ml-auto">
+                    {/* Mark Received — prominent on mobile when shipped */}
+                    {isShippedOrDelivered && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          const r = reorderHistory.find((rh) => rh.id === pending.reorderId);
+                          if (r) openReceiveModal(r);
+                        }}
+                        disabled={receivingId === pending?.reorderId}
+                        className="text-xs min-h-[44px] px-3"
+                      >
+                        {receivingId === pending?.reorderId ? 'Restocking...' : 'Received'}
+                      </Button>
+                    )}
+                    {/* Reorder cart icon — always visible on mobile */}
+                    {item.sunstone_product_id && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReorderItem(item);
+                        }}
+                        className="text-[var(--text-tertiary)] hover:text-[var(--accent-primary)] p-2.5 rounded-lg hover:bg-[var(--accent-50)] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        title="Reorder from Sunstone"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -740,8 +877,9 @@ export default function InventoryPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => handleMarkReceived(r.id)}
+                            onClick={() => openReceiveModal(r)}
                             disabled={receivingId === r.id}
+                            className="min-h-[44px]"
                           >
                             {receivingId === r.id ? 'Restocking...' : 'Mark Received'}
                           </Button>
@@ -763,9 +901,70 @@ export default function InventoryPage() {
           onClose={() => setReorderItem(null)}
           item={reorderItem}
           onReorderCreated={() => {
-            if (showReorderHistory) loadReorderHistory();
+            loadReorderHistory();
           }}
         />
+      )}
+
+      {/* Receive Confirmation Modal (quantity adjustment) */}
+      {receiveModalReorder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            onClick={() => { setReceiveModalReorder(null); setReceiveQtyOverrides({}); }}
+          />
+          <div className="relative bg-[var(--surface-overlay)] rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+              Confirm Received Quantities
+            </h3>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Adjust quantities if your shipment was short or had extras.
+            </p>
+            <div className="space-y-3">
+              {((receiveModalReorder.items as any[]) || []).map((item: any, idx: number) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[var(--text-primary)] truncate">{item.name}</p>
+                    <p className="text-xs text-[var(--text-tertiary)]">Ordered: {item.quantity}</p>
+                  </div>
+                  <div className="w-24">
+                    <input
+                      type="number"
+                      min={0}
+                      value={item.inventory_item_id ? (receiveQtyOverrides[item.inventory_item_id] ?? item.quantity) : item.quantity}
+                      onChange={(e) => {
+                        if (!item.inventory_item_id) return;
+                        setReceiveQtyOverrides((prev) => ({
+                          ...prev,
+                          [item.inventory_item_id]: Math.max(0, parseInt(e.target.value) || 0),
+                        }));
+                      }}
+                      disabled={!item.inventory_item_id}
+                      className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-center text-[var(--text-primary)] min-h-[44px]"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="secondary"
+                className="flex-1"
+                onClick={() => { setReceiveModalReorder(null); setReceiveQtyOverrides({}); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                className="flex-1"
+                loading={receivingId === receiveModalReorder.id}
+                onClick={() => handleMarkReceived(receiveModalReorder.id, receiveQtyOverrides)}
+              >
+                {receivingId === receiveModalReorder.id ? 'Restocking...' : 'Confirm & Restock'}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       <SunnyTutorial

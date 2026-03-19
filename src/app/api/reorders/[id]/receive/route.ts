@@ -3,6 +3,7 @@
 // ============================================================================
 // PATCH: Mark a reorder as received and auto-restock inventory items.
 // Creates inventory_movements with type 'restock'.
+// Accepts optional quantity overrides for short/extra shipments.
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -30,6 +31,17 @@ export async function PATCH(
 
     if (!member) {
       return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+    }
+
+    // Parse optional quantity overrides from body
+    let quantityOverrides: Record<string, number> = {};
+    try {
+      const body = await request.json();
+      if (body?.quantityOverrides) {
+        quantityOverrides = body.quantityOverrides;
+      }
+    } catch {
+      // No body or invalid JSON — use original quantities
     }
 
     // Fetch the reorder
@@ -64,24 +76,32 @@ export async function PATCH(
       return NextResponse.json({ error: 'Failed to update reorder' }, { status: 500 });
     }
 
+    // Build order reference for movement notes
+    const orderRef = reorder.shopify_order_name
+      || (reorder.sf_opportunity_id ? `SF-${reorder.sf_opportunity_id.slice(0, 8)}` : `#${id.slice(0, 8)}`);
+
     // Auto-restock inventory items
     const items = (reorder.items as any[]) || [];
-    const restocked: string[] = [];
+    const restocked: { name: string; quantity: number }[] = [];
 
     for (const item of items) {
       if (!item.inventory_item_id) continue;
 
+      // Use override quantity if provided, otherwise use ordered quantity
+      const restockQty = quantityOverrides[item.inventory_item_id] ?? item.quantity;
+      if (restockQty <= 0) continue;
+
       // Get current stock
       const { data: invItem } = await supabase
         .from('inventory_items')
-        .select('id, quantity_on_hand, name')
+        .select('id, quantity_on_hand, name, unit')
         .eq('id', item.inventory_item_id)
         .eq('tenant_id', member.tenant_id)
         .single();
 
       if (!invItem) continue;
 
-      const newQty = (invItem.quantity_on_hand || 0) + item.quantity;
+      const newQty = (invItem.quantity_on_hand || 0) + restockQty;
 
       // Update stock
       await supabase
@@ -99,18 +119,20 @@ export async function PATCH(
           tenant_id: member.tenant_id,
           inventory_item_id: item.inventory_item_id,
           type: 'restock',
-          quantity: item.quantity,
-          notes: `Sunstone reorder ${reorder.shopify_order_name || '#' + id.slice(0, 8)}`,
+          quantity: restockQty,
+          notes: `Sunstone reorder ${orderRef}`,
         });
 
-      restocked.push(invItem.name);
+      restocked.push({ name: invItem.name, quantity: restockQty });
     }
+
+    const restockSummary = restocked.map((r) => `${r.quantity} ${r.name}`).join(', ');
 
     return NextResponse.json({
       success: true,
-      restocked,
+      restocked: restocked.map((r) => r.name),
       message: restocked.length > 0
-        ? `Restocked ${restocked.length} item(s): ${restocked.join(', ')}`
+        ? `Inventory updated! Added ${restockSummary}.`
         : 'Reorder marked as received (no inventory items to restock)',
     });
   } catch (err: any) {
