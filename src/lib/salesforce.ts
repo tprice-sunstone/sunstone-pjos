@@ -61,8 +61,9 @@ async function authenticate(): Promise<SFToken> {
 
   if (!res.ok) {
     const text = await res.text();
-    console.error('[SF Auth] Failed:', res.status, text);
-    throw new Error(`Salesforce authentication failed: ${res.status}`);
+    console.error('[SF Auth] Response status:', res.status);
+    console.error('[SF Auth] Response body:', text);
+    throw new Error(`Salesforce authentication failed: ${res.status} — ${text}`);
   }
 
   const data = await res.json();
