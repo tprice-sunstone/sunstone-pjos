@@ -1,14 +1,20 @@
 // ============================================================================
-// SF Account Match — src/app/api/salesforce/match-account/route.ts
+// SF Account Resolution — src/app/api/salesforce/match-account/route.ts
 // ============================================================================
-// GET: Match the authenticated artist's email to a Salesforce Account
-// via the StudioReorderAPI Apex REST endpoint. Returns account info,
-// shipping address, and saved payment methods.
+// GET:  Multi-strategy account search (email → business name → person name).
+//       Returns matches with confidence level, shipping address, payment methods.
+// POST: Create a new SF Account + Contact for first-time customers.
 // ============================================================================
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
-import { sfFindAccount, sfGetPaymentMethods } from '@/lib/salesforce';
+import {
+  sfSearchAccounts,
+  sfGetPaymentMethods,
+  sfCreateAccount,
+} from '@/lib/salesforce';
+
+// ── GET: Search / resolve account ────────────────────────────────────────
 
 export async function GET() {
   try {
@@ -30,58 +36,237 @@ export async function GET() {
       return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
     }
 
-    const email = user.email;
-    if (!email) {
-      return NextResponse.json({ matched: false, reason: 'No email on account' });
-    }
-
     const serviceClient = await createServiceRoleClient();
 
-    // Call SF Apex REST to find account by email
-    let accountData: any;
-    try {
-      accountData = await sfFindAccount(email);
-    } catch (err: any) {
-      console.error('[SF Match Account] findAccount error:', err);
-      return NextResponse.json({ matched: false, error: 'Failed to look up Salesforce account' });
-    }
-
-    if (!accountData || !accountData.accountId) {
-      return NextResponse.json({ matched: false });
-    }
-
-    // Cache sf_account_id on tenant
-    await serviceClient
+    // Check if tenant already has a cached sf_account_id
+    const { data: tenant } = await serviceClient
       .from('tenants')
-      .update({ sf_account_id: accountData.accountId })
-      .eq('id', member.tenant_id);
+      .select('sf_account_id, name, phone')
+      .eq('id', member.tenant_id)
+      .single();
 
-    // Fetch saved payment methods
-    let paymentMethods: any[] = [];
-    try {
-      const pmResult = await sfGetPaymentMethods(accountData.accountId);
-      paymentMethods = pmResult?.paymentMethods || pmResult?.cards || [];
-    } catch (err) {
-      console.warn('[SF Match Account] getPaymentMethods error:', err);
-      // Non-critical — proceed without payment methods
+    if (tenant?.sf_account_id) {
+      // Already linked — fetch payment methods and return
+      let paymentMethods: any[] = [];
+      try {
+        const pmResult = await sfGetPaymentMethods(tenant.sf_account_id);
+        paymentMethods = pmResult?.paymentMethods || pmResult?.cards || [];
+      } catch (err) {
+        console.warn('[SF Match] getPaymentMethods error:', err);
+      }
+
+      return NextResponse.json({
+        resolved: true,
+        accountId: tenant.sf_account_id,
+        paymentMethods,
+      });
     }
 
+    // Not cached — run multi-strategy search
+    const email = user.email || '';
+    const businessName = tenant?.name || '';
+
+    // Try to parse artist name from user metadata or email
+    const meta = user.user_metadata || {};
+    let firstName = meta.first_name || meta.firstName || '';
+    let lastName = meta.last_name || meta.lastName || '';
+    if (!firstName && meta.full_name) {
+      const parts = (meta.full_name as string).split(' ');
+      firstName = parts[0] || '';
+      lastName = parts.slice(1).join(' ') || '';
+    }
+
+    let searchResult: any;
+    try {
+      searchResult = await sfSearchAccounts(email, businessName, firstName, lastName);
+    } catch (err: any) {
+      console.error('[SF Match] searchAccounts error:', err);
+      return NextResponse.json({
+        resolved: false,
+        confidence: 'error',
+        error: 'Failed to search Salesforce accounts',
+      });
+    }
+
+    const matches = searchResult?.matches || [];
+    const confidence = searchResult?.confidence || 'none';
+
+    // If exact email match with a single result, auto-link
+    if (confidence === 'exact_email' && matches.length === 1) {
+      const match = matches[0];
+
+      // Cache on tenant
+      await serviceClient
+        .from('tenants')
+        .update({ sf_account_id: match.accountId })
+        .eq('id', member.tenant_id);
+
+      // Fetch payment methods
+      let paymentMethods: any[] = [];
+      try {
+        const pmResult = await sfGetPaymentMethods(match.accountId);
+        paymentMethods = pmResult?.paymentMethods || pmResult?.cards || [];
+      } catch (err) {
+        console.warn('[SF Match] getPaymentMethods error:', err);
+      }
+
+      return NextResponse.json({
+        resolved: true,
+        accountId: match.accountId,
+        accountName: match.accountName,
+        shippingAddress: {
+          street: match.shippingStreet || '',
+          city: match.city || '',
+          state: match.state || '',
+          postalCode: match.shippingPostalCode || '',
+          country: match.shippingCountry || 'US',
+        },
+        paymentMethods,
+        confidence: 'exact_email',
+      });
+    }
+
+    // Multiple matches or fuzzy match — return for user confirmation
+    if (matches.length > 0) {
+      return NextResponse.json({
+        resolved: false,
+        confidence,
+        matches,
+      });
+    }
+
+    // No matches at all — return prefill data for account creation form
     return NextResponse.json({
-      matched: true,
-      accountId: accountData.accountId,
-      accountName: accountData.accountName || accountData.name || '',
-      contactId: accountData.contactId || null,
-      shippingAddress: {
-        street: accountData.shippingStreet || accountData.shippingAddress?.street || '',
-        city: accountData.shippingCity || accountData.shippingAddress?.city || '',
-        state: accountData.shippingState || accountData.shippingAddress?.state || '',
-        postalCode: accountData.shippingPostalCode || accountData.shippingAddress?.postalCode || '',
-        country: accountData.shippingCountry || accountData.shippingAddress?.country || 'US',
+      resolved: false,
+      confidence: 'none',
+      matches: [],
+      prefill: {
+        businessName,
+        firstName,
+        lastName,
+        email,
+        phone: tenant?.phone || '',
       },
-      paymentMethods,
     });
   } catch (err: any) {
     console.error('[SF Match Account] Error:', err);
     return NextResponse.json({ error: 'Failed to match account' }, { status: 500 });
+  }
+}
+
+// ── POST: Create new account OR confirm a match ──────────────────────────
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createServerSupabase();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const { data: member } = await supabase
+      .from('tenant_members')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .single();
+
+    if (!member) {
+      return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { action } = body;
+
+    const serviceClient = await createServiceRoleClient();
+
+    // ── Confirm an existing match ──────────────────────────────────────
+    if (action === 'confirm') {
+      const { accountId } = body;
+      if (!accountId) {
+        return NextResponse.json({ error: 'Missing accountId' }, { status: 400 });
+      }
+
+      // Cache on tenant
+      await serviceClient
+        .from('tenants')
+        .update({ sf_account_id: accountId })
+        .eq('id', member.tenant_id);
+
+      // Fetch payment methods
+      let paymentMethods: any[] = [];
+      try {
+        const pmResult = await sfGetPaymentMethods(accountId);
+        paymentMethods = pmResult?.paymentMethods || pmResult?.cards || [];
+      } catch (err) {
+        console.warn('[SF Match] getPaymentMethods error:', err);
+      }
+
+      return NextResponse.json({
+        success: true,
+        accountId,
+        paymentMethods,
+      });
+    }
+
+    // ── Create a new account ───────────────────────────────────────────
+    if (action === 'create') {
+      const {
+        accountName, firstName, lastName, email, phone,
+        shippingStreet, shippingCity, shippingState, shippingPostalCode, shippingCountry,
+      } = body;
+
+      if (!accountName) {
+        return NextResponse.json({ error: 'Business name is required' }, { status: 400 });
+      }
+
+      let result: any;
+      try {
+        result = await sfCreateAccount({
+          accountName,
+          firstName: firstName || '',
+          lastName: lastName || accountName,
+          email: email || user.email || '',
+          phone: phone || '',
+          shippingStreet: shippingStreet || '',
+          shippingCity: shippingCity || '',
+          shippingState: shippingState || '',
+          shippingPostalCode: shippingPostalCode || '',
+          shippingCountry: shippingCountry || 'US',
+        });
+      } catch (err: any) {
+        console.error('[SF Match] createAccount error:', err);
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to create Sunstone account',
+        }, { status: 500 });
+      }
+
+      if (result.success === false || result.error) {
+        return NextResponse.json({
+          success: false,
+          error: result.error || 'Account creation failed',
+        }, { status: 400 });
+      }
+
+      // Cache on tenant
+      await serviceClient
+        .from('tenants')
+        .update({ sf_account_id: result.accountId })
+        .eq('id', member.tenant_id);
+
+      return NextResponse.json({
+        success: true,
+        accountId: result.accountId,
+        contactId: result.contactId,
+        paymentMethods: [], // New account — no saved cards yet
+      });
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+  } catch (err: any) {
+    console.error('[SF Match Account POST] Error:', err);
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 });
   }
 }

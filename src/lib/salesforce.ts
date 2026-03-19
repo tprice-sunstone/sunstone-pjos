@@ -247,3 +247,40 @@ export async function sfAddCard(
     ...cardData,
   });
 }
+
+/**
+ * Multi-strategy account search: email → business name → person name.
+ * Returns { matches: [...], confidence: 'exact_email' | 'business_name' | 'person_name' | 'none' }
+ */
+export async function sfSearchAccounts(
+  email: string,
+  businessName: string,
+  firstName: string,
+  lastName: string
+) {
+  return sfApexRest('searchAccounts', {
+    email,
+    businessName,
+    firstName,
+    lastName,
+  });
+}
+
+/**
+ * Create a new SF Account + Contact for a first-time customer.
+ * Returns { success, accountId, contactId } or { success: false, error }.
+ */
+export async function sfCreateAccount(accountData: {
+  accountName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  shippingStreet: string;
+  shippingCity: string;
+  shippingState: string;
+  shippingPostalCode: string;
+  shippingCountry: string;
+}) {
+  return sfApexRest('createAccount', accountData);
+}
