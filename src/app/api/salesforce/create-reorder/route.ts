@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       Direct_Order__c: true,
       LeadSource: 'Sunstone Studio',
       Industry__c: 'Permanent Jewelry',
-      Description: `Supply reorder via Sunstone Studio`,
+      Description: `Sunstone Studio App Order — placed by ${tenant?.name || 'Artist'}`,
     });
 
     // Parse shipping from notes

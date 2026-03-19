@@ -530,6 +530,14 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
 
       setProcessingMsg('Order confirmed!');
       setChargedCard(cardLabel);
+
+      // Fire-and-forget: send receipt email
+      fetch('/api/reorders/send-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reorderHistoryId: reorderId, cardLabel }),
+      }).catch(() => {}); // Non-blocking — in-app confirmation is the primary UX
+
       await new Promise((r) => setTimeout(r, 600));
       setStep('confirmation');
       onReorderCreated?.();
