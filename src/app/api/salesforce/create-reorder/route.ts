@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { reorderId, contactId, shippingMethod } = body;
+    const { reorderId, contactId: requestContactId, shippingMethod } = body;
 
     if (!reorderId) {
       return NextResponse.json({ error: 'Missing reorderId' }, { status: 400 });
@@ -66,6 +66,33 @@ export async function POST(request: NextRequest) {
 
     if (!sfAccountId) {
       return NextResponse.json({ error: 'No Salesforce account linked. Match your account first.' }, { status: 400 });
+    }
+
+    // ── Resolve ContactId — query by email if missing/wrong ─────────────
+    let contactId = requestContactId || null;
+    if (!contactId && user.email) {
+      try {
+        const emailClean = (user.email || '').replace(/'/g, "\\'");
+        const acctClean = sfAccountId.replace(/'/g, "\\'");
+        const contacts = await sfQuery(
+          `SELECT Id FROM Contact WHERE Email = '${emailClean}' AND AccountId = '${acctClean}' LIMIT 1`
+        );
+        if (contacts.length > 0) {
+          contactId = (contacts[0] as any).Id;
+          console.log(`[SF Reorder] Resolved contactId by email: ${contactId}`);
+        } else {
+          // Fall back to first Contact on Account
+          const fallback = await sfQuery(
+            `SELECT Id FROM Contact WHERE AccountId = '${acctClean}' LIMIT 1`
+          );
+          if (fallback.length > 0) {
+            contactId = (fallback[0] as any).Id;
+            console.log(`[SF Reorder] Fell back to first contact: ${contactId}`);
+          }
+        }
+      } catch (err) {
+        console.warn('[SF Reorder] Contact lookup failed:', err);
+      }
     }
 
     // ── Match SF Product2 records ──────────────────────────────────────
@@ -275,12 +302,59 @@ export async function POST(request: NextRequest) {
       console.warn('[SF Reorder] Could not re-read quote after sync:', err);
     }
 
+    // ── Create Order explicitly (IsSyncing workaround) ──────────────────
+    // If IsSyncing fails, SF won't auto-create the Order from the Quote.
+    // We create it directly so fulfillment can proceed.
+    let sfOrderId: string | null = null;
+    try {
+      const orderId = await sfCreate('Order', {
+        OpportunityId: oppId,
+        AccountId: sfAccountId,
+        Status: 'Draft',
+        EffectiveDate: today,
+        Pricebook2Id: standardPricebookId,
+        ShippingStreet: shippingStreet,
+        ShippingCity: shippingCity,
+        ShippingState: shippingState,
+        ShippingPostalCode: shippingPostalCode,
+        ShippingCountry: 'US',
+        Direct_Order__c: true,
+        ...(shippingMethod ? { Shipping_Method__c: shippingMethod } : {}),
+        Description: 'Sunstone Studio App Order',
+      });
+
+      sfOrderId = orderId;
+      console.log(`[SF Reorder] Created Order: ${orderId}`);
+
+      // Create OrderItems from matched line items
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const sfProd = sfProductByItem.get(i);
+        if (sfProd && pbeByProductId.has(sfProd.Id)) {
+          const pbe = pbeByProductId.get(sfProd.Id);
+          await sfCreate('OrderItem', {
+            OrderId: orderId,
+            Product2Id: sfProd.Id,
+            PricebookEntryId: pbe.Id,
+            Quantity: item.quantity,
+            UnitPrice: item.unit_price,
+          });
+        }
+      }
+
+      console.log(`[SF Reorder] Created OrderItems for Order ${orderId}`);
+    } catch (orderErr: any) {
+      // Non-critical — the Opp + Quote already exist. Log and continue.
+      console.warn('[SF Reorder] Could not create Order (non-critical):', orderErr.message);
+    }
+
     // Update reorder_history with SF IDs (status stays pending_payment until charged)
     await serviceClient
       .from('reorder_history')
       .update({
         sf_opportunity_id: oppId,
         sf_quote_id: quoteId,
+        ...(sfOrderId ? { sf_order_id: sfOrderId } : {}),
         tax_amount: sfTax,
         shipping_amount: sfShipping,
         total_amount: sfGrandTotal,
@@ -291,6 +365,7 @@ export async function POST(request: NextRequest) {
       success: true,
       opportunityId: oppId,
       quoteId,
+      orderId: sfOrderId,
       opportunityName: oppName,
       tax: sfTax,
       shipping: sfShipping,
@@ -339,7 +414,7 @@ export async function PATCH(request: NextRequest) {
 
     const { data: reorder } = await serviceClient
       .from('reorder_history')
-      .select('sf_opportunity_id')
+      .select('sf_opportunity_id, sf_order_id')
       .eq('id', reorderId)
       .eq('tenant_id', member.tenant_id)
       .single();
@@ -352,6 +427,16 @@ export async function PATCH(request: NextRequest) {
     await sfUpdate('Opportunity', reorder.sf_opportunity_id, {
       StageName: 'Closed Won',
     });
+
+    // Try to activate the Order (Draft → Activated)
+    if (reorder.sf_order_id) {
+      try {
+        await sfUpdate('Order', reorder.sf_order_id, { Status: 'Activated' });
+        console.log(`[SF Finalize] Activated Order: ${reorder.sf_order_id}`);
+      } catch (orderErr: any) {
+        console.warn('[SF Finalize] Could not activate Order (non-critical):', orderErr.message);
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

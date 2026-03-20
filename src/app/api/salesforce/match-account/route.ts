@@ -30,10 +30,22 @@ function normalizePaymentMethods(raw: any[]): any[] {
 
 // ── Helpers: look up ContactId + ShippingAddress for an Account ──────────
 
-async function getContactIdForAccount(accountId: string): Promise<string | null> {
+async function getContactIdForAccount(accountId: string, email?: string): Promise<string | null> {
   try {
+    const acctClean = accountId.replace(/'/g, "\\'");
+
+    // Try email match first — avoids grabbing the wrong Contact on multi-contact Accounts
+    if (email) {
+      const emailClean = email.replace(/'/g, "\\'");
+      const byEmail = await sfQuery(
+        `SELECT Id FROM Contact WHERE AccountId = '${acctClean}' AND Email = '${emailClean}' LIMIT 1`
+      );
+      if (byEmail.length > 0) return (byEmail[0] as any).Id;
+    }
+
+    // Fall back to first Contact on Account
     const contacts = await sfQuery(
-      `SELECT Id FROM Contact WHERE AccountId = '${accountId.replace(/'/g, "\\'")}' LIMIT 1`
+      `SELECT Id FROM Contact WHERE AccountId = '${acctClean}' LIMIT 1`
     );
     return contacts.length > 0 ? (contacts[0] as any).Id : null;
   } catch (err) {
@@ -105,7 +117,7 @@ export async function GET() {
       }
 
       const [contactId, shippingAddress] = await Promise.all([
-        getContactIdForAccount(tenant.sf_account_id),
+        getContactIdForAccount(tenant.sf_account_id, user.email || undefined),
         getShippingAddressForAccount(tenant.sf_account_id),
       ]);
 
@@ -166,7 +178,7 @@ export async function GET() {
         console.warn('[SF Match] getPaymentMethods error:', err);
       }
 
-      const contactId = await getContactIdForAccount(match.accountId);
+      const contactId = await getContactIdForAccount(match.accountId, email || undefined);
 
       return NextResponse.json({
         resolved: true,
@@ -263,7 +275,7 @@ export async function POST(request: NextRequest) {
       }
 
       const [contactId, shippingAddress] = await Promise.all([
-        getContactIdForAccount(accountId),
+        getContactIdForAccount(accountId, user.email || undefined),
         getShippingAddressForAccount(accountId),
       ]);
 
