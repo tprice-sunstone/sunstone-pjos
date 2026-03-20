@@ -83,6 +83,9 @@ export default function InventoryPage() {
   const [receiveModalReorder, setReceiveModalReorder] = useState<ReorderHistory | null>(null);
   const [receiveQtyOverrides, setReceiveQtyOverrides] = useState<Record<string, number>>({});
 
+  // Live order status from SF (reorderId -> { label, status, trackingNumber, shippingCarrier })
+  const [liveStatuses, setLiveStatuses] = useState<Record<string, { label: string; status: string; trackingNumber: string | null; shippingCarrier: string | null }>>({});
+
   // Scroll position preservation across modal open/close
   const savedScrollRef = useRef<number>(0);
   const reorderHistoryRef = useRef<HTMLDivElement>(null);
@@ -197,6 +200,41 @@ export default function InventoryPage() {
       });
     }
   }, [showReorderHistory]);
+
+  // Poll SF order status for active orders while panel is open
+  useEffect(() => {
+    if (!showReorderHistory) return;
+
+    const fetchStatuses = async () => {
+      const activeOrders = reorderHistory.filter(
+        (r) => !['completed', 'cancelled', 'pending_payment'].includes(r.status)
+      );
+      if (activeOrders.length === 0) return;
+
+      const results: typeof liveStatuses = {};
+      await Promise.all(
+        activeOrders.map(async (r) => {
+          try {
+            const res = await fetch(`/api/salesforce/order-status?reorderId=${r.id}`);
+            if (res.ok) {
+              const data = await res.json();
+              results[r.id] = {
+                label: data.label || 'Processing',
+                status: data.status || 'processing',
+                trackingNumber: data.trackingNumber || null,
+                shippingCarrier: data.shippingCarrier || null,
+              };
+            }
+          } catch { /* non-critical */ }
+        })
+      );
+      setLiveStatuses((prev) => ({ ...prev, ...results }));
+    };
+
+    fetchStatuses();
+    const interval = setInterval(fetchStatuses, 30_000);
+    return () => clearInterval(interval);
+  }, [showReorderHistory, reorderHistory]);
 
   const handleMarkReceived = async (reorderId: string, overrides?: Record<string, number>) => {
     setReceivingId(reorderId);
@@ -448,18 +486,35 @@ export default function InventoryPage() {
               ) : (
                 <div className="divide-y divide-[var(--border-subtle)]">
                   {reorderHistory.map((r) => {
-                    const statusLabel = r.status === 'completed' ? 'Received'
-                      : r.status === 'cancelled' ? 'Cancelled'
-                      : r.status === 'shipped' ? 'Shipped'
-                      : r.status === 'confirmed' || r.status === 'processing' ? 'Processing'
-                      : r.status === 'pending_payment' ? 'Awaiting Payment'
-                      : r.status === 'sf_pending' ? 'Processing'
-                      : 'Pending';
-                    const statusVariant = r.status === 'completed' ? 'success'
-                      : r.status === 'cancelled' ? 'secondary'
-                      : r.status === 'shipped' ? 'success'
-                      : r.status === 'pending_payment' ? 'warning'
+                    const live = liveStatuses[r.id];
+                    const effectiveStatus = r.status === 'completed' ? 'completed'
+                      : r.status === 'cancelled' ? 'cancelled'
+                      : r.status === 'pending_payment' ? 'pending_payment'
+                      : live?.status || r.shipping_status || r.status;
+                    const statusLabel = effectiveStatus === 'completed' ? 'Received'
+                      : effectiveStatus === 'cancelled' ? 'Cancelled'
+                      : effectiveStatus === 'shipped' ? 'Shipped'
+                      : effectiveStatus === 'approved' ? 'Ready to Ship'
+                      : effectiveStatus === 'preparing' ? 'Preparing to Ship'
+                      : effectiveStatus === 'pending_payment' ? 'Awaiting Payment'
+                      : 'Processing';
+                    const statusVariant = effectiveStatus === 'completed' ? 'success'
+                      : effectiveStatus === 'cancelled' ? 'secondary'
+                      : effectiveStatus === 'shipped' || effectiveStatus === 'approved' ? 'default'
+                      : effectiveStatus === 'pending_payment' ? 'warning'
                       : 'warning';
+                    const trackingNum = live?.trackingNumber || r.tracking_number;
+                    const carrier = live?.shippingCarrier || r.shipping_carrier || '';
+                    const isShipped = effectiveStatus === 'shipped';
+                    const trackingUrl = trackingNum
+                      ? carrier.toLowerCase().includes('ups')
+                        ? `https://www.ups.com/track?tracknum=${encodeURIComponent(trackingNum)}`
+                        : carrier.toLowerCase().includes('usps')
+                          ? `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(trackingNum)}`
+                          : carrier.toLowerCase().includes('fedex')
+                            ? `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(trackingNum)}`
+                            : `https://parcelsapp.com/en/tracking/${encodeURIComponent(trackingNum)}`
+                      : null;
                     return (
                       <div key={r.id} className="py-3 flex items-center gap-4">
                         <div className="flex-1 min-w-0">
@@ -476,15 +531,15 @@ export default function InventoryPage() {
                             {' \u2014 '}
                             {(r.items as any[]).map((i: any) => `${i.name} x${i.quantity}`).join(', ')}
                           </p>
-                          {r.tracking_number && (
+                          {trackingNum && trackingUrl && (
                             <p className="text-xs mt-0.5">
                               <a
-                                href={`https://www.google.com/search?q=${encodeURIComponent(r.tracking_number)}`}
+                                href={trackingUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-[var(--accent-primary)] hover:underline"
                               >
-                                Track: {r.tracking_number}
+                                Tracking: {trackingNum}
                               </a>
                             </p>
                           )}
@@ -495,7 +550,7 @@ export default function InventoryPage() {
                           </p>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          {r.status !== 'completed' && r.status !== 'cancelled' && r.status !== 'pending_payment' && (
+                          {isShipped && r.status !== 'completed' && (
                             <Button
                               variant="secondary"
                               size="sm"
