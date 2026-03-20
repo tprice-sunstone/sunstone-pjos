@@ -159,11 +159,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Look up Standard Pricebook (required for Quote + Opportunity line items)
+    const pricebooks = await sfQuery(
+      `SELECT Id FROM Pricebook2 WHERE IsStandard = true LIMIT 1`
+    );
+    if (pricebooks.length === 0) {
+      return NextResponse.json({ error: 'No Standard Pricebook found in Salesforce.' }, { status: 500 });
+    }
+    const standardPricebookId = (pricebooks[0] as any).Id;
+
     // Create Opportunity (Quote Sent — NOT Closed Won until payment succeeds)
     const today = new Date().toISOString().split('T')[0];
     const oppName = `Studio Reorder — ${tenant?.name || 'Artist'} — ${today}`;
 
     const oppId = await sfCreate('Opportunity', {
+      Pricebook2Id: standardPricebookId,
       Name: oppName,
       AccountId: sfAccountId,
       StageName: 'Quote Sent',
@@ -187,6 +197,7 @@ export async function POST(request: NextRequest) {
     const quoteFields: Record<string, any> = {
       Name: `Q-${oppName}`,
       OpportunityId: oppId,
+      Pricebook2Id: standardPricebookId,
       Status: 'Accepted',
       Direct_Order__c: true,
       ShippingStreet: shippingStreet,
