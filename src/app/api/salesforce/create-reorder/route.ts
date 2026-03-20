@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { reorderId, contactId: requestContactId, shippingMethod } = body;
+    const { reorderId, contactId: requestContactId, shippingMethod, estimatedTax, estimatedShipping } = body;
 
     if (!reorderId) {
       return NextResponse.json({ error: 'Missing reorderId' }, { status: 400 });
@@ -302,6 +302,20 @@ export async function POST(request: NextRequest) {
     }, 0);
     await sfUpdate('Opportunity', oppId, { Amount: lineItemTotal });
 
+    // Set estimated tax + shipping on Quote (may be overridden by Avalara later)
+    if (estimatedTax > 0 || estimatedShipping > 0) {
+      try {
+        const quoteUpdate: Record<string, any> = {};
+        if (estimatedTax > 0) quoteUpdate.Tax = estimatedTax;
+        if (estimatedShipping > 0) quoteUpdate.ShippingHandling = estimatedShipping;
+        await sfUpdate('Quote', quoteId, quoteUpdate);
+        console.log(`[SF Reorder] Set Quote Tax=${estimatedTax}, Shipping=${estimatedShipping}`);
+      } catch (taxErr: any) {
+        // Tax/ShippingHandling may be read-only if Avalara manages them
+        console.warn('[SF Reorder] Could not set Tax/Shipping on Quote (may be managed by Avalara):', taxErr.message);
+      }
+    }
+
     // Sync Quote → Opportunity via SyncedQuoteId (standard API approach)
     try {
       await sfUpdate('Opportunity', oppId, { SyncedQuoteId: quoteId });
@@ -339,7 +353,9 @@ export async function POST(request: NextRequest) {
     // We create it directly so fulfillment can proceed.
     let sfOrderId: string | null = null;
     try {
-      const orderId = await sfCreate('Order', {
+      // Build Order fields — some (BillToContactId, ShipToContactId) may not be
+      // writable on all orgs, so we try with them first and retry without if needed.
+      const orderFields: Record<string, any> = {
         OpportunityId: oppId,
         AccountId: sfAccountId,
         Status: 'Draft',
@@ -350,10 +366,34 @@ export async function POST(request: NextRequest) {
         ShippingState: shippingState,
         ShippingPostalCode: shippingPostalCode,
         ShippingCountry: 'US',
+        BillingStreet: shippingStreet,
+        BillingCity: shippingCity,
+        BillingState: shippingState,
+        BillingPostalCode: shippingPostalCode,
+        BillingCountry: 'US',
         Direct_Order__c: true,
         ...(sfShippingValue ? { Shipping_Method__c: sfShippingValue } : {}),
         Description: `Sunstone Studio App Order${shippingNote}`,
-      });
+      };
+      if (contactId) {
+        orderFields.BillToContactId = contactId;
+        orderFields.ShipToContactId = contactId;
+      }
+
+      let orderId: string;
+      try {
+        orderId = await sfCreate('Order', orderFields);
+      } catch (contactFieldErr: any) {
+        // BillToContactId/ShipToContactId may not be writable — retry without
+        if (contactFieldErr.message?.includes('BillToContactId') || contactFieldErr.message?.includes('ShipToContactId')) {
+          console.warn('[SF Reorder] Contact fields on Order not writable — retrying without them');
+          delete orderFields.BillToContactId;
+          delete orderFields.ShipToContactId;
+          orderId = await sfCreate('Order', orderFields);
+        } else {
+          throw contactFieldErr;
+        }
+      }
 
       sfOrderId = orderId;
       console.log(`[SF Reorder] Created Order: ${orderId}`);

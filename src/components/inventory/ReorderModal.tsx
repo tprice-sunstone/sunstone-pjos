@@ -568,7 +568,13 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
       const sfRes = await fetch('/api/salesforce/create-reorder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reorderId, contactId: sfContactId, shippingMethod }),
+        body: JSON.stringify({
+          reorderId,
+          contactId: sfContactId,
+          shippingMethod,
+          estimatedTax,
+          estimatedShipping,
+        }),
       });
 
       const sfData = await sfRes.json();
@@ -579,16 +585,19 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
         return;
       }
 
+      // Use the larger of SF's calculated total and our client-side estimate.
+      // SF may return subtotal-only if Avalara/sync hasn't run yet.
+      const sfGrand = sfData.grandTotal || 0;
+      const chargeAmount = Math.max(sfGrand, totals.total);
+
       setSfResult({
         opportunityId: sfData.opportunityId || '',
         quoteId: sfData.quoteId || '',
         opportunityName: sfData.opportunityName || '',
         tax: sfData.tax || 0,
         shipping: sfData.shipping || 0,
-        grandTotal: sfData.grandTotal || totals.total,
+        grandTotal: chargeAmount,
       });
-
-      const chargeAmount = sfData.grandTotal || totals.total;
 
       // Step 2: Charge the card via SF/Authorize.net
       setProcessingMsg('Charging your card...');
@@ -642,12 +651,16 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
       setPaymentError(err.message || 'An unexpected error occurred.');
       setStep('payment');
     }
-  }, [reorderId, sfContactId, totals.total, onReorderCreated]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reorderId, sfContactId, shippingMethod, totals.total, onReorderCreated]);
 
   // ── Add new card and pay ───────────────────────────────────────────
 
   const handleAddCardAndPay = async () => {
-    if (!sfAccountId || !reorderId) return;
+    if (!sfAccountId || !reorderId) {
+      console.error('[Reorder] handleAddCardAndPay: missing sfAccountId or reorderId');
+      return;
+    }
 
     const { nameOnCard, cardNumber, expirationMonth, expirationYear, cvv } = newCard;
     const cleanNumber = cardNumber.replace(/\s/g, '');
@@ -662,6 +675,7 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
     setPaymentError(null);
 
     try {
+      console.log('[Reorder] Step 1: Adding card...');
       const addRes = await fetch('/api/salesforce/add-card', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -674,6 +688,15 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
           cvv,
         }),
       });
+
+      if (!addRes.ok) {
+        let errorMsg = 'Failed to save card.';
+        try { const errData = await addRes.json(); errorMsg = errData.error || errorMsg; } catch { /* non-JSON response */ }
+        console.error('[Reorder] Add card failed:', addRes.status, errorMsg);
+        setPaymentError(errorMsg);
+        setStep('payment');
+        return;
+      }
 
       const addData = await addRes.json();
 
@@ -691,7 +714,15 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
         } else if (rawErr.includes('authentication') || rawErr.includes('authorize')) {
           friendlyMsg = 'We couldn\'t authorize this card. Please try again or use a different card.';
         }
+        console.error('[Reorder] Add card not successful:', friendlyMsg);
         setPaymentError(friendlyMsg);
+        setStep('payment');
+        return;
+      }
+
+      if (!addData.cardId) {
+        console.error('[Reorder] Add card returned success but no cardId:', addData);
+        setPaymentError('Card was saved but no card ID was returned. Please try again.');
         setStep('payment');
         return;
       }
@@ -699,10 +730,12 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
       const last4 = cleanNumber.slice(-4);
       const label = `${addData.brand || 'Card'} ending in ${addData.last4 || last4}`;
 
+      console.log('[Reorder] Step 2: Card added, charging...');
       // Now charge the newly added card
       await handlePay(addData.cardId, label);
     } catch (err: any) {
-      setPaymentError(err.message || 'Failed to save card.');
+      console.error('[Reorder] handleAddCardAndPay error:', err);
+      setPaymentError(err.message || 'Failed to process payment. Please try again.');
       setStep('payment');
     }
   };
