@@ -572,8 +572,8 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
           reorderId,
           contactId: sfContactId,
           shippingMethod,
-          estimatedTax,
-          estimatedShipping,
+          estimatedTax: totals.tax,
+          estimatedShipping: totals.shipping,
         }),
       });
 

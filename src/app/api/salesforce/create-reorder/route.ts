@@ -375,6 +375,13 @@ export async function POST(request: NextRequest) {
         ...(sfShippingValue ? { Shipping_Method__c: sfShippingValue } : {}),
         Description: `Sunstone Studio App Order${shippingNote}`,
       };
+      // Add tax + shipping estimate fields (custom fields — silently ignored if they don't exist)
+      if (estimatedShipping > 0) {
+        orderFields.Shipping_Cost__c = estimatedShipping;
+      }
+      if (estimatedTax > 0) {
+        orderFields.Online_Sales_Tax__c = estimatedTax;
+      }
       if (contactId) {
         orderFields.BillToContactId = contactId;
         orderFields.ShipToContactId = contactId;
@@ -383,15 +390,17 @@ export async function POST(request: NextRequest) {
       let orderId: string;
       try {
         orderId = await sfCreate('Order', orderFields);
-      } catch (contactFieldErr: any) {
-        // BillToContactId/ShipToContactId may not be writable — retry without
-        if (contactFieldErr.message?.includes('BillToContactId') || contactFieldErr.message?.includes('ShipToContactId')) {
-          console.warn('[SF Reorder] Contact fields on Order not writable — retrying without them');
-          delete orderFields.BillToContactId;
-          delete orderFields.ShipToContactId;
+      } catch (fieldErr: any) {
+        const errMsg = fieldErr.message || '';
+        // Remove problematic fields and retry
+        const optionalFields = ['BillToContactId', 'ShipToContactId', 'Shipping_Cost__c', 'Online_Sales_Tax__c'];
+        const badField = optionalFields.find((f) => errMsg.includes(f));
+        if (badField) {
+          console.warn(`[SF Reorder] Order field "${badField}" not writable — retrying without optional fields`);
+          for (const f of optionalFields) delete orderFields[f];
           orderId = await sfCreate('Order', orderFields);
         } else {
-          throw contactFieldErr;
+          throw fieldErr;
         }
       }
 
