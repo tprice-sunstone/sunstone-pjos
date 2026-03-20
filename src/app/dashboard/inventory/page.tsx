@@ -1,5 +1,5 @@
 // ============================================================================
-// Inventory Page â€” src/app/dashboard/inventory/page.tsx
+// Inventory Page â€" src/app/dashboard/inventory/page.tsx
 // ============================================================================
 // REDESIGNED: Form UX overhaul for pricing clarity
 // - Sectioned form (Basic Info â†’ Stock & Cost â†’ Pricing)
@@ -30,7 +30,7 @@ import { Skeleton } from '@/components/ui';
 import SunnyTutorial from '@/components/SunnyTutorial';
 import ReorderModal from '@/components/inventory/ReorderModal';
 
-// â”€â”€â”€ Constants â”€â”€â”€
+// â"€â"€â"€ Constants â"€â"€â"€
 const ITEM_TYPES: { value: InventoryType; label: string }[] = [
   { value: 'chain', label: 'Chain' },
   { value: 'jump_ring', label: 'Jump Ring' },
@@ -56,7 +56,7 @@ export default function InventoryPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  // â”€â”€â”€ State â”€â”€â”€
+  // â"€â"€â"€ State â"€â"€â"€
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -85,8 +85,9 @@ export default function InventoryPage() {
 
   // Scroll position preservation across modal open/close
   const savedScrollRef = useRef<number>(0);
+  const reorderHistoryRef = useRef<HTMLDivElement>(null);
 
-  // â”€â”€â”€ Load Inventory â”€â”€â”€
+  // â"€â"€â"€ Load Inventory â"€â"€â"€
   // Helper: find the scrollable main container (dashboard layout's <main>)
   const getScrollContainer = useCallback(() => {
     return document.querySelector('main.overflow-y-auto') as HTMLElement | null;
@@ -188,6 +189,15 @@ export default function InventoryPage() {
     if (showReorderHistory) loadReorderHistory();
   }, [showReorderHistory, loadReorderHistory]);
 
+  // Scroll the reorder history panel into view when opened
+  useEffect(() => {
+    if (showReorderHistory && reorderHistoryRef.current) {
+      requestAnimationFrame(() => {
+        reorderHistoryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }, [showReorderHistory]);
+
   const handleMarkReceived = async (reorderId: string, overrides?: Record<string, number>) => {
     setReceivingId(reorderId);
     try {
@@ -225,7 +235,7 @@ export default function InventoryPage() {
     setReceiveModalReorder(reorder);
   };
 
-  // â”€â”€â”€ Filter items â”€â”€â”€
+  // â"€â"€â"€ Filter items â"€â"€â"€
   const handleAutoLink = async () => {
     setAutoLinking(true);
     try {
@@ -262,7 +272,7 @@ export default function InventoryPage() {
     });
   }, [items, search, filterType]);
 
-  // â”€â”€â”€ Handle Add Button â”€â”€â”€
+  // â"€â"€â"€ Handle Add Button â"€â"€â"€
   const handleAddClick = () => {
     // If no product types exist and they might want to add chain, prompt first
     if (hasProductTypes === false) {
@@ -301,7 +311,7 @@ export default function InventoryPage() {
       .eq('inventory_item_id', item.id);
 
     if ((count ?? 0) > 0) {
-      // Has sale history — soft delete only
+      // Has sale history -- soft delete only
       if (!confirm(
         `"${item.name}" has been used in ${count} sale(s) and can\'t be permanently deleted.\n\nDeactivate it instead? It will be hidden from the POS but kept for reports.`
       )) return false;
@@ -321,7 +331,7 @@ export default function InventoryPage() {
         return true;
       }
     } else {
-      // No sale history — allow hard delete
+      // No sale history -- allow hard delete
       if (!confirm(
         `Permanently delete "${item.name}"?\n\nThis cannot be undone.`
       )) return false;
@@ -359,7 +369,7 @@ export default function InventoryPage() {
     );
   }
 
-  // â”€â”€â”€ Price display helper â”€â”€â”€
+  // â"€â"€â"€ Price display helper â"€â"€â"€
   const formatPrice = (item: InventoryItem) => {
     const pricingMode = (item as any).pricing_mode as PricingMode | undefined;
     if (item.type === 'chain' && pricingMode === 'per_inch') {
@@ -373,7 +383,7 @@ export default function InventoryPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* â”€â”€â”€ Header â”€â”€â”€ */}
+      {/* â"€â"€â"€ Header â"€â"€â"€ */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Inventory</h1>
@@ -413,7 +423,101 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* â”€â”€â”€ Search & Filters â”€â”€â”€ */}
+      {/* Reorder History Panel -- positioned at top so it's always visible */}
+      {showReorderHistory && (
+        <div ref={reorderHistoryRef}>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Reorder History</CardTitle>
+                <button
+                  onClick={() => setShowReorderHistory(false)}
+                  className="p-1.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--surface-subtle)]"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {reorderHistory.length === 0 ? (
+                <p className="text-sm text-[var(--text-tertiary)] text-center py-6">
+                  No reorders yet. Use the cart icon on any Sunstone-linked item to place your first reorder.
+                </p>
+              ) : (
+                <div className="divide-y divide-[var(--border-subtle)]">
+                  {reorderHistory.map((r) => {
+                    const statusLabel = r.status === 'completed' ? 'Received'
+                      : r.status === 'cancelled' ? 'Cancelled'
+                      : r.status === 'shipped' ? 'Shipped'
+                      : r.status === 'confirmed' || r.status === 'processing' ? 'Processing'
+                      : r.status === 'pending_payment' ? 'Awaiting Payment'
+                      : r.status === 'sf_pending' ? 'Processing'
+                      : 'Pending';
+                    const statusVariant = r.status === 'completed' ? 'success'
+                      : r.status === 'cancelled' ? 'secondary'
+                      : r.status === 'shipped' ? 'success'
+                      : r.status === 'pending_payment' ? 'warning'
+                      : 'warning';
+                    return (
+                      <div key={r.id} className="py-3 flex items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-[var(--text-primary)]">
+                              {r.shopify_order_name || (r.sf_opportunity_id ? 'SF Order' : 'Order')}
+                            </span>
+                            <Badge variant={statusVariant as any} className="text-[10px]">
+                              {statusLabel}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
+                            {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {' \u2014 '}
+                            {(r.items as any[]).map((i: any) => `${i.name} x${i.quantity}`).join(', ')}
+                          </p>
+                          {r.tracking_number && (
+                            <p className="text-xs mt-0.5">
+                              <a
+                                href={`https://www.google.com/search?q=${encodeURIComponent(r.tracking_number)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[var(--accent-primary)] hover:underline"
+                              >
+                                Track: {r.tracking_number}
+                              </a>
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-semibold text-[var(--text-primary)]">
+                            ${Number(r.total_amount).toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {r.status !== 'completed' && r.status !== 'cancelled' && r.status !== 'pending_payment' && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => openReceiveModal(r)}
+                              disabled={receivingId === r.id}
+                              className="min-h-[44px]"
+                            >
+                              {receivingId === r.id ? 'Restocking...' : 'Mark Received'}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* â"€â"€â"€ Search & Filters â"€â"€â"€ */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
           <input
@@ -447,7 +551,7 @@ export default function InventoryPage() {
         </label>
       </div>
 
-      {/* â”€â”€â”€ Inventory List â”€â”€â”€ */}
+      {/* â"€â"€â"€ Inventory List â"€â"€â"€ */}
       {loading ? (
         <div className="rounded-xl border border-[var(--border-default)] overflow-hidden bg-[var(--surface-base)]">
           {[1, 2, 3, 4, 5].map((i) => (
@@ -604,7 +708,7 @@ export default function InventoryPage() {
 
                 {/* Desktop actions */}
                 <div className="hidden sm:flex items-center gap-1 justify-end">
-                  {/* Mark Received — prominent when shipped */}
+                  {/* Mark Received -- prominent when shipped */}
                   {isShippedOrDelivered && (
                     <Button
                       variant="primary"
@@ -682,7 +786,7 @@ export default function InventoryPage() {
                     {item.quantity_on_hand} {item.unit}
                   </span>
                   <div className="flex items-center gap-1 ml-auto">
-                    {/* Mark Received — prominent on mobile when shipped */}
+                    {/* Mark Received -- prominent on mobile when shipped */}
                     {isShippedOrDelivered && (
                       <Button
                         variant="primary"
@@ -698,7 +802,7 @@ export default function InventoryPage() {
                         {receivingId === pending?.reorderId ? 'Restocking...' : 'Received'}
                       </Button>
                     )}
-                    {/* Reorder cart icon — always visible on mobile */}
+                    {/* Reorder cart icon -- always visible on mobile */}
                     {item.sunstone_product_id && (
                       <button
                         onClick={(e) => {
@@ -722,7 +826,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* â”€â”€â”€ Product Types Prompt Modal â”€â”€â”€ */}
+      {/* â"€â"€â"€ Product Types Prompt Modal â"€â"€â"€ */}
       {showProductTypesPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
@@ -740,7 +844,7 @@ export default function InventoryPage() {
                 Quick tip before you start
               </h3>
               <p className="text-sm text-[var(--text-secondary)] mt-2">
-                If you&apos;re adding chain, you&apos;ll want to set up your product types first â€” like Bracelet, Anklet, and Necklace. This lets you set different prices for each.
+                If you&apos;re adding chain, you&apos;ll want to set up your product types first â€" like Bracelet, Anklet, and Necklace. This lets you set different prices for each.
               </p>
             </div>
             <div className="flex flex-col gap-2">
@@ -763,14 +867,14 @@ export default function InventoryPage() {
                   setShowForm(true);
                 }}
               >
-                Skip for now â€” I&apos;ll add non-chain items
+                Skip for now â€" I&apos;ll add non-chain items
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* â”€â”€â”€ Add/Edit Form Modal â”€â”€â”€ */}
+      {/* â"€â"€â"€ Add/Edit Form Modal â"€â"€â"€ */}
       {showForm && (
         <InventoryItemForm
           tenant={tenant}
@@ -800,98 +904,6 @@ export default function InventoryPage() {
             }
           }}
         />
-      )}
-
-      {/* Reorder History Panel */}
-      {showReorderHistory && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Reorder History</CardTitle>
-              <button
-                onClick={() => setShowReorderHistory(false)}
-                className="p-1.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--surface-subtle)]"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {reorderHistory.length === 0 ? (
-              <p className="text-sm text-[var(--text-tertiary)] text-center py-6">
-                No reorders yet. Use the cart icon on any Sunstone-linked item to place your first reorder.
-              </p>
-            ) : (
-              <div className="divide-y divide-[var(--border-subtle)]">
-                {reorderHistory.map((r) => {
-                  const statusLabel = r.status === 'completed' ? 'Received'
-                    : r.status === 'cancelled' ? 'Cancelled'
-                    : r.status === 'shipped' ? 'Shipped'
-                    : r.status === 'confirmed' || r.status === 'processing' ? 'Processing'
-                    : r.status === 'pending_payment' ? 'Awaiting Payment'
-                    : r.status === 'sf_pending' ? 'Processing'
-                    : 'Pending';
-                  const statusVariant = r.status === 'completed' ? 'success'
-                    : r.status === 'cancelled' ? 'secondary'
-                    : r.status === 'shipped' ? 'success'
-                    : r.status === 'pending_payment' ? 'warning'
-                    : 'warning';
-                  return (
-                    <div key={r.id} className="py-3 flex items-center gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-[var(--text-primary)]">
-                            {r.shopify_order_name || (r.sf_opportunity_id ? 'SF Order' : 'Order')}
-                          </span>
-                          <Badge variant={statusVariant as any} className="text-[10px]">
-                            {statusLabel}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
-                          {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          {' — '}
-                          {(r.items as any[]).map((i: any) => `${i.name} x${i.quantity}`).join(', ')}
-                        </p>
-                        {r.tracking_number && (
-                          <p className="text-xs mt-0.5">
-                            <a
-                              href={`https://www.google.com/search?q=${encodeURIComponent(r.tracking_number)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[var(--accent-primary)] hover:underline"
-                            >
-                              Track: {r.tracking_number}
-                            </a>
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-semibold text-[var(--text-primary)]">
-                          ${Number(r.total_amount).toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        {r.status !== 'completed' && r.status !== 'cancelled' && r.status !== 'pending_payment' && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => openReceiveModal(r)}
-                            disabled={receivingId === r.id}
-                            className="min-h-[44px]"
-                          >
-                            {receivingId === r.id ? 'Restocking...' : 'Mark Received'}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       )}
 
       {/* Reorder Modal */}
@@ -995,7 +1007,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
   const supabase = createClient();
   const isEditing = !!editingItem;
 
-  // â”€â”€â”€ Form State â”€â”€â”€
+  // â"€â"€â"€ Form State â"€â"€â"€
   const [name, setName] = useState(editingItem?.name || '');
   const [type, setType] = useState<InventoryType>(editingItem?.type || 'chain');
   const [materialId, setMaterialId] = useState<string | null>(
@@ -1091,7 +1103,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
     };
     check();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only on mount — subsequent changes handled by onSelect
+  }, []); // Only on mount -- subsequent changes handled by onSelect
 
   // Load Sunstone catalog when supplier is Sunstone
   useEffect(() => {
@@ -1134,7 +1146,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSunstoneSupplier]);
 
-  // â”€â”€â”€ Validation â”€â”€â”€
+  // â"€â"€â"€ Validation â"€â"€â"€
   const validate = (): boolean => {
     if (!name.trim()) {
       toast.error('Name is required');
@@ -1156,13 +1168,13 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
             'No product types are enabled. This chain won\'t appear in the POS until you enable at least one.',
             { duration: 5000 }
           );
-          // Don't block save â€” they may want to save a draft
+          // Don't block save â€" they may want to save a draft
         } else if (rowsWithNoPrice.length > 0) {
           toast.warning(
             `${rowsWithNoPrice.length} enabled product type(s) have no price set. They won't appear in the POS.`,
             { duration: 5000 }
           );
-          // Don't block save â€” warn but allow
+          // Don't block save â€" warn but allow
         }
       }
     } else {
@@ -1176,7 +1188,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
     return true;
   };
 
-  // â”€â”€â”€ Save â”€â”€â”€
+  // â"€â"€â"€ Save â"€â"€â"€
   const handleSave = async () => {
     setValidationTriggered(true);
 
@@ -1277,7 +1289,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
     }
   };
 
-  // â”€â”€â”€ Cost label â”€â”€â”€
+  // â"€â"€â"€ Cost label â"€â"€â"€
   const costLabel = type === 'chain'
     ? (costEntryUnit === 'foot' ? 'Your Cost per Foot' : 'Your Cost per Inch')
     : 'Cost per Unit';
@@ -1411,7 +1423,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
             />
           </div>
 
-          {/* â”€â”€â”€ Section Divider â”€â”€â”€ */}
+          {/* â"€â"€â"€ Section Divider â"€â"€â"€ */}
           <div className="border-t border-[var(--border-subtle)]" />
 
           {/* â•â•â• SECTION 2: Stock & Cost â•â•â• */}
@@ -1568,7 +1580,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
             )}
           </div>
 
-          {/* â”€â”€â”€ Section Divider â”€â”€â”€ */}
+          {/* â"€â"€â"€ Section Divider â"€â"€â"€ */}
           <div className="border-t border-[var(--border-subtle)]" />
 
           {/* â•â•â• SECTION 3: Pricing â•â•â• */}
@@ -1617,7 +1629,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
             )}
           </div>
 
-          {/* â”€â”€â”€ Notes â”€â”€â”€ */}
+          {/* â"€â"€â"€ Notes â"€â"€â"€ */}
           <div>
             <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">
               Notes (optional)
