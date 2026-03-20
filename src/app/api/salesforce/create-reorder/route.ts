@@ -333,20 +333,25 @@ export async function POST(request: NextRequest) {
     // Wait for sync (or fallback read), then read back tax/shipping
     await sleep(3000);
 
-    let sfTax = reorder.tax_amount;
-    let sfShipping = reorder.shipping_amount;
-    let sfGrandTotal = reorder.total_amount;
+    // Use client estimates as floor values — SF may override with Avalara calculations
+    let sfTax = Math.max(reorder.tax_amount || 0, estimatedTax || 0);
+    let sfShipping = Math.max(reorder.shipping_amount || 0, estimatedShipping || 0);
+    let sfGrandTotal = reorder.total_amount || 0;
 
     try {
       const quote = await sfGet<any>('Quote', quoteId, [
         'Tax', 'ShippingHandling', 'New_Grand_Total__c',
       ]);
-      if (quote.Tax != null) sfTax = Number(quote.Tax);
-      if (quote.ShippingHandling != null) sfShipping = Number(quote.ShippingHandling);
-      if (quote.New_Grand_Total__c != null) sfGrandTotal = Number(quote.New_Grand_Total__c);
+      if (quote.Tax != null) sfTax = Math.max(sfTax, Number(quote.Tax));
+      if (quote.ShippingHandling != null) sfShipping = Math.max(sfShipping, Number(quote.ShippingHandling));
+      if (quote.New_Grand_Total__c != null) sfGrandTotal = Math.max(sfGrandTotal, Number(quote.New_Grand_Total__c));
     } catch (err) {
       console.warn('[SF Reorder] Could not re-read quote after sync:', err);
     }
+
+    // Ensure grandTotal includes tax + shipping (SF may return subtotal-only)
+    const computedTotal = lineItemTotal + sfTax + sfShipping;
+    sfGrandTotal = Math.max(sfGrandTotal, computedTotal);
 
     // ── Create Order explicitly (IsSyncing workaround) ──────────────────
     // If IsSyncing fails, SF won't auto-create the Order from the Quote.

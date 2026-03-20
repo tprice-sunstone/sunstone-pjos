@@ -71,7 +71,9 @@ export async function POST(request: NextRequest) {
     const subtotal = items.reduce((sum: number, i: any) => sum + (i.unit_price || 0) * (i.quantity || 0), 0);
     const tax = reorder.tax_amount || 0;
     const shipping = reorder.shipping_amount || 0;
-    const total = reorder.total_amount || subtotal + tax + shipping;
+    // total_amount from SF may be subtotal-only; use the larger of stored vs computed
+    const computed = subtotal + tax + shipping;
+    const total = Math.max(reorder.total_amount || 0, computed);
 
     // Parse shipping address from notes
     const noteParts = (reorder.notes || '').replace('Shipping to: ', '').split(', ');
