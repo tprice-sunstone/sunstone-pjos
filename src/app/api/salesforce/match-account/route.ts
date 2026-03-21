@@ -58,14 +58,29 @@ async function getShippingAddressForAccount(accountId: string): Promise<any | nu
   try {
     const acct = await sfGet<any>('Account', accountId, [
       'ShippingStreet', 'ShippingCity', 'ShippingState', 'ShippingPostalCode', 'ShippingCountry',
+      'BillingStreet', 'BillingCity', 'BillingState', 'BillingPostalCode', 'BillingCountry',
     ]);
-    if (acct.ShippingStreet || acct.ShippingCity) {
+
+    // Prefer Shipping fields; fall back to Billing if Shipping is empty
+    const hasShipping = acct.ShippingStreet || acct.ShippingCity;
+    const hasBilling = acct.BillingStreet || acct.BillingCity;
+
+    if (hasShipping) {
       return {
         street: acct.ShippingStreet || '',
         city: acct.ShippingCity || '',
         state: acct.ShippingState || '',
         postalCode: acct.ShippingPostalCode || '',
         country: acct.ShippingCountry || 'US',
+      };
+    }
+    if (hasBilling) {
+      return {
+        street: acct.BillingStreet || '',
+        city: acct.BillingCity || '',
+        state: acct.BillingState || '',
+        postalCode: acct.BillingPostalCode || '',
+        country: acct.BillingCountry || 'US',
       };
     }
     return null;
@@ -169,7 +184,7 @@ export async function GET() {
         .update({ sf_account_id: match.accountId })
         .eq('id', member.tenant_id);
 
-      // Fetch payment methods + contactId
+      // Fetch payment methods, contactId, and shipping address
       let paymentMethods: any[] = [];
       try {
         const pmResult = await sfGetPaymentMethods(match.accountId);
@@ -178,20 +193,17 @@ export async function GET() {
         console.warn('[SF Match] getPaymentMethods error:', err);
       }
 
-      const contactId = await getContactIdForAccount(match.accountId, email || undefined);
+      const [contactId, shippingAddress] = await Promise.all([
+        getContactIdForAccount(match.accountId, email || undefined),
+        getShippingAddressForAccount(match.accountId),
+      ]);
 
       return NextResponse.json({
         resolved: true,
         accountId: match.accountId,
         accountName: match.accountName,
         contactId,
-        shippingAddress: {
-          street: match.shippingStreet || '',
-          city: match.city || '',
-          state: match.state || '',
-          postalCode: match.shippingPostalCode || '',
-          country: match.shippingCountry || 'US',
-        },
+        shippingAddress,
         paymentMethods,
         confidence: 'exact_email',
       });

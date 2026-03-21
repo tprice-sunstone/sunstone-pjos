@@ -81,11 +81,12 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Update reorder status to paid
+    // Update reorder status to paid + store actual charged amount
     await serviceClient
       .from('reorder_history')
       .update({
         status: 'confirmed',
+        total_amount: amount,
         stripe_payment_intent_id: chargeResult.transactionId || chargeResult.paymentReference || null,
         updated_at: new Date().toISOString(),
       })

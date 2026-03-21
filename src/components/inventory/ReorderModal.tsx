@@ -136,6 +136,7 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
   const [newCard, setNewCard] = useState({
     nameOnCard: '', cardNumber: '', expirationMonth: '', expirationYear: '', cvv: '',
   });
+  const [addingCard, setAddingCard] = useState(false);
 
   // Reorder
   const [reorderId, setReorderId] = useState<string | null>(null);
@@ -670,8 +671,9 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
       return;
     }
 
-    setStep('processing');
-    setProcessingMsg('Saving your card...');
+    // Stay on payment step with loading indicator while saving the card.
+    // Only transition to 'processing' step after the card is saved successfully.
+    setAddingCard(true);
     setPaymentError(null);
 
     try {
@@ -694,7 +696,7 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
         try { const errData = await addRes.json(); errorMsg = errData.error || errorMsg; } catch { /* non-JSON response */ }
         console.error('[Reorder] Add card failed:', addRes.status, errorMsg);
         setPaymentError(errorMsg);
-        setStep('payment');
+        setAddingCard(false);
         return;
       }
 
@@ -716,27 +718,28 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
         }
         console.error('[Reorder] Add card not successful:', friendlyMsg);
         setPaymentError(friendlyMsg);
-        setStep('payment');
+        setAddingCard(false);
         return;
       }
 
       if (!addData.cardId) {
         console.error('[Reorder] Add card returned success but no cardId:', addData);
         setPaymentError('Card was saved but no card ID was returned. Please try again.');
-        setStep('payment');
+        setAddingCard(false);
         return;
       }
 
       const last4 = cleanNumber.slice(-4);
       const label = `${addData.brand || 'Card'} ending in ${addData.last4 || last4}`;
 
+      // Card saved successfully — now transition to processing step for the charge
+      setAddingCard(false);
       console.log('[Reorder] Step 2: Card added, charging...');
-      // Now charge the newly added card
       await handlePay(addData.cardId, label);
     } catch (err: any) {
       console.error('[Reorder] handleAddCardAndPay error:', err);
       setPaymentError(err.message || 'Failed to process payment. Please try again.');
-      setStep('payment');
+      setAddingCard(false);
     }
   };
 
@@ -753,6 +756,7 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
     setPaymentError(null);
     setChargedCard(null);
     setShowNewCardForm(false);
+    setAddingCard(false);
     setNewCard({ nameOnCard: '', cardNumber: '', expirationMonth: '', expirationYear: '', cvv: '' });
     setShippingMethod('USPS Priority Mail');
     setShippingRates(null);
@@ -1381,10 +1385,11 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
               ) : showNewCardForm || paymentMethods.length === 0 ? (
                 <Button
                   onClick={handleAddCardAndPay}
+                  disabled={addingCard}
                   className="flex-1 text-white font-semibold"
                   style={{ backgroundColor: '#7A234A' }}
                 >
-                  Save Card & Pay ${totals.total.toFixed(2)}
+                  {addingCard ? 'Saving Card...' : `Save Card & Pay $${totals.total.toFixed(2)}`}
                 </Button>
               ) : null}
             </div>
