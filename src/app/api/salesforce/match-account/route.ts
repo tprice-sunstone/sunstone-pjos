@@ -347,12 +347,16 @@ export async function POST(request: NextRequest) {
         .update({ sf_account_id: result.accountId })
         .eq('id', member.tenant_id);
 
-      // Set Studio audit fields on the newly created Account and Contact
+      // Set Studio audit fields + Account_Type__c on the newly created Account and Contact
       try {
-        if (result.accountId) await sfUpdate('Account', result.accountId, { Studio_Created__c: true, Studio_Modified__c: true });
+        if (result.accountId) await sfUpdate('Account', result.accountId, { Studio_Created__c: true, Studio_Modified__c: true, Account_Type__c: 'Customer' });
         if (result.contactId) await sfUpdate('Contact', result.contactId, { Studio_Created__c: true, Studio_Modified__c: true });
       } catch (auditErr: any) {
         console.warn('[SF Match] Studio audit fields not available:', auditErr.message);
+        // Retry without Studio fields but still set Account_Type__c
+        try {
+          if (result.accountId) await sfUpdate('Account', result.accountId, { Account_Type__c: 'Customer' });
+        } catch { /* Account_Type__c may not exist — non-blocking */ }
       }
 
       return NextResponse.json({

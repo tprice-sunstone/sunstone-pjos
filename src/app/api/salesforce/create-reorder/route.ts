@@ -225,6 +225,14 @@ export async function POST(request: NextRequest) {
     }
     const standardPricebookId = (pricebooks[0] as any).Id;
 
+    // ── Ensure Account has Account_Type__c (SF validation rule requires it) ──
+    try {
+      await sfUpdate('Account', sfAccountId, { Account_Type__c: 'Customer' });
+    } catch (err: any) {
+      // Field may not exist or value may be invalid — non-blocking
+      console.warn('[SF Reorder] Account_Type__c update skipped:', err.message);
+    }
+
     // ── Step 1: Create Opportunity (Quote Sent — NOT Closed Won until payment) ──
     const now = new Date();
     const today = now.toISOString().split('T')[0];

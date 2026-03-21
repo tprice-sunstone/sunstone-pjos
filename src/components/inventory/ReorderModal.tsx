@@ -1525,17 +1525,12 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
                   <span className="text-[var(--text-primary)]">${sfResult.tax.toFixed(2)}</span>
                 </div>
               )}
-              {sfResult && sfResult.shipping > 0 ? (
+              {sfResult && sfResult.shipping != null && (
                 <div className="flex justify-between">
                   <span className="text-[var(--text-secondary)]">Shipping</span>
                   <span className="text-[var(--text-primary)]">${sfResult.shipping.toFixed(2)}</span>
                 </div>
-              ) : sfResult && sfResult.shipping === 0 ? (
-                <div className="flex justify-between">
-                  <span className="text-[var(--text-secondary)]">Shipping</span>
-                  <span className="text-[var(--text-tertiary)] italic">Calculated by Sunstone</span>
-                </div>
-              ) : null}
+              )}
               {sfResult && sfResult.grandTotal > 0 && (
                 <div className="flex justify-between border-t border-[var(--border-subtle)] pt-2">
                   <span className="font-semibold text-[var(--text-primary)]">Total{chargedCard ? ' charged' : ''}</span>
