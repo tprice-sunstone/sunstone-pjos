@@ -271,7 +271,7 @@ export default function ProfilePage({ slug }: { slug: string }) {
                 if (tier.bracelet_price) prices.push({ label: 'Bracelet', value: `$${Number(tier.bracelet_price).toFixed(0)}` });
                 if (tier.anklet_price) prices.push({ label: 'Anklet', value: `$${Number(tier.anklet_price).toFixed(0)}` });
                 if (tier.ring_price) prices.push({ label: 'Ring', value: `$${Number(tier.ring_price).toFixed(0)}` });
-                if (tier.necklace_price_per_inch) prices.push({ label: 'Necklace', value: `$${Number(tier.necklace_price_per_inch).toFixed(0)}/in` });
+                if (tier.necklace_price_per_inch) prices.push({ label: 'Necklace', value: `$${Number(tier.necklace_price_per_inch).toFixed(0)}` });
                 if (tier.hand_chain_price) prices.push({ label: 'Hand Chain', value: `$${Number(tier.hand_chain_price).toFixed(0)}` });
                 return (
                   <div

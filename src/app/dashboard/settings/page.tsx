@@ -3501,7 +3501,7 @@ function PricingTiersSection({ tenant, onSaved }: { tenant: any; onSaved: () => 
                       {tier.bracelet_price != null && <span className="text-xs text-[var(--text-tertiary)]">Bracelet {formatPrice(tier.bracelet_price)}</span>}
                       {tier.anklet_price != null && <span className="text-xs text-[var(--text-tertiary)]">Anklet {formatPrice(tier.anklet_price)}</span>}
                       {tier.ring_price != null && <span className="text-xs text-[var(--text-tertiary)]">Ring {formatPrice(tier.ring_price)}</span>}
-                      {tier.necklace_price_per_inch != null && <span className="text-xs text-[var(--text-tertiary)]">Necklace {formatPrice(tier.necklace_price_per_inch)}/in</span>}
+                      {tier.necklace_price_per_inch != null && <span className="text-xs text-[var(--text-tertiary)]">Necklace {formatPrice(tier.necklace_price_per_inch)}</span>}
                       {tier.hand_chain_price != null && <span className="text-xs text-[var(--text-tertiary)]">Hand Chain {formatPrice(tier.hand_chain_price)}</span>}
                     </div>
                   </div>
@@ -3579,7 +3579,7 @@ function PricingTiersSection({ tenant, onSaved }: { tenant: any; onSaved: () => 
                   placeholder="$0.00"
                 />
                 <Input
-                  label="Necklace $/Inch"
+                  label="Necklace Price"
                   type="number"
                   step="0.01"
                   min="0"

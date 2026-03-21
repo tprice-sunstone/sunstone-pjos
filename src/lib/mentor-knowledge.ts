@@ -2461,7 +2461,7 @@ export const PJOS_PLATFORM_GUIDE = {
         '2. Under Pricing Mode, select "By Tier."',
         '3. Click "+ Add Tier" to create your first tier.',
         '4. Name each tier (e.g., "Sterling Silver," "Gold Filled," "14K Gold").',
-        '5. Set the product prices for each tier (bracelet, anklet, ring, necklace per inch, hand chain).',
+        '5. Set the product prices for each tier (bracelet, anklet, ring, necklace, hand chain).',
         '6. Reorder tiers with the up/down arrows — this controls display order.',
         '7. Edit or delete tiers anytime.',
       ],
