@@ -628,11 +628,25 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
       // Step 3: Finalize — move Opp to Closed Won
       setProcessingMsg('Finalizing order...');
 
-      await fetch('/api/salesforce/create-reorder', {
+      const finalizeRes = await fetch('/api/salesforce/create-reorder', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reorderId }),
       });
+
+      const finalizeData = await finalizeRes.json();
+
+      if (!finalizeData.success) {
+        // Card was charged but Closed Won failed — show warning, not green checkmark
+        const quoteNum = sfResult?.quoteId ? ` with your Quote number` : '';
+        setPaymentError(
+          `Payment was processed successfully, but the order could not be finalized in our system. Please contact Sunstone at 385-999-5240${quoteNum} so we can complete your order.`
+        );
+        setChargedCard(cardLabel); // Still show card info since it was charged
+        setStep('confirmation');
+        onReorderCreated?.();
+        return;
+      }
 
       setProcessingMsg('Order confirmed!');
       setChargedCard(cardLabel);
@@ -777,7 +791,7 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
           {step === 'review' && 'Reorder from Sunstone'}
           {step === 'payment' && 'Payment'}
           {step === 'processing' && 'Processing...'}
-          {step === 'confirmation' && (paymentError && !chargedCard ? 'Order Submitted' : 'Order Confirmed')}
+          {step === 'confirmation' && (paymentError ? 'Action Required' : 'Order Confirmed')}
         </h2>
         {step === 'review' && (
           <p className="text-sm text-[var(--text-secondary)] mt-1">{item.name}</p>
@@ -1406,9 +1420,9 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
           /* ── Step 4: Confirmation ───────────────────────────────── */
           <div className="text-center space-y-4 py-4">
             <div className={`w-14 h-14 rounded-full mx-auto flex items-center justify-center ${
-              paymentError && !chargedCard ? 'bg-amber-50' : 'bg-green-50'
+              paymentError ? 'bg-amber-50' : 'bg-green-50'
             }`}>
-              {paymentError && !chargedCard ? (
+              {paymentError ? (
                 <svg className="w-7 h-7 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                 </svg>
@@ -1420,14 +1434,14 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
             </div>
             <div>
               <p className="text-lg font-bold text-[var(--text-primary)]">
-                {paymentError && !chargedCard ? 'Order Submitted' : 'Order Confirmed!'}
+                {paymentError ? 'Action Required' : 'Order Confirmed!'}
               </p>
               {sfResult?.opportunityName && (
                 <p className="text-sm text-[var(--text-secondary)]">{sfResult.opportunityName}</p>
               )}
             </div>
 
-            {paymentError && !chargedCard && (
+            {paymentError && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 text-left">
                 {paymentError}
               </div>

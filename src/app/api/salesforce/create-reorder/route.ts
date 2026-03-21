@@ -311,13 +311,13 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Step 3: Set ShippingHandling on Quote BEFORE line items + tax calc ──
-    if (estimatedShipping > 0) {
-      try {
-        await sfUpdate('Quote', quoteId, { ShippingHandling: estimatedShipping });
-        console.log(`[SF Reorder] Set Quote ShippingHandling=${estimatedShipping} (before tax calc)`);
-      } catch (shErr: any) {
-        console.warn('[SF Reorder] Could not set ShippingHandling on Quote:', shErr.message);
-      }
+    // ALWAYS set to a number (0 for Will Call) — SF validation requires a value for Closed Won
+    const finalShipping = typeof estimatedShipping === 'number' ? estimatedShipping : 0;
+    try {
+      await sfUpdate('Quote', quoteId, { ShippingHandling: finalShipping });
+      console.log(`[SF Reorder] Set Quote ShippingHandling=${finalShipping} (before tax calc)`);
+    } catch (shErr: any) {
+      console.warn('[SF Reorder] Could not set ShippingHandling on Quote:', shErr.message);
     }
 
     // ── Step 4: Create QuoteLineItems ───────────────────────────────────────
@@ -440,6 +440,10 @@ export async function POST(request: NextRequest) {
 // SF's native Opp -> Order sync pipeline creates the Order automatically.
 
 export async function PATCH(request: NextRequest) {
+  // Parse body outside try so reorderId is available in catch for status update
+  const body = await request.json();
+  const { reorderId } = body;
+
   try {
     const supabase = await createServerSupabase();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -459,9 +463,6 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { reorderId } = body;
-
     if (!reorderId) {
       return NextResponse.json({ error: 'Missing reorderId' }, { status: 400 });
     }
@@ -480,6 +481,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Move Opportunity to Closed Won — SF handles Order creation automatically
+    // This is CRITICAL: if it fails, no Order is created for fulfillment
     await sfUpdateWithAudit('Opportunity', reorder.sf_opportunity_id, {
       StageName: 'Closed Won',
     });
@@ -487,7 +489,21 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error('[SF Finalize] Error:', err);
-    // Non-critical — Opp can be finalized manually
-    return NextResponse.json({ success: true, warning: 'Could not move Opportunity to Closed Won' });
+    console.error('[SF Finalize] Error details:', JSON.stringify(err.data || err.message || err));
+
+    // Mark reorder as needing manual review — card was charged but Opp not Closed Won
+    try {
+      const serviceClient = await createServiceRoleClient();
+      await serviceClient
+        .from('reorder_history')
+        .update({ status: 'sf_pending' })
+        .eq('id', reorderId);
+    } catch { /* non-critical */ }
+
+    return NextResponse.json({
+      success: false,
+      error: 'Payment processed but order could not be finalized in Salesforce.',
+      sfError: err.message || 'Unknown Salesforce error',
+    }, { status: 500 });
   }
 }
