@@ -1191,6 +1191,9 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
   const [isSunstoneSupplier, setIsSunstoneSupplier] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogDropdownOpen, setCatalogDropdownOpen] = useState(false);
+  const catalogDropdownRef = useRef<HTMLDivElement>(null);
 
   // Validation
   const [validationTriggered, setValidationTriggered] = useState(false);
@@ -1243,6 +1246,20 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only on mount -- subsequent changes handled by onSelect
 
+  // Inventory-relevant product types (lowercased for matching)
+  const INVENTORY_TYPES = useMemo(() => new Set([
+    'chain', 'chains', 'connector', 'connectors', 'charm', 'charms',
+    'jump ring', 'jump rings', 'findings', 'finding', 'clasp', 'clasps',
+    'earring', 'earrings', 'bracelet', 'bracelets', 'anklet', 'anklets',
+    'necklace', 'necklaces', 'ring', 'rings', 'wire', 'bead', 'beads',
+    'pendant', 'pendants', 'component', 'components', 'supply', 'supplies',
+  ]), []);
+  const EXCLUDED_KEYWORDS = useMemo(() => [
+    'welder', 'equipment', 'training', 'course', 'class', 'starter kit',
+    'kit', 'vinyl', 'covering', 'book', 'guide', 'gift card', 'apparel',
+    'clothing', 'zapp', 'mpulse', 'orion',
+  ], []);
+
   // Load Sunstone catalog when supplier is Sunstone
   useEffect(() => {
     if (!isSunstoneSupplier) {
@@ -1258,16 +1275,42 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
           .limit(1)
           .single();
         if (data?.products) {
-          const active = (data.products as any[]).filter((p: any) => p.status === 'ACTIVE');
-          setCatalogProducts(active);
+          const allActive = (data.products as any[]).filter((p: any) => p.status === 'ACTIVE');
+
+          // Filter to inventory-relevant products
+          const filtered = allActive.filter((p: any) => {
+            const pType = (p.productType || '').toLowerCase().trim();
+            const title = (p.title || '').toLowerCase();
+            // Exclude by keywords in title or productType
+            if (EXCLUDED_KEYWORDS.some(kw => title.includes(kw) || pType.includes(kw))) return false;
+            // Include if productType matches known inventory types
+            if (INVENTORY_TYPES.has(pType)) return true;
+            // Include if productType is empty but title suggests inventory item
+            if (!pType || pType === 'other' || pType === '') {
+              // Fallback: check if tags contain inventory-relevant keywords
+              const tags = ((p.tags || []) as string[]).map((t: string) => t.toLowerCase());
+              return tags.some(t => INVENTORY_TYPES.has(t));
+            }
+            return false;
+          });
+
+          // Sort by productType then title
+          filtered.sort((a: any, b: any) => {
+            const typeA = (a.productType || 'Other').toLowerCase();
+            const typeB = (b.productType || 'Other').toLowerCase();
+            if (typeA !== typeB) return typeA.localeCompare(typeB);
+            return (a.title || '').localeCompare(b.title || '');
+          });
+
+          setCatalogProducts(filtered);
 
           // Auto-link: if no sunstone_product_id set, try to match by name
           if (!sunstoneProductId && name.trim()) {
             const lower = name.trim().toLowerCase();
             const baseName = lower.split(/\s*[\u2014\u2013-]\s*/)[0].trim();
-            const matches = active.filter((p: any) => {
-              const title = (p.title || '').toLowerCase();
-              return title === baseName || title.startsWith(baseName + ' ') || title.includes(baseName);
+            const matches = filtered.filter((p: any) => {
+              const t = (p.title || '').toLowerCase();
+              return t === baseName || t.startsWith(baseName + ' ') || t.includes(baseName);
             });
             if (matches.length === 1) {
               setSunstoneProductId(matches[0].id);
@@ -1283,6 +1326,48 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
     loadCatalog();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSunstoneSupplier]);
+
+  // Grouped + search-filtered catalog for the dropdown
+  const groupedCatalog = useMemo(() => {
+    const q = catalogSearch.toLowerCase().trim();
+    const groups: Record<string, { product: any; variant: any }[]> = {};
+    for (const p of catalogProducts) {
+      const type = p.productType || 'Other';
+      const variants = (p.variants || []) as any[];
+      for (const v of variants) {
+        const variantLabel = v.title === 'Default Title' ? '' : v.title;
+        const displayText = `${p.title}${variantLabel ? ` — ${variantLabel}` : ''}`;
+        if (q && !displayText.toLowerCase().includes(q)) continue;
+        if (!groups[type]) groups[type] = [];
+        groups[type].push({ product: p, variant: v });
+      }
+    }
+    // Sort group names alphabetically
+    const sorted = Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+    return sorted;
+  }, [catalogProducts, catalogSearch]);
+
+  // Get display label for currently selected product
+  const selectedProductLabel = useMemo(() => {
+    if (!sunstoneProductId) return '';
+    const p = catalogProducts.find((cp: any) => cp.id === sunstoneProductId);
+    if (!p) return '';
+    const v = p.variants?.[0];
+    const price = v?.price ? `$${v.price}` : '';
+    return `${p.title}${price ? ` — ${price}` : ''}`;
+  }, [sunstoneProductId, catalogProducts]);
+
+  // Close catalog dropdown on outside click
+  useEffect(() => {
+    if (!catalogDropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (catalogDropdownRef.current && !catalogDropdownRef.current.contains(e.target as Node)) {
+        setCatalogDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [catalogDropdownOpen]);
 
   // â"€â"€â"€ Validation â"€â"€â"€
   const validate = (): boolean => {
@@ -1525,27 +1610,104 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
               }}
             />
 
-            {/* Sunstone Product Link */}
+            {/* Sunstone Product Link — searchable grouped dropdown */}
             {isSunstoneSupplier && (
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-[var(--text-primary)]">
                   Sunstone Product
                 </label>
-                <select
-                  value={sunstoneProductId || ''}
-                  onChange={(e) => setSunstoneProductId(e.target.value || null)}
-                  className="w-full h-10 px-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)]"
-                  disabled={catalogLoading}
-                >
-                  <option value="">
-                    {catalogLoading ? 'Loading catalog...' : catalogProducts.length === 0 ? 'No catalog synced' : 'Select product...'}
-                  </option>
-                  {catalogProducts.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.title}
-                    </option>
-                  ))}
-                </select>
+                <div ref={catalogDropdownRef} className="relative">
+                  {/* Trigger button */}
+                  <button
+                    type="button"
+                    onClick={() => { if (!catalogLoading) { setCatalogDropdownOpen(!catalogDropdownOpen); setCatalogSearch(''); } }}
+                    disabled={catalogLoading}
+                    className="w-full min-h-[48px] px-3 py-2 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-left flex items-center justify-between gap-2 focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)] disabled:opacity-50"
+                  >
+                    <span className={sunstoneProductId ? 'text-[var(--text-primary)]' : 'text-[var(--text-tertiary)]'}>
+                      {catalogLoading
+                        ? 'Loading catalog...'
+                        : catalogProducts.length === 0
+                          ? 'No catalog synced'
+                          : selectedProductLabel || 'Select product...'}
+                    </span>
+                    {sunstoneProductId ? (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setSunstoneProductId(null); }}
+                        className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-subtle)]"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    ) : (
+                      <svg className="w-4 h-4 shrink-0 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </button>
+
+                  {/* Dropdown panel */}
+                  {catalogDropdownOpen && (
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-[var(--surface-overlay)] border border-[var(--border-default)] rounded-xl shadow-lg max-h-72 flex flex-col">
+                      {/* Search input */}
+                      <div className="p-2 border-b border-[var(--border-subtle)]">
+                        <input
+                          type="text"
+                          value={catalogSearch}
+                          onChange={(e) => setCatalogSearch(e.target.value)}
+                          placeholder="Search products..."
+                          autoFocus
+                          className="w-full h-9 px-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)]"
+                        />
+                      </div>
+
+                      {/* Grouped product list */}
+                      <div className="overflow-y-auto flex-1">
+                        {groupedCatalog.length === 0 ? (
+                          <div className="px-3 py-4 text-sm text-[var(--text-tertiary)] text-center">
+                            {catalogSearch ? 'No matching products' : 'No inventory products found'}
+                          </div>
+                        ) : (
+                          groupedCatalog.map(([type, entries]) => (
+                            <div key={type}>
+                              <div className="px-3 py-1.5 text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider bg-[var(--surface-subtle)] sticky top-0">
+                                {type}
+                              </div>
+                              {entries.map(({ product: p, variant: v }) => {
+                                const variantLabel = v.title === 'Default Title' ? '' : v.title;
+                                const price = v.price ? `$${v.price}` : '';
+                                const isSelected = sunstoneProductId === p.id;
+                                return (
+                                  <button
+                                    key={`${p.id}-${v.id}`}
+                                    type="button"
+                                    onClick={() => {
+                                      setSunstoneProductId(p.id);
+                                      setCatalogDropdownOpen(false);
+                                      setCatalogSearch('');
+                                    }}
+                                    className={`w-full text-left px-3 py-2 min-h-[44px] text-sm flex items-center justify-between gap-2 transition-colors ${
+                                      isSelected
+                                        ? 'bg-[var(--accent-subtle)] text-[var(--accent-primary)]'
+                                        : 'text-[var(--text-primary)] hover:bg-[var(--surface-subtle)]'
+                                    }`}
+                                  >
+                                    <span className="truncate">
+                                      {p.title}{variantLabel ? ` — ${variantLabel}` : ''}
+                                    </span>
+                                    <span className="shrink-0 text-xs text-[var(--text-tertiary)]">{price}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <p className="text-xs text-[var(--text-tertiary)]">
                   Link to Sunstone catalog for one-touch reordering
                 </p>
