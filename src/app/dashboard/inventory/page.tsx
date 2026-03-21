@@ -30,6 +30,9 @@ import { Skeleton } from '@/components/ui';
 import SunnyTutorial from '@/components/SunnyTutorial';
 import ReorderModal from '@/components/inventory/ReorderModal';
 import ShopSunstoneCatalog from '@/components/inventory/ShopSunstoneCatalog';
+import CartDrawer from '@/components/inventory/CartDrawer';
+import CartCheckout from '@/components/inventory/CartCheckout';
+import { useCartStore } from '@/stores/cart-store';
 
 // â"€â"€â"€ Constants â"€â"€â"€
 const ITEM_TYPES: { value: InventoryType; label: string }[] = [
@@ -92,6 +95,12 @@ export default function InventoryPage() {
 
   // Scroll position preservation across modal open/close
   const savedScrollRef = useRef<number>(0);
+
+  // Cart store
+  const cartItems = useCartStore((s) => s.items);
+  const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
+  const addToCart = useCartStore((s) => s.addItem);
+  const openCart = useCartStore((s) => s.openCart);
 
   // â"€â"€â"€ Load Inventory â"€â"€â"€
   // Helper: find the scrollable main container (dashboard layout's <main>)
@@ -442,6 +451,39 @@ export default function InventoryPage() {
     );
   }
 
+  // ─── Add inventory item to cart ───
+  const handleAddToCart = (item: InventoryItem) => {
+    if (!item.sunstone_product_id || !item.sunstone_variant_id) {
+      // Fallback to ReorderModal for unlinked items
+      setReorderItem(item);
+      return;
+    }
+    const product = catalogMap.get(item.sunstone_product_id);
+    if (!product) {
+      setReorderItem(item);
+      return;
+    }
+    const variant = (product.variants || []).find((v: any) => v.id === item.sunstone_variant_id);
+    if (!variant) {
+      setReorderItem(item);
+      return;
+    }
+    addToCart({
+      sunstoneProductId: product.id,
+      sunstoneVariantId: variant.id,
+      productTitle: product.title,
+      variantTitle: variant.title || 'Default Title',
+      sku: variant.sku || null,
+      unitPrice: parseFloat(variant.price),
+      quantity: 1,
+      productType: product.productType || '',
+      imageUrl: product.imageUrl || null,
+      inventoryItemId: item.id || null,
+    });
+    toast.success(`${product.title} added to cart`);
+    openCart();
+  };
+
   // â"€â"€â"€ Price display helper â"€â"€â"€
   const formatPrice = (item: InventoryItem) => {
     const pricingMode = (item as any).pricing_mode as PricingMode | undefined;
@@ -464,14 +506,31 @@ export default function InventoryPage() {
             {items.length} item{items.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button
-          size="sm"
-          onClick={handleAddClick}
-          className="text-[#FAF7F0] font-semibold min-h-[44px]"
-          style={{ backgroundColor: '#7A234A' }}
-        >
-          + Add Item
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Cart icon with badge */}
+          <button
+            onClick={openCart}
+            className="relative p-2.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            title="Cart"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+            </svg>
+            {cartCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-[#7A234A] text-white text-[10px] font-bold flex items-center justify-center px-1">
+                {cartCount > 99 ? '99+' : cartCount}
+              </span>
+            )}
+          </button>
+          <Button
+            size="sm"
+            onClick={handleAddClick}
+            className="text-[#FAF7F0] font-semibold min-h-[44px]"
+            style={{ backgroundColor: '#7A234A' }}
+          >
+            + Add Item
+          </Button>
+        </div>
       </div>
 
       {/* --- Tab Bar --- */}
@@ -768,10 +827,10 @@ export default function InventoryPage() {
                       <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-[var(--border-default)] bg-[var(--surface-overlay)] shadow-lg z-20 py-1">
                         {item.sunstone_product_id && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); setReorderItem(item); }}
+                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleAddToCart(item); }}
                             className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--surface-raised)] min-h-[40px]"
                           >
-                            Reorder
+                            Add to Cart
                           </button>
                         )}
                         {!item.sunstone_product_id && item.supplier?.toLowerCase().includes('sunstone') && (
@@ -851,10 +910,10 @@ export default function InventoryPage() {
                         <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-[var(--border-default)] bg-[var(--surface-overlay)] shadow-lg z-20 py-1">
                           {item.sunstone_product_id && (
                             <button
-                              onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); setReorderItem(item); }}
+                              onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleAddToCart(item); }}
                               className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--surface-raised)] min-h-[40px]"
                             >
-                              Reorder
+                              Add to Cart
                             </button>
                           )}
                           <button
@@ -891,9 +950,7 @@ export default function InventoryPage() {
 
       {/* ============ SHOP SUNSTONE TAB ============ */}
       {activeTab === 'catalog' && (
-        <ShopSunstoneCatalog
-          onReorder={(virtualItem) => setReorderItem(virtualItem)}
-        />
+        <ShopSunstoneCatalog />
       )}
 
       {/* ============ ORDER HISTORY TAB ============ */}
@@ -1078,7 +1135,7 @@ export default function InventoryPage() {
         />
       )}
 
-      {/* Reorder Modal */}
+      {/* Reorder Modal (fallback for items without variant linking) */}
       {reorderItem && (
         <ReorderModal
           isOpen={!!reorderItem}
@@ -1089,6 +1146,10 @@ export default function InventoryPage() {
           }}
         />
       )}
+
+      {/* Cart Drawer + Checkout */}
+      <CartDrawer onSwitchToShop={() => setActiveTab('catalog')} />
+      <CartCheckout />
 
       {/* Receive Confirmation Modal (quantity adjustment) */}
       {receiveModalReorder && (

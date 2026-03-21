@@ -11,8 +11,9 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 import type { SunstoneProduct } from '@/lib/shopify';
-import type { InventoryItem } from '@/types';
+import { useCartStore } from '@/stores/cart-store';
 
 // ── Filter constants (shared with inventory linking dropdown) ────────────
 
@@ -30,16 +31,12 @@ const EXCLUDED_KEYWORDS = [
   'clothing', 'zapp', 'mpulse', 'orion',
 ];
 
-// ── Props ────────────────────────────────────────────────────────────────
-
-interface ShopSunstoneCatalogProps {
-  onReorder: (virtualItem: InventoryItem) => void;
-}
-
 // ── Main Component ───────────────────────────────────────────────────────
 
-export default function ShopSunstoneCatalog({ onReorder }: ShopSunstoneCatalogProps) {
+export default function ShopSunstoneCatalog() {
   const supabase = createClient();
+  const addItem = useCartStore((s) => s.addItem);
+  const openCart = useCartStore((s) => s.openCart);
 
   const [products, setProducts] = useState<SunstoneProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,35 +127,26 @@ export default function ShopSunstoneCatalog({ onReorder }: ShopSunstoneCatalogPr
     });
   }, [products, selectedCollection, search]);
 
-  // ── Handle "Add" variant → create virtual InventoryItem for ReorderModal
+  // ── Handle "Add" variant → add to cart
 
   const handleAddVariant = useCallback((product: SunstoneProduct, variantId: string) => {
-    const virtualItem: InventoryItem = {
-      id: '',
-      tenant_id: '',
-      name: product.title,
-      type: 'chain',
-      material: null,
-      supplier: 'Sunstone',
-      supplier_id: null,
-      sku: null,
-      unit: 'in',
-      cost_per_unit: 0,
-      sell_price: 0,
-      quantity_on_hand: 0,
-      reorder_threshold: 0,
-      is_active: true,
-      notes: null,
-      pricing_mode: null,
-      pricing_tier_id: null,
-      sunstone_product_id: product.id,
-      sunstone_variant_id: variantId,
-      created_at: '',
-      updated_at: '',
-    };
-    setSelectedProduct(null);
-    onReorder(virtualItem);
-  }, [onReorder]);
+    const variant = product.variants.find((v) => v.id === variantId);
+    if (!variant) return;
+    addItem({
+      sunstoneProductId: product.id,
+      sunstoneVariantId: variantId,
+      productTitle: product.title,
+      variantTitle: variant.title || 'Default Title',
+      sku: variant.sku || null,
+      unitPrice: parseFloat(variant.price),
+      quantity: 1,
+      productType: product.productType || '',
+      imageUrl: product.imageUrl || null,
+      inventoryItemId: null,
+    });
+    toast.success(`${product.title} added to cart`);
+    openCart();
+  }, [addItem, openCart]);
 
   // ── Loading skeleton ─────────────────────────────────────────────────
 
