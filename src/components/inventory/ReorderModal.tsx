@@ -289,17 +289,19 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
     if (!product) return;
     const variantLabel = product.variants?.[selectedVariantIdx]?.title || '';
     const itemName = `${product.title} ${variantLabel}`;
-    const category = detectCartCategory([itemName]);
+    const itemNames = [itemName];
+    const category = detectCartCategory(itemNames);
     setCartCategory(category);
 
     const state = shippingAddress.state.trim().toUpperCase();
-    const options = getShippingOptions(category, state, shippingRates);
+    const options = getShippingOptions(category, state, shippingRates, itemNames);
     setShippingOptions(options);
 
-    // Auto-reset method if current selection is no longer valid
-    const validValues = options.map((o) => o.value);
+    // Auto-reset method if current selection is no longer valid or disabled
+    const validOptions = options.filter((o) => !o.disabled);
+    const validValues = validOptions.map((o) => o.value);
     if (!validValues.includes(shippingMethod)) {
-      const defaultOpt = options[0];
+      const defaultOpt = validOptions[0];
       if (defaultOpt) {
         setShippingMethod(defaultOpt.value);
         setEstimatedShipping(defaultOpt.estimatedCost);
@@ -1227,33 +1229,37 @@ export default function ReorderModal({ isOpen, onClose, item, onReorderCreated }
             {/* Shipping Method */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-[var(--text-primary)] mb-1 block">Shipping Method</label>
-              <select
-                value={shippingMethod}
-                onChange={(e) => {
-                  setShippingMethod(e.target.value);
-                  const opt = shippingOptions.find((o) => o.value === e.target.value);
-                  setEstimatedShipping(opt?.estimatedCost ?? 0);
-                }}
-                className="w-full min-h-[48px] rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] px-4 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
-              >
-                {shippingOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}{opt.estimatedCost > 0 ? ` — $${opt.estimatedCost.toFixed(2)}` : ' — FREE'}
-                  </option>
-                ))}
-              </select>
-              {/* Restriction note */}
-              {(() => {
-                const selected = shippingOptions.find((o) => o.value === shippingMethod);
-                return selected?.note ? (
-                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                    <svg className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                    </svg>
-                    <span className="text-xs text-amber-800">{selected.note}</span>
+              {!shippingAddress.state.trim() && (
+                <p className="text-xs text-amber-600">Enter your state above for accurate shipping rates</p>
+              )}
+              {shippingOptions.map((opt) => (
+                <label key={opt.value} className={`flex items-start gap-3 px-3 py-2.5 rounded-lg border min-h-[44px] ${
+                  opt.disabled ? 'opacity-50 cursor-not-allowed border-[var(--border-default)]'
+                    : shippingMethod === opt.value ? 'border-[var(--accent-primary)] bg-[var(--accent-subtle)] cursor-pointer'
+                    : 'border-[var(--border-default)] cursor-pointer'
+                }`}>
+                  <input type="radio" name="shipping" checked={shippingMethod === opt.value}
+                    disabled={opt.disabled}
+                    onChange={() => { if (!opt.disabled) { setShippingMethod(opt.value); setEstimatedShipping(opt.estimatedCost); } }}
+                    className="accent-[var(--accent-primary)] mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium">{opt.label}</span>
+                    {(opt.subtitle || opt.transitDays) && (
+                      <p className="text-xs text-[var(--text-tertiary)]">
+                        {[opt.subtitle, opt.transitDays].filter(Boolean).join(' \u00B7 ')}
+                      </p>
+                    )}
+                    {opt.disabledReason && <p className="text-xs text-amber-600 mt-0.5">{opt.disabledReason}</p>}
+                    {opt.note && !opt.disabled && <p className="text-xs text-amber-600 mt-0.5">{opt.note}</p>}
+                    {opt.surcharges?.map((sc) => (
+                      <p key={sc.name} className="text-xs text-[var(--text-tertiary)] mt-0.5">+${sc.amount.toFixed(2)} {sc.name}</p>
+                    ))}
                   </div>
-                ) : null;
-              })()}
+                  <span className="text-sm font-semibold shrink-0">
+                    {!shippingAddress.state.trim() && opt.estimatedCost !== 0 ? '...' : opt.estimatedCost === 0 ? 'Free' : `$${opt.estimatedCost.toFixed(2)}`}
+                  </span>
+                </label>
+              ))}
               {/* Processing disclaimer */}
               <p className="text-xs text-[var(--text-tertiary)]">
                 {getProcessingDisclaimer(shippingMethod)}

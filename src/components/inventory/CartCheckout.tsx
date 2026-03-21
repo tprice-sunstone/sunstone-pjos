@@ -185,12 +185,14 @@ export default function CartCheckout() {
     const itemNames = items.map((i) => `${i.productTitle} ${i.variantTitle}`);
     const category = detectCartCategory(itemNames);
     const state = shippingAddress.state.trim().toUpperCase();
-    const options = getShippingOptions(category, state, shippingRates);
+    const options = getShippingOptions(category, state, shippingRates, itemNames);
     setShippingOptions(options);
 
-    const validValues = options.map((o) => o.value);
+    // Auto-select first non-disabled option if current selection is invalid or disabled
+    const validOptions = options.filter((o) => !o.disabled);
+    const validValues = validOptions.map((o) => o.value);
     if (!validValues.includes(shippingMethod)) {
-      const def = options[0];
+      const def = validOptions[0];
       if (def) { setShippingMethod(def.value); setEstimatedShipping(def.estimatedCost); }
     } else {
       const sel = options.find((o) => o.value === shippingMethod);
@@ -622,15 +624,35 @@ export default function CartCheckout() {
 
                 <div className="space-y-2">
                   <h3 className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">Shipping Method</h3>
+                  {!shippingAddress.state.trim() && (
+                    <p className="text-xs text-amber-600">Enter your state above for accurate shipping rates</p>
+                  )}
                   {shippingOptions.map((opt) => (
-                    <label key={opt.value} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer min-h-[44px] ${
-                      shippingMethod === opt.value ? 'border-[var(--accent-primary)] bg-[var(--accent-subtle)]' : 'border-[var(--border-default)]'
+                    <label key={opt.value} className={`flex items-start gap-3 px-3 py-2.5 rounded-lg border min-h-[44px] ${
+                      opt.disabled ? 'opacity-50 cursor-not-allowed border-[var(--border-default)]'
+                        : shippingMethod === opt.value ? 'border-[var(--accent-primary)] bg-[var(--accent-subtle)] cursor-pointer'
+                        : 'border-[var(--border-default)] cursor-pointer'
                     }`}>
                       <input type="radio" name="shipping" checked={shippingMethod === opt.value}
-                        onChange={() => { setShippingMethod(opt.value); setEstimatedShipping(opt.estimatedCost); }}
-                        className="accent-[var(--accent-primary)]" />
-                      <span className="text-sm flex-1">{opt.label}</span>
-                      <span className="text-sm font-semibold">{opt.estimatedCost === 0 ? 'Free' : `$${opt.estimatedCost.toFixed(2)}`}</span>
+                        disabled={opt.disabled}
+                        onChange={() => { if (!opt.disabled) { setShippingMethod(opt.value); setEstimatedShipping(opt.estimatedCost); } }}
+                        className="accent-[var(--accent-primary)] mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium">{opt.label}</span>
+                        {(opt.subtitle || opt.transitDays) && (
+                          <p className="text-xs text-[var(--text-tertiary)]">
+                            {[opt.subtitle, opt.transitDays].filter(Boolean).join(' \u00B7 ')}
+                          </p>
+                        )}
+                        {opt.disabledReason && <p className="text-xs text-amber-600 mt-0.5">{opt.disabledReason}</p>}
+                        {opt.note && !opt.disabled && <p className="text-xs text-amber-600 mt-0.5">{opt.note}</p>}
+                        {opt.surcharges?.map((sc) => (
+                          <p key={sc.name} className="text-xs text-[var(--text-tertiary)] mt-0.5">+${sc.amount.toFixed(2)} {sc.name}</p>
+                        ))}
+                      </div>
+                      <span className="text-sm font-semibold shrink-0">
+                        {!shippingAddress.state.trim() && opt.estimatedCost !== 0 ? '...' : opt.estimatedCost === 0 ? 'Free' : `$${opt.estimatedCost.toFixed(2)}`}
+                      </span>
                     </label>
                   ))}
                 </div>
