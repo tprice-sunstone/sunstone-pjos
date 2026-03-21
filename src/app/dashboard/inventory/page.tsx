@@ -811,6 +811,15 @@ export default function InventoryPage() {
                         </span>
                       );
                     })()}
+                    {/* Supplier link */}
+                    {item.supplier && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); router.push('/dashboard/settings?section=suppliers'); }}
+                        className="text-xs text-[var(--accent-primary)] hover:underline"
+                      >
+                        {item.supplier}
+                      </button>
+                    )}
                   </div>
                 </div>
 

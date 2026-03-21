@@ -47,7 +47,11 @@ export async function POST(request: NextRequest) {
   const tenantId = member.tenant_id;
 
   const body = await request.json();
-  const { name, contact_name, contact_email, contact_phone, website, notes } = body;
+  const {
+    name, contact_name, contact_email, contact_phone, website, notes,
+    street, city, state, postal_code, country,
+    instagram, facebook, tiktok, account_number,
+  } = body;
 
   if (!name) {
     return NextResponse.json({ error: 'name required' }, { status: 400 });
@@ -63,6 +67,12 @@ export async function POST(request: NextRequest) {
     .single();
   if (existing) return NextResponse.json(existing);
 
+  // Auto-prepend https:// to bare domain
+  let cleanWebsite = website?.trim() || null;
+  if (cleanWebsite && !/^https?:\/\//i.test(cleanWebsite)) {
+    cleanWebsite = `https://${cleanWebsite}`;
+  }
+
   const { data, error } = await supabase
     .from('suppliers')
     .insert({
@@ -71,7 +81,16 @@ export async function POST(request: NextRequest) {
       contact_name: contact_name || null,
       contact_email: contact_email || null,
       contact_phone: contact_phone || null,
-      website: website || null,
+      website: cleanWebsite,
+      street: street || null,
+      city: city || null,
+      state: state || null,
+      postal_code: postal_code || null,
+      country: country || null,
+      instagram: instagram?.replace(/^@/, '') || null,
+      facebook: facebook || null,
+      tiktok: tiktok?.replace(/^@/, '') || null,
+      account_number: account_number || null,
       notes: notes || null,
       is_sunstone: false,
     })

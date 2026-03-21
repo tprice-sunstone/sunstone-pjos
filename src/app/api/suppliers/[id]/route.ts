@@ -24,7 +24,20 @@ export async function PATCH(
   if (body.contact_name !== undefined) updates.contact_name = body.contact_name || null;
   if (body.contact_email !== undefined) updates.contact_email = body.contact_email || null;
   if (body.contact_phone !== undefined) updates.contact_phone = body.contact_phone || null;
-  if (body.website !== undefined) updates.website = body.website || null;
+  if (body.website !== undefined) {
+    let w = body.website?.trim() || null;
+    if (w && !/^https?:\/\//i.test(w)) w = `https://${w}`;
+    updates.website = w;
+  }
+  if (body.street !== undefined) updates.street = body.street || null;
+  if (body.city !== undefined) updates.city = body.city || null;
+  if (body.state !== undefined) updates.state = body.state || null;
+  if (body.postal_code !== undefined) updates.postal_code = body.postal_code || null;
+  if (body.country !== undefined) updates.country = body.country || null;
+  if (body.instagram !== undefined) updates.instagram = body.instagram?.replace(/^@/, '') || null;
+  if (body.facebook !== undefined) updates.facebook = body.facebook || null;
+  if (body.tiktok !== undefined) updates.tiktok = body.tiktok?.replace(/^@/, '') || null;
+  if (body.account_number !== undefined) updates.account_number = body.account_number || null;
   if (body.notes !== undefined) updates.notes = body.notes || null;
   updates.updated_at = new Date().toISOString();
 
