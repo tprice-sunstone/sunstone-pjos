@@ -33,6 +33,51 @@ import { logAnthropicCost } from '@/lib/cost-tracker';
 import { SUNNY_TOOL_DEFINITIONS, executeSunnyTool, getSunnyToolStatusLabel } from '@/lib/sunny-tools';
 
 // ============================================================================
+// Smart model routing — Sonnet default, Opus for complex reasoning
+// ============================================================================
+
+function selectModel(
+  currentMessage: string,
+  conversationLength: number,
+  previousToolCalls?: number
+): string {
+  const OPUS = 'claude-opus-4-20250514';
+  const SONNET = 'claude-sonnet-4-20250514';
+
+  const messageLength = currentMessage.length;
+  const words = currentMessage.toLowerCase();
+
+  // Signals that suggest complex reasoning → Opus
+  const complexSignals = [
+    // Long, open-ended messages
+    messageLength > 500,
+
+    // Strategy and analysis keywords
+    /\b(analyze|analysis|compare|comparison|strategy|plan|recommend based|evaluate|assess|review my|think through|help me decide|pros and cons|should i|what would you)\b/i.test(words),
+
+    // Multi-part questions
+    (words.match(/\?/g) || []).length >= 3,
+
+    // Deep conversation (10+ back-and-forth exchanges)
+    conversationLength >= 20,
+
+    // Previous response was complex (used 3+ tools)
+    (previousToolCalls || 0) >= 3,
+
+    // Business planning language
+    /\b(business plan|pricing strategy|revenue|growth|marketing plan|financial|forecast|budget|roi|break even)\b/i.test(words),
+
+    // Synthesis requests
+    /\b(summarize everything|put it all together|based on everything|overall|big picture|step back)\b/i.test(words),
+  ];
+
+  const signalCount = complexSignals.filter(Boolean).length;
+
+  // Upgrade to Opus if 2+ signals fire (avoids false positives from a single trigger)
+  return signalCount >= 2 ? OPUS : SONNET;
+}
+
+// ============================================================================
 // Text correction detection — catches "that's wrong", "you're incorrect", etc.
 // ============================================================================
 
@@ -1183,14 +1228,17 @@ ADDING INVENTORY: When adding inventory, ALL required fields must be provided: n
 MARKUP BY METAL TYPE: When an artist provides markup by metal type (e.g. "2.5x on all gold fill"), look up all chains of that metal, calculate per-product prices for each, and present a summary table before executing. Then call update_inventory_item once per chain.
 After a tool executes, summarize the result naturally. If a tool errors, explain simply and suggest what the artist can do instead.`;
 
-    // 7. Call Anthropic via agentic loop (tools + non-streaming)
+    // 7. Smart model routing — Sonnet default, Opus for complex reasoning
+    const selectedModel = selectModel(latestUserMsg, messages.length);
+    console.log(`[Mentor] Model selected: ${selectedModel} (message length: ${latestUserMsg.length}, conversation: ${messages.length} messages)`);
+
     const toolCtx = { serviceClient, tenantId, userId: user.id };
 
     let agenticResult;
     try {
       console.log(`[Mentor] Starting agentic loop for tenant ${tenantId}, ${messages.length} messages`);
       agenticResult = await runAgenticLoop({
-        model: 'claude-sonnet-4-20250514',
+        model: selectedModel,
         maxTokens: 1024,
         systemPrompt,
         messages: messages.slice(-10),
@@ -1214,7 +1262,7 @@ After a tool executes, summarize the result naturally. If a tool errors, explain
     logAnthropicCost({
       tenantId,
       operation: 'mentor_chat',
-      model: 'claude-sonnet-4-20250514',
+      model: selectedModel,
       usage,
     });
 

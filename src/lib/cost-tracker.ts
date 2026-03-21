@@ -7,9 +7,10 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
 
-// Pricing per 1M tokens (Sonnet 4)
+// Pricing per 1M tokens
 const ANTHROPIC_PRICING: Record<string, { input: number; output: number; cacheRead: number; cacheCreation: number }> = {
   'claude-sonnet-4-20250514': { input: 3.0, output: 15.0, cacheRead: 0.30, cacheCreation: 3.75 },
+  'claude-opus-4-20250514': { input: 15.0, output: 75.0, cacheRead: 1.50, cacheCreation: 18.75 },
   default: { input: 3.0, output: 15.0, cacheRead: 0.30, cacheCreation: 3.75 },
 };
 
