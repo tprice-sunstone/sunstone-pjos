@@ -1,8 +1,8 @@
 // ============================================================================
-// Inventory Page â€" src/app/dashboard/inventory/page.tsx
+// Inventory Page -- src/app/dashboard/inventory/page.tsx
 // ============================================================================
 // REDESIGNED: Form UX overhaul for pricing clarity
-// - Sectioned form (Basic Info â†’ Stock & Cost â†’ Pricing)
+// - Sectioned form (Basic Info -> Stock & Cost -> Pricing)
 // - Two-path pricing mode for chains (prominent card toggle)
 // - Per Product: product type prices are THE main thing
 // - Per Inch: large price input + auto-preview table
@@ -96,6 +96,13 @@ export default function InventoryPage() {
   // Receive modal
   const [receiveModalReorder, setReceiveModalReorder] = useState<ReorderHistory | null>(null);
   const [receiveQtyOverrides, setReceiveQtyOverrides] = useState<Record<string, number>>({});
+
+  // Chain length picker for Add to Cart
+  const [chainLengthPicker, setChainLengthPicker] = useState<{
+    product: any;
+    variants: any[];
+    inventoryItemId: string | null;
+  } | null>(null);
 
   // Live order status from SF (reorderId -> { label, status, trackingNumber, shippingCarrier })
   const [liveStatuses, setLiveStatuses] = useState<Record<string, { label: string; status: string; trackingNumber: string | null; shippingCarrier: string | null }>>({});
@@ -482,7 +489,7 @@ export default function InventoryPage() {
   if (!tenant) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-[var(--text-tertiary)]">Loadingâ€¦</p>
+        <p className="text-[var(--text-tertiary)]">Loading...</p>
       </div>
     );
   }
@@ -504,6 +511,25 @@ export default function InventoryPage() {
       setReorderItem(item);
       return;
     }
+
+    // Chain items: show length picker if multiple variants in the same material group
+    const isChain = (product.productType || '').toLowerCase().includes('chain');
+    if (isChain && (product.variants || []).length > 1) {
+      const material = (variant.title || '').split(' / ')[0].trim();
+      const materialVariants = (product.variants || []).filter((v: any) => {
+        const m = (v.title || '').split(' / ')[0].trim();
+        return m === material;
+      });
+      if (materialVariants.length > 1) {
+        setChainLengthPicker({
+          product,
+          variants: materialVariants,
+          inventoryItemId: item.id || null,
+        });
+        return;
+      }
+    }
+
     addToCart({
       sunstoneProductId: product.id,
       sunstoneVariantId: variant.id,
@@ -1184,7 +1210,7 @@ export default function InventoryPage() {
                 Quick tip before you start
               </h3>
               <p className="text-sm text-[var(--text-secondary)] mt-2">
-                If you&apos;re adding chain, you&apos;ll want to set up your product types first â€" like Bracelet, Anklet, and Necklace. This lets you set different prices for each.
+                If you&apos;re adding chain, you&apos;ll want to set up your product types first -- like Bracelet, Anklet, and Necklace. This lets you set different prices for each.
               </p>
             </div>
             <div className="flex flex-col gap-2">
@@ -1207,7 +1233,7 @@ export default function InventoryPage() {
                   setShowForm(true);
                 }}
               >
-                Skip for now â€" I&apos;ll add non-chain items
+                Skip for now -- I&apos;ll add non-chain items
               </Button>
             </div>
           </div>
@@ -1256,6 +1282,59 @@ export default function InventoryPage() {
             loadReorderHistory();
           }}
         />
+      )}
+
+      {/* Chain Length Picker Modal */}
+      {chainLengthPicker && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            onClick={() => setChainLengthPicker(null)}
+          />
+          <div className="relative bg-[var(--surface-overlay)] rounded-2xl shadow-xl max-w-sm w-full p-5 space-y-4">
+            <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+              Select length for {chainLengthPicker.product.title}
+            </h3>
+            <div className="space-y-1.5">
+              {chainLengthPicker.variants.map((v: any) => {
+                const lengthPart = (v.title || '').split(' / ').slice(1).join(' / ') || v.title;
+                const price = parseFloat(v.price);
+                return (
+                  <button
+                    key={v.id}
+                    onClick={() => {
+                      addToCart({
+                        sunstoneProductId: chainLengthPicker.product.id,
+                        sunstoneVariantId: v.id,
+                        productTitle: chainLengthPicker.product.title,
+                        variantTitle: v.title || 'Default Title',
+                        sku: v.sku || null,
+                        unitPrice: price,
+                        quantity: 1,
+                        productType: chainLengthPicker.product.productType || '',
+                        imageUrl: chainLengthPicker.product.imageUrl || null,
+                        inventoryItemId: chainLengthPicker.inventoryItemId,
+                      });
+                      toast.success(`${chainLengthPicker.product.title} added to cart`);
+                      setChainLengthPicker(null);
+                      openCart();
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-[var(--surface-raised)] hover:bg-[var(--surface-subtle)] transition-colors min-h-[48px] text-left"
+                  >
+                    <span className="text-sm text-[var(--text-primary)]">{lengthPart}</span>
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">${price.toFixed(2)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setChainLengthPicker(null)}
+              className="w-full py-2.5 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors min-h-[44px]"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Cart Drawer + Checkout */}
@@ -1681,13 +1760,13 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
             'No product types are enabled. This chain won\'t appear in the POS until you enable at least one.',
             { duration: 5000 }
           );
-          // Don't block save â€" they may want to save a draft
+          // Don't block save -- they may want to save a draft
         } else if (rowsWithNoPrice.length > 0) {
           toast.warning(
             `${rowsWithNoPrice.length} enabled product type(s) have no price set. They won't appear in the POS.`,
             { duration: 5000 }
           );
-          // Don't block save â€" warn but allow
+          // Don't block save -- warn but allow
         }
       }
     } else {
@@ -2284,7 +2363,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
               </div>
 
               {/* Reorder Threshold */}
-              <div>
+              <div className={hasVariants ? 'opacity-50 pointer-events-none' : ''}>
                 <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">
                   Reorder At
                 </label>
@@ -2304,11 +2383,14 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
                     </span>
                   )}
                 </div>
+                {hasVariants && (
+                  <p className="text-xs text-[var(--text-tertiary)] mt-1">Set per variant below</p>
+                )}
               </div>
             </div>
 
             {/* Cost */}
-            <div>
+            <div className={hasVariants ? 'opacity-50 pointer-events-none' : ''}>
               <div className="flex items-center gap-3 mb-1">
                 <label className="text-sm font-medium text-[var(--text-primary)]">
                   {costLabel}
@@ -2384,6 +2466,9 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
                   = ${(Math.round((parseFloat(costPerUnit) / 12) * 10000) / 10000).toFixed(4)}/inch
                 </p>
               )}
+              {hasVariants && (
+                <p className="text-xs text-[var(--text-tertiary)] mt-1">Set per variant below</p>
+              )}
             </div>
 
             {/* Unit (non-chain only) */}
@@ -2434,7 +2519,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
               />
             ) : (
               /* Non-chain: simple sell price */
-              <div>
+              <div className={hasVariants ? 'opacity-50 pointer-events-none' : ''}>
                 <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">
                   Sell Price
                 </label>
@@ -2452,6 +2537,9 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
                     className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] pl-8 pr-4 py-3 text-[var(--text-primary)] text-base  placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)] min-h-[48px]"
                   />
                 </div>
+                {hasVariants && (
+                  <p className="text-xs text-[var(--text-tertiary)] mt-1">Set per variant below</p>
+                )}
               </div>
             )}
           </div>
@@ -2614,7 +2702,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              placeholder="Internal notes about this itemâ€¦"
+              placeholder="Internal notes about this item..."
               className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-4 py-3 text-[var(--text-primary)] text-sm placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-subtle)] resize-none"
             />
           </div>
