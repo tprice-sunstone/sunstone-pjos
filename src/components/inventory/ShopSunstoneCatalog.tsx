@@ -3,18 +3,105 @@
 // ============================================================================
 // Browsable, collection-organized product catalog reading from
 // sunstone_catalog_cache. Collection filter pills, search, product card grid,
-// and slide-in detail panel with variant list.
+// and slide-in detail panel with accordion variant list.
 // ============================================================================
 
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import type { SunstoneProduct } from '@/lib/shopify';
 import { useCartStore } from '@/stores/cart-store';
 import { isInventoryProduct, getDisplayType } from '@/lib/catalog-filter';
+
+// ── Description Formatting ──────────────────────────────────────────────────
+
+function formatDescription(raw: string): string[] {
+  if (!raw) return [];
+  // Split on double newlines first
+  let paragraphs = raw.split(/\n\s*\n/).filter((p) => p.trim());
+  // If only one big block, try splitting on common section headers
+  if (paragraphs.length <= 1) {
+    paragraphs = raw
+      .split(
+        /(?=(?:Design & Details|Material & Length|Material|Why Choose|What's in the Box|What's Included|Features|Specifications|Includes|How to Use|Care Instructions|Perfect for))/i
+      )
+      .filter((p) => p.trim());
+  }
+  // If still one block, split every ~300 chars at sentence boundaries
+  if (paragraphs.length <= 1 && raw.length > 300) {
+    const sentences = raw.match(/[^.!?]+[.!?]+/g) || [raw];
+    paragraphs = [];
+    let current = '';
+    for (const sentence of sentences) {
+      if (current.length + sentence.length > 300 && current.length > 0) {
+        paragraphs.push(current.trim());
+        current = sentence;
+      } else {
+        current += sentence;
+      }
+    }
+    if (current.trim()) paragraphs.push(current.trim());
+  }
+  // Clean up: trim each paragraph and remove empty ones
+  return paragraphs.map((p) => p.trim()).filter(Boolean);
+}
+
+// ── Variant helpers ─────────────────────────────────────────────────────────
+
+function getVariantSummary(product: SunstoneProduct): string {
+  const variants = product.variants || [];
+  const nonDefault = variants.filter((v) => v.title !== 'Default Title');
+  if (nonDefault.length <= 1) return '';
+
+  const isChain = (product.productType || '').toLowerCase().includes('chain');
+  if (isChain) {
+    const materials = new Set<string>();
+    const lengths = new Set<string>();
+    for (const v of nonDefault) {
+      const parts = (v.title || '').split(' / ');
+      if (parts[0]) materials.add(parts[0].trim());
+      if (parts[1]) lengths.add(parts[1].trim());
+    }
+    if (materials.size > 1 && lengths.size > 1) {
+      return `${materials.size} materials \u00B7 ${lengths.size} lengths`;
+    }
+    if (materials.size > 1) return `${materials.size} materials`;
+    if (lengths.size > 1) return `${lengths.size} lengths`;
+  }
+
+  return `${nonDefault.length} variants`;
+}
+
+// ── Product type icon (SVG) ─────────────────────────────────────────────────
+
+function ProductTypeIcon({ productType, size = 'md' }: { productType: string; size?: 'sm' | 'md' | 'lg' }) {
+  const cls = size === 'lg' ? 'w-10 h-10' : size === 'md' ? 'w-8 h-8' : 'w-5 h-5';
+  const type = (productType || '').toLowerCase();
+
+  if (type.includes('chain')) {
+    return (
+      <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-2.502a4.5 4.5 0 00-6.364-6.364L4.5 8.257" />
+      </svg>
+    );
+  }
+  if (type.includes('connector') || type.includes('charm')) {
+    return (
+      <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+      </svg>
+    );
+  }
+  // Default: package/box icon
+  return (
+    <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+    </svg>
+  );
+}
 
 // ── Main Component ───────────────────────────────────────────────────────
 
@@ -138,7 +225,7 @@ export default function ShopSunstoneCatalog() {
         {/* Skeleton search */}
         <div className="h-12 rounded-xl bg-[var(--surface-raised)] animate-pulse" />
         {/* Skeleton grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="rounded-xl border border-[var(--border-default)] overflow-hidden">
               <div className="aspect-square bg-[var(--surface-raised)] animate-pulse" />
@@ -279,15 +366,15 @@ function ProductCard({
   product: SunstoneProduct;
   onViewDetails: () => void;
 }) {
+  const [imgError, setImgError] = useState(false);
   const variants = product.variants || [];
   const prices = variants.map((v) => parseFloat(v.price)).filter((p) => p > 0);
   const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
   const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
   const allSamePrice = minPrice === maxPrice;
-  const variantCount = variants.filter((v) => v.title !== 'Default Title').length;
 
-  // Derive a subtitle from the product type or first variant material
   const subtitle = getDisplayType(product.productType) || '';
+  const variantSummary = getVariantSummary(product);
 
   return (
     <div
@@ -295,21 +382,21 @@ function ProductCard({
       onClick={onViewDetails}
     >
       {/* Image */}
-      <div className="aspect-square relative bg-[var(--surface-raised)] overflow-hidden">
-        {product.imageUrl ? (
+      <div className="aspect-square relative bg-[var(--surface-raised)] overflow-hidden rounded-t-xl">
+        {product.imageUrl && !imgError ? (
           <Image
             src={product.imageUrl}
             alt={product.imageAlt || product.title}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-contain p-2 group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
+            onError={() => setImgError(true)}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-3xl font-semibold text-[var(--text-tertiary)] opacity-30">
-              {product.title.charAt(0).toUpperCase()}
-            </span>
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-[var(--text-tertiary)] opacity-40">
+            <ProductTypeIcon productType={product.productType} size="lg" />
+            <span className="text-[10px] font-medium">{subtitle || 'Product'}</span>
           </div>
         )}
       </div>
@@ -331,9 +418,9 @@ function ProductCard({
               : ''}
           </span>
         </div>
-        {variantCount > 1 && (
+        {variantSummary && (
           <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
-            {variantCount} variants
+            {variantSummary}
           </p>
         )}
         <button
@@ -358,8 +445,19 @@ function ProductDetailPanel({
   onClose: () => void;
   onAddVariant: (variantId: string) => void;
 }) {
+  const [imgError, setImgError] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
   const isChain = (product.productType || '').toLowerCase().includes('chain');
   const variants = product.variants || [];
+
+  // Format description into paragraphs
+  const paragraphs = useMemo(() => formatDescription(product.description || ''), [product.description]);
+  const truncatedText = useMemo(() => {
+    if (paragraphs.length === 0) return '';
+    const first = paragraphs[0];
+    return first.length > 200 ? first.slice(0, 200).replace(/\s+\S*$/, '') + '...' : first;
+  }, [paragraphs]);
+  const needsReadMore = paragraphs.length > 1 || (paragraphs[0] || '').length > 200;
 
   // Group chain variants by material
   const variantGroups = useMemo(() => {
@@ -374,6 +472,8 @@ function ProductDetailPanel({
     }
     return groups.size > 1 ? groups : null;
   }, [isChain, variants]);
+
+  const subtitle = getDisplayType(product.productType) || '';
 
   return (
     <>
@@ -403,22 +503,23 @@ function ProductDetailPanel({
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto">
           {/* Image */}
-          {product.imageUrl ? (
-            <div className="relative aspect-square bg-[var(--surface-raised)]">
+          {product.imageUrl && !imgError ? (
+            <div className="relative bg-[var(--surface-raised)] flex items-center justify-center" style={{ maxHeight: 300 }}>
               <Image
                 src={product.imageUrl}
                 alt={product.imageAlt || product.title}
-                fill
-                sizes="440px"
-                className="object-cover"
+                width={440}
+                height={300}
+                className="object-contain w-full"
+                style={{ maxHeight: 300 }}
                 priority
+                onError={() => setImgError(true)}
               />
             </div>
           ) : (
-            <div className="aspect-[3/2] bg-[var(--surface-raised)] flex items-center justify-center">
-              <span className="text-5xl font-semibold text-[var(--text-tertiary)] opacity-20">
-                {product.title.charAt(0).toUpperCase()}
-              </span>
+            <div className="h-48 bg-[var(--surface-raised)] flex flex-col items-center justify-center gap-2 text-[var(--text-tertiary)] opacity-30">
+              <ProductTypeIcon productType={product.productType} size="lg" />
+              <span className="text-xs font-medium">{subtitle || product.title.charAt(0).toUpperCase()}</span>
             </div>
           )}
 
@@ -426,15 +527,43 @@ function ProductDetailPanel({
             {/* Type badge */}
             {product.productType && (
               <span className="inline-block px-2.5 py-1 rounded-full bg-[var(--surface-raised)] text-xs font-medium text-[var(--text-secondary)]">
-                {getDisplayType(product.productType)}
+                {subtitle}
               </span>
             )}
 
-            {/* Description */}
-            {product.description && (
-              <p className="text-sm text-[var(--text-secondary)] leading-relaxed whitespace-pre-line">
-                {product.description}
-              </p>
+            {/* Description — truncated with Read more */}
+            {paragraphs.length > 0 && (
+              <div>
+                {descExpanded ? (
+                  <div className="space-y-3 max-w-prose">
+                    {paragraphs.map((p, i) => (
+                      <p key={i} className="text-sm text-[var(--text-secondary)]" style={{ lineHeight: 1.6 }}>
+                        {p}
+                      </p>
+                    ))}
+                    <button
+                      onClick={() => setDescExpanded(false)}
+                      className="text-xs font-medium text-[var(--accent-primary)] hover:underline"
+                    >
+                      Show less
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm text-[var(--text-secondary)]" style={{ lineHeight: 1.6 }}>
+                      {truncatedText}
+                    </p>
+                    {needsReadMore && (
+                      <button
+                        onClick={() => setDescExpanded(true)}
+                        className="mt-1 text-xs font-medium text-[var(--accent-primary)] hover:underline"
+                      >
+                        Read more
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Variants */}
@@ -444,31 +573,20 @@ function ProductDetailPanel({
               </h3>
 
               {variantGroups ? (
-                // Chain: grouped by material
-                <div className="space-y-4">
-                  {[...variantGroups.entries()].map(([material, group]) => (
-                    <div key={material}>
-                      <p className="text-xs font-medium text-[var(--text-secondary)] mb-1.5">{material}</p>
-                      <div className="space-y-1">
-                        {group.map((v) => {
-                          const lengthPart = v.title.split(' / ').slice(1).join(' / ') || v.title;
-                          return (
-                            <VariantRow
-                              key={v.id}
-                              label={lengthPart}
-                              price={v.price}
-                              compareAtPrice={v.compareAtPrice}
-                              sku={v.sku}
-                              onAdd={() => onAddVariant(v.id)}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                // Chain: accordion grouped by material
+                <ChainVariantAccordion
+                  variantGroups={variantGroups}
+                  onAddVariant={onAddVariant}
+                />
+              ) : variants.length > 5 ? (
+                // Non-chain with many variants: collapsible
+                <CollapsibleVariantList
+                  variants={variants}
+                  productTitle={product.title}
+                  onAddVariant={onAddVariant}
+                />
               ) : (
-                // Non-chain or single-material: flat list
+                // Non-chain with few variants: flat list
                 <div className="space-y-1">
                   {variants.map((v) => (
                     <VariantRow
@@ -487,6 +605,142 @@ function ProductDetailPanel({
         </div>
       </div>
     </>
+  );
+}
+
+// ── Chain Variant Accordion ─────────────────────────────────────────────────
+
+function ChainVariantAccordion({
+  variantGroups,
+  onAddVariant,
+}: {
+  variantGroups: Map<string, SunstoneProduct['variants']>;
+  onAddVariant: (variantId: string) => void;
+}) {
+  const entries = useMemo(() => [...variantGroups.entries()], [variantGroups]);
+  // First group auto-expanded
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const first = entries[0]?.[0];
+    return first ? new Set([first]) : new Set();
+  });
+
+  const toggle = (material: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(material)) next.delete(material);
+      else next.add(material);
+      return next;
+    });
+  };
+
+  return (
+    <div className="space-y-1">
+      {entries.map(([material, group]) => {
+        const isOpen = expanded.has(material);
+        const prices = group.map((v) => parseFloat(v.price)).filter((p) => p > 0);
+        const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+
+        return (
+          <div key={material} className="rounded-lg border border-[var(--border-default)] overflow-hidden">
+            {/* Accordion header */}
+            <button
+              onClick={() => toggle(material)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 bg-[var(--surface-raised)] hover:bg-[var(--surface-subtle)] transition-colors min-h-[48px] text-left"
+            >
+              <svg
+                className={`w-4 h-4 shrink-0 text-[var(--text-tertiary)] transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+              <span className="text-sm font-medium text-[var(--text-primary)] flex-1">{material}</span>
+              <span className="text-xs text-[var(--text-tertiary)] shrink-0">
+                {group.length} length{group.length !== 1 ? 's' : ''}
+                {minPrice > 0 && <> &middot; from ${minPrice.toFixed(2)}</>}
+              </span>
+            </button>
+
+            {/* Accordion body */}
+            <div
+              className="overflow-hidden transition-all duration-200 ease-in-out"
+              style={{
+                maxHeight: isOpen ? group.length * 60 + 8 : 0,
+                opacity: isOpen ? 1 : 0,
+              }}
+            >
+              <div className="px-1 py-1 space-y-0.5">
+                {group.map((v) => {
+                  const lengthPart = v.title.split(' / ').slice(1).join(' / ') || v.title;
+                  return (
+                    <VariantRow
+                      key={v.id}
+                      label={lengthPart}
+                      price={v.price}
+                      compareAtPrice={v.compareAtPrice}
+                      sku={v.sku}
+                      onAdd={() => onAddVariant(v.id)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Collapsible Variant List (non-chain, 6+ variants) ───────────────────────
+
+function CollapsibleVariantList({
+  variants,
+  productTitle,
+  onAddVariant,
+}: {
+  variants: SunstoneProduct['variants'];
+  productTitle: string;
+  onAddVariant: (variantId: string) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? variants : variants.slice(0, 5);
+  const hiddenCount = variants.length - 5;
+
+  return (
+    <div className="space-y-1">
+      {visible.map((v) => (
+        <VariantRow
+          key={v.id}
+          label={v.title === 'Default Title' ? productTitle : v.title}
+          price={v.price}
+          compareAtPrice={v.compareAtPrice}
+          sku={v.sku}
+          onAdd={() => onAddVariant(v.id)}
+        />
+      ))}
+      {!showAll && hiddenCount > 0 && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border border-dashed border-[var(--border-default)] text-sm font-medium text-[var(--accent-primary)] hover:bg-[var(--surface-subtle)] transition-colors min-h-[44px]"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+          Show {hiddenCount} more variant{hiddenCount !== 1 ? 's' : ''}
+        </button>
+      )}
+      {showAll && hiddenCount > 0 && (
+        <button
+          onClick={() => setShowAll(false)}
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
+        >
+          Show less
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -536,4 +790,3 @@ function VariantRow({
     </div>
   );
 }
-
