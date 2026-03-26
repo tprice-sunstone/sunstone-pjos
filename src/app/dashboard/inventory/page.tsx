@@ -34,6 +34,8 @@ import CartDrawer from '@/components/inventory/CartDrawer';
 import CartCheckout from '@/components/inventory/CartCheckout';
 import { useCartStore } from '@/stores/cart-store';
 import { isInventoryProduct } from '@/lib/catalog-filter';
+import ImportModal from '@/components/ImportModal';
+import { downloadCSV, escapeCSVField } from '@/lib/csv-templates';
 
 // â"€â"€â"€ Constants â"€â"€â"€
 const ITEM_TYPES: { value: InventoryType; label: string }[] = [
@@ -112,6 +114,11 @@ export default function InventoryPage() {
 
   // Live order status from SF (reorderId -> { label, status, trackingNumber, shippingCarrier })
   const [liveStatuses, setLiveStatuses] = useState<Record<string, { label: string; status: string; trackingNumber: string | null; shippingCarrier: string | null }>>({});
+
+  // Import/Export
+  const [showImport, setShowImport] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const headerMenuRef = useRef<HTMLDivElement>(null);
 
   // Scroll position preservation across modal open/close
   const savedScrollRef = useRef<number>(0);
@@ -404,6 +411,52 @@ export default function InventoryPage() {
   };
 
   // â"€â"€â"€ Handle Add Button â"€â"€â"€
+  // Close header overflow menu on outside click
+  useEffect(() => {
+    if (!headerMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (headerMenuRef.current && !headerMenuRef.current.contains(e.target as Node)) setHeaderMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [headerMenuOpen]);
+
+  const handleExportInventoryCSV = async () => {
+    if (!tenant) return;
+    const { data: allItems } = await supabase
+      .from('inventory_items')
+      .select('name, type, material, sku, unit, quantity_on_hand, cost_per_unit, sell_price, reorder_threshold, notes')
+      .eq('tenant_id', tenant.id)
+      .eq('is_active', true)
+      .order('name');
+
+    if (!allItems || allItems.length === 0) {
+      toast.error('No inventory items to export');
+      return;
+    }
+
+    const unitLabel: Record<string, string> = { in: 'inches', ft: 'feet', each: 'each', pack: 'pack' };
+    const lines = ['name,type,material,sku,unit,quantity,cost_per_unit,sell_price,reorder_threshold,notes'];
+    for (const item of allItems) {
+      lines.push([
+        escapeCSVField(item.name),
+        escapeCSVField(item.type),
+        escapeCSVField(item.material),
+        escapeCSVField(item.sku),
+        escapeCSVField(unitLabel[item.unit] || item.unit),
+        String(item.quantity_on_hand ?? 0),
+        String(item.cost_per_unit ?? 0),
+        String(item.sell_price ?? 0),
+        String(item.reorder_threshold ?? 0),
+        escapeCSVField(item.notes),
+      ].join(','));
+    }
+
+    const date = new Date().toISOString().slice(0, 10);
+    downloadCSV(lines.join('\n'), `sunstone-inventory-${date}.csv`);
+    toast.success('Inventory exported');
+  };
+
   const handleAddClick = () => {
     // If no product types exist and they might want to add chain, prompt first
     if (hasProductTypes === false) {
@@ -599,6 +652,24 @@ export default function InventoryPage() {
               </span>
             )}
           </button>
+          {activeTab === 'inventory' && (
+            <button
+              onClick={() => setShowImport(true)}
+              className="px-3 py-1.5 text-[11px] font-semibold rounded-[10px] border transition-colors min-h-[44px]"
+              style={{
+                backgroundColor: 'transparent',
+                color: 'var(--accent-primary)',
+                borderColor: 'var(--accent-primary)',
+              }}
+            >
+              <span className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+                <span className="hidden sm:inline">Import</span>
+              </span>
+            </button>
+          )}
           <Button
             size="sm"
             onClick={handleAddClick}
@@ -607,6 +678,31 @@ export default function InventoryPage() {
           >
             + Add Item
           </Button>
+          {activeTab === 'inventory' && (
+            <div className="relative" ref={headerMenuRef}>
+              <button
+                onClick={() => setHeaderMenuOpen(!headerMenuOpen)}
+                className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1.5 rounded-lg hover:bg-[var(--surface-subtle)] transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                </svg>
+              </button>
+              {headerMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-[var(--border-default)] bg-[var(--surface-overlay)] shadow-lg z-20 py-1">
+                  <button
+                    onClick={() => { setHeaderMenuOpen(false); handleExportInventoryCSV(); }}
+                    className="w-full text-left px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--surface-raised)] min-h-[40px] flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4 text-[var(--text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    Export as CSV
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1497,6 +1593,16 @@ export default function InventoryPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Import Modal */}
+      {showImport && tenant && (
+        <ImportModal
+          mode="inventory"
+          tenantId={tenant.id}
+          onClose={() => setShowImport(false)}
+          onComplete={() => loadItems()}
+        />
       )}
 
       <SunnyTutorial

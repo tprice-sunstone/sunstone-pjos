@@ -14,8 +14,10 @@ import {
   ClientFormModal,
   TagManagerModal,
 } from '@/components/clients';
+import ImportModal from '@/components/ImportModal';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import type { Client, ClientTag, ClientSegment } from '@/types';
+import { downloadCSV, escapeCSVField } from '@/lib/csv-templates';
 import SunnyTutorial from '@/components/SunnyTutorial';
 
 interface TagWithCount extends ClientTag {
@@ -176,6 +178,59 @@ export default function ClientsPage() {
     fetchClients();
   };
 
+  // ── Import / Export ──────────────────────────────────────────────────────
+  const [showImport, setShowImport] = useState(false);
+
+  const handleExportCSV = async () => {
+    if (!tenant) return;
+    const { data: allClients } = await supabase
+      .from('clients')
+      .select('id, first_name, last_name, email, phone, notes')
+      .eq('tenant_id', tenant.id)
+      .order('created_at', { ascending: false });
+
+    if (!allClients || allClients.length === 0) {
+      toast.error('No clients to export');
+      return;
+    }
+
+    // Fetch tag assignments for all clients
+    const { data: assignments } = await supabase
+      .from('client_tag_assignments')
+      .select('client_id, tag_id')
+      .in('client_id', allClients.map((c) => c.id));
+
+    const { data: allTags } = await supabase
+      .from('client_tags')
+      .select('id, name')
+      .eq('tenant_id', tenant.id);
+
+    const tagNameMap = new Map((allTags || []).map((t) => [t.id, t.name]));
+    const clientTagNames: Record<string, string[]> = {};
+    for (const a of assignments || []) {
+      if (!clientTagNames[a.client_id]) clientTagNames[a.client_id] = [];
+      const name = tagNameMap.get(a.tag_id);
+      if (name) clientTagNames[a.client_id].push(name);
+    }
+
+    const lines = ['first_name,last_name,email,phone,notes,tags'];
+    for (const c of allClients) {
+      const tagStr = (clientTagNames[c.id] || []).join(',');
+      lines.push([
+        escapeCSVField(c.first_name),
+        escapeCSVField(c.last_name),
+        escapeCSVField(c.email),
+        escapeCSVField(c.phone),
+        escapeCSVField(c.notes),
+        escapeCSVField(tagStr),
+      ].join(','));
+    }
+
+    const date = new Date().toISOString().slice(0, 10);
+    downloadCSV(lines.join('\n'), `sunstone-clients-${date}.csv`);
+    toast.success('Clients exported');
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
@@ -188,6 +243,8 @@ export default function ClientsPage() {
         tenantSlug={tenant?.slug || null}
         onAddClient={() => setShowForm(true)}
         onBroadcast={() => router.push('/dashboard/broadcasts')}
+        onImport={() => setShowImport(true)}
+        onExport={handleExportCSV}
       />
 
       {/* Search + Tag Filters */}
@@ -259,6 +316,16 @@ export default function ClientsPage() {
           tags={tags}
           onClose={() => setShowTagManager(false)}
           onRefresh={fetchTags}
+        />
+      )}
+
+      {/* Import Modal */}
+      {showImport && tenant && (
+        <ImportModal
+          mode="clients"
+          tenantId={tenant.id}
+          onClose={() => setShowImport(false)}
+          onComplete={() => { fetchClients(); fetchTags(); fetchTagAssignments(); }}
         />
       )}
 
