@@ -34,6 +34,7 @@ function WaiverPageInner() {
   const [smsConsent, setSmsConsent] = useState(false);
   const [showSmsDialog, setShowSmsDialog] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [queueCreated, setQueueCreated] = useState(false);
   const [error, setError] = useState('');
   const [logoError, setLogoError] = useState(false);
 
@@ -231,51 +232,65 @@ function WaiverPageInner() {
 
       if (waiverErr) throw waiverErr;
 
-      // 3. Create queue entry
-      // Determine the correct position
-      let positionQuery = supabase
-        .from('queue_entries')
-        .select('*', { count: 'exact', head: true });
+      // 3. Conditionally create queue entry — only for active, current events
+      let didCreateQueue = false;
 
       if (resolvedEventId) {
-        // Event mode: position based on event entries
-        positionQuery = positionQuery
-          .eq('event_id', resolvedEventId)
-          .in('status', ['waiting', 'notified', 'serving']);
-      } else {
-        // Store mode: position based on tenant entries without event
-        positionQuery = positionQuery
-          .eq('tenant_id', tenant!.id)
-          .is('event_id', null)
-          .in('status', ['waiting', 'serving']);
+        // Check if event is active and happening today/recently
+        const { data: eventData } = await supabase
+          .from('events')
+          .select('id, is_active, start_time')
+          .eq('id', resolvedEventId)
+          .single();
+
+        const shouldQueue = (() => {
+          if (!eventData || !eventData.is_active) return false;
+          const startTime = new Date(eventData.start_time);
+          const now = new Date();
+          const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          const isToday = startTime.toDateString() === now.toDateString();
+          const isRecent = startTime >= twentyFourHoursAgo && startTime <= now;
+          return isToday || isRecent;
+        })();
+
+        if (shouldQueue) {
+          const { count } = await supabase
+            .from('queue_entries')
+            .select('*', { count: 'exact', head: true })
+            .eq('event_id', resolvedEventId)
+            .in('status', ['waiting', 'notified', 'serving']);
+
+          const nextPos = (count || 0) + 1;
+
+          const { data: queueEntry } = await supabase.from('queue_entries').insert({
+            tenant_id: tenant!.id,
+            event_id: resolvedEventId,
+            client_id: clientId,
+            name: form.name,
+            phone: form.phone || null,
+            email: form.email || null,
+            position: nextPos,
+            waiver_id: waiver?.id,
+            sms_consent: smsConsent,
+          }).select('id').single();
+
+          didCreateQueue = true;
+
+          // Send queue position SMS (fire-and-forget, don't block submission)
+          if (queueEntry?.id && smsConsent && form.phone) {
+            fetch('/api/queue/position-notify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                queueEntryId: queueEntry.id,
+                tenantId: tenant!.id,
+              }),
+            }).catch(() => {}); // silent — don't fail the waiver flow
+          }
+        }
       }
 
-      const { count } = await positionQuery;
-      const nextPos = (count || 0) + 1;
-
-      const { data: queueEntry } = await supabase.from('queue_entries').insert({
-        tenant_id: tenant!.id,
-        event_id: resolvedEventId,
-        client_id: clientId,
-        name: form.name,
-        phone: form.phone || null,
-        email: form.email || null,
-        position: nextPos,
-        waiver_id: waiver?.id,
-        sms_consent: smsConsent,
-      }).select('id').single();
-
-      // Send queue position SMS (fire-and-forget, don't block submission)
-      if (queueEntry?.id && smsConsent && form.phone) {
-        fetch('/api/queue/position-notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            queueEntryId: queueEntry.id,
-            tenantId: tenant!.id,
-          }),
-        }).catch(() => {}); // silent — don't fail the waiver flow
-      }
+      setQueueCreated(didCreateQueue);
 
       // Fire-and-forget auto-tagging
       if (clientId) {
@@ -569,13 +584,29 @@ function WaiverPageInner() {
                   />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-[var(--text-primary)]">Check-in Complete!</h2>
-              <p className="text-[var(--text-secondary)]">
-                You&apos;ve been added to the queue.
-                {smsConsent && form.phone && (
-                  <> We&apos;ll text you at <strong>{form.phone}</strong> when it&apos;s your turn.</>
-                )}
-              </p>
+              {queueCreated ? (
+                <>
+                  <h2 className="text-2xl font-bold text-[var(--text-primary)]">Check-in Complete!</h2>
+                  <p className="text-[var(--text-secondary)]">
+                    You&apos;ve been added to the queue.
+                    {smsConsent && form.phone && (
+                      <> We&apos;ll text you at <strong>{form.phone}</strong> when it&apos;s your turn.</>
+                    )}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-bold text-[var(--text-primary)]">
+                    Thank You, {form.name.split(' ')[0]}!
+                  </h2>
+                  <p className="text-[var(--text-secondary)]">
+                    Your waiver has been signed and saved.
+                  </p>
+                  <p className="text-[var(--text-secondary)]">
+                    You&apos;re all set — no further action needed.
+                  </p>
+                </>
+              )}
               <p className="text-xs text-[var(--text-tertiary)]">
                 You can close this page now.
               </p>

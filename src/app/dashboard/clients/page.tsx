@@ -185,6 +185,7 @@ export default function ClientsPage() {
         isFiltered={selectedTagIds.length > 0}
         canEdit={can('clients:edit')}
         crmEnabled={crmEnabled}
+        tenantSlug={tenant?.slug || null}
         onAddClient={() => setShowForm(true)}
         onBroadcast={() => router.push('/dashboard/broadcasts')}
       />
