@@ -45,6 +45,27 @@ export async function GET(
   if (!member) return NextResponse.json({ error: 'No tenant membership' }, { status: 403 });
   const tenantId = member.tenant_id;
 
+  // Debug: check if query returns data
+  const debugUrl = request.nextUrl.searchParams.get('debug');
+  if (debugUrl === '1') {
+    const { data: debugSales, error: debugErr } = await supabase
+      .from('sales')
+      .select('id, total')
+      .eq('client_id', clientId)
+      .eq('tenant_id', tenantId)
+      .eq('status', 'completed')
+      .limit(3);
+    return NextResponse.json({
+      debug: true,
+      userId: user.id,
+      tenantId,
+      clientId,
+      salesCount: debugSales?.length ?? 0,
+      salesError: debugErr?.message ?? null,
+      firstSale: debugSales?.[0] ?? null,
+    });
+  }
+
   const [salesRes, waiversRes, messagesRes, tagsRes, workflowRes, notesRes, refundsRes, inboundRes] = await Promise.all([
     supabase
       .from('sales')
