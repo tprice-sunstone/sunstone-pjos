@@ -88,12 +88,15 @@ export async function GET(
       .eq('tenant_id', tenantId)
       .order('created_at', { ascending: false }),
 
-    supabase
-      .from('refunds')
-      .select('id, created_at, amount, reason, sale:sales!inner(id, client_id)')
-      .eq('tenant_id', tenantId)
-      .eq('sale.client_id', clientId)
-      .order('created_at', { ascending: false }),
+    // Refunds table may not exist — gracefully return empty data on error
+    Promise.resolve(
+      supabase
+        .from('refunds')
+        .select('id, created_at, amount, reason, sale:sales!inner(id, client_id)')
+        .eq('tenant_id', tenantId)
+        .eq('sale.client_id', clientId)
+        .order('created_at', { ascending: false })
+    ).catch(() => ({ data: null, error: { message: 'refunds table not available' } })),
 
     supabase
       .from('conversations')

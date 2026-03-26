@@ -243,11 +243,14 @@ function EventPLReportPage() {
       });
   }, [tenant]);
 
-  // Load P&L data (re-compute when expenses change)
+  // Load P&L data
+  // NOTE: Do NOT include expenseTotals in deps — it causes an infinite loop
+  // because ExpensesSection updates expenseTotals via onTotalsReady callback.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!tenant || !selectedEventId) return;
     loadReport(selectedEventId);
-  }, [tenant, selectedEventId, expenseTotals]);
+  }, [tenant, selectedEventId]);
 
   // ============================================================
   // Load & compute report — WITH FINANCIAL ACCURACY FIXES
@@ -266,9 +269,11 @@ function EventPLReportPage() {
         .eq('status', 'completed')
         .in('payment_status', ['completed'])
         .order('created_at', { ascending: true }),
-      supabase.from('refunds').select('*, sale:sales!inner(event_id)')
-        .eq('tenant_id', tenant.id)
-        .eq('sale.event_id', evId),
+      Promise.resolve(
+        supabase.from('refunds').select('*, sale:sales!inner(event_id)')
+          .eq('tenant_id', tenant.id)
+          .eq('sale.event_id', evId)
+      ).catch(() => ({ data: null, error: { message: 'refunds table not available' } })),
     ]);
 
     if (!eventRes.data) { setLoading(false); return; }

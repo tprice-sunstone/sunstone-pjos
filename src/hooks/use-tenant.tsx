@@ -141,7 +141,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     [isOwner, role]
   );
 
-  // Memoize context value to prevent cascading re-renders of all consumers
+  // Memoize context value to prevent cascading re-renders of all consumers.
+  // NOTE: `can` and `fetchTenant` are excluded from deps because they are
+  // already derived from values in the array (isOwner, role, supabase).
+  // Including them caused React Error #310 (infinite re-renders) on hard
+  // navigation because the new component tree would mount with fresh refs.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const contextValue = useMemo(() => ({
     tenant,
     membership,
@@ -151,7 +156,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     role,
     can,
     refetch: fetchTenant,
-  }), [tenant, membership, isLoading, isAdmin, isOwner, role, can, fetchTenant]);
+  }), [tenant, membership, isLoading, isAdmin, isOwner, role]);
 
   return (
     <TenantContext.Provider value={contextValue}>

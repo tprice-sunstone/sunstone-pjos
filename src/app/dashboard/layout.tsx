@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -257,10 +257,18 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
 
 function useFilteredItems(items: NavItem[]) {
   const { can } = useTenant();
-  return items.filter((item) => {
-    if (item.requirePermission && !can(item.requirePermission)) return false;
-    return true;
-  });
+  // Memoize to prevent creating a new array reference on every render,
+  // which would cause unnecessary re-renders in consuming components.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(
+    () => items.filter((item) => {
+      if (item.requirePermission && !can(item.requirePermission)) return false;
+      return true;
+    }),
+    // items is a stable constant defined outside the component; can depends on role/isOwner
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [can]
+  );
 }
 
 function useCrmStatus() {
