@@ -940,13 +940,15 @@ export default function StoreModePage() {
         />
       )}
 
-      <SunnyTutorial
-        pageKey="pos"
-        tips={[
-          { title: 'Tap to add items', body: 'Select a chain, then pick the product type (bracelet, anklet, etc.). Sunstone calculates the price automatically.' },
-          { title: 'Jump rings are auto-deducted', body: 'When you complete a sale, jump rings are deducted from inventory based on each product type\'s requirements.' },
-        ]}
-      />
+      {cart.items.length === 0 && (
+        <SunnyTutorial
+          pageKey="pos"
+          tips={[
+            { title: 'Tap to add items', body: 'Select a chain, then pick the product type (bracelet, anklet, etc.). Sunstone calculates the price automatically.' },
+            { title: 'Jump rings are auto-deducted', body: 'When you complete a sale, jump rings are deducted from inventory based on each product type\'s requirements.' },
+          ]}
+        />
+      )}
     </div>
   );
 }

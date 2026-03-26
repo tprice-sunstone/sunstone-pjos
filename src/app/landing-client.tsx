@@ -527,6 +527,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 /* ─── MAIN LANDING PAGE ─── */
 export default function LandingPageClient() {
   const [navSolid, setNavSolid] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const onScroll = () => setNavSolid(window.scrollY > 40)
@@ -535,7 +536,10 @@ export default function LandingPageClient() {
   }, [])
 
   const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+    const el = document.getElementById(id)
+    if (!el) return
+    const y = el.getBoundingClientRect().top + window.scrollY - 72
+    window.scrollTo({ top: y, behavior: 'smooth' })
   }
 
   const ctaStyle: React.CSSProperties = {
@@ -602,26 +606,76 @@ export default function LandingPageClient() {
             <Image src="/landing/sunstone-logo.webp" alt="Sunstone Studio" width={34} height={34} style={{ borderRadius: 8 }} />
             <span style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 18, color: B.blackBrown }}>Sunstone Studio</span>
           </div>
-          <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* Desktop nav */}
+          <div className="nav-links nav-desktop" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <button onClick={() => scrollTo('features')} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: B.softBrown, fontFamily: FONT.body, padding: 0 }}>Features</button>
             <button onClick={() => scrollTo('pricing')} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: B.softBrown, fontFamily: FONT.body, padding: 0 }}>Pricing</button>
             <button onClick={() => scrollTo('faq')} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500, color: B.softBrown, fontFamily: FONT.body, padding: 0 }}>FAQ</button>
             <a href="/auth/login" style={{ fontSize: 13, fontWeight: 500, color: B.softBrown, textDecoration: 'none', fontFamily: FONT.body }}>Log In</a>
             <a href="/auth/signup" className="nav-cta" style={{ ...ctaStyle, padding: '10px 22px', fontSize: 13, background: B.redrock, color: '#fff' }}>Start Free</a>
           </div>
+          {/* Mobile hamburger */}
+          <button
+            className="nav-hamburger"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, display: 'none' }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.blackBrown} strokeWidth={2} strokeLinecap="round">
+              {mobileMenuOpen
+                ? <><line x1="6" y1="6" x2="18" y2="18" /><line x1="6" y1="18" x2="18" y2="6" /></>
+                : <><line x1="3" y1="7" x2="21" y2="7" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="17" x2="21" y2="17" /></>
+              }
+            </svg>
+          </button>
         </div>
       </nav>
 
       <style>{`
-        .nav-links { gap: 10px !important; }
-        .nav-link { font-size: 12px !important; }
-        .nav-cta { padding: 8px 14px !important; font-size: 12px !important; }
+        .nav-desktop { display: none !important; }
+        .nav-hamburger { display: flex !important; }
         @media (min-width: 768px) {
-          .nav-links { gap: 24px !important; }
+          .nav-desktop { display: flex !important; gap: 24px !important; }
+          .nav-hamburger { display: none !important; }
           .nav-link { font-size: 13px !important; }
           .nav-cta { padding: 10px 22px !important; font-size: 13px !important; }
         }
       `}</style>
+
+      {/* ═══════ MOBILE MENU ═══════ */}
+      {mobileMenuOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99,
+          background: 'rgba(250,247,240,0.98)', backdropFilter: 'blur(12px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 28,
+          fontFamily: FONT.body,
+        }}>
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close menu"
+            style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', cursor: 'pointer', padding: 8 }}
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.blackBrown} strokeWidth={2} strokeLinecap="round">
+              <line x1="6" y1="6" x2="18" y2="18" /><line x1="6" y1="18" x2="18" y2="6" />
+            </svg>
+          </button>
+          {[
+            { label: 'Features', action: () => { scrollTo('features'); setMobileMenuOpen(false); } },
+            { label: 'Pricing', action: () => { scrollTo('pricing'); setMobileMenuOpen(false); } },
+            { label: 'FAQ', action: () => { scrollTo('faq'); setMobileMenuOpen(false); } },
+          ].map((item) => (
+            <button
+              key={item.label}
+              onClick={item.action}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, fontWeight: 500, color: B.blackBrown, fontFamily: FONT.body }}
+            >
+              {item.label}
+            </button>
+          ))}
+          <a href="/auth/login" style={{ fontSize: 20, fontWeight: 500, color: B.softBrown, textDecoration: 'none', fontFamily: FONT.body }}>Log In</a>
+          <a href="/auth/signup" style={{ ...ctaStyle, padding: '14px 40px', fontSize: 16, background: B.redrock, color: '#fff' }}>Start Free</a>
+        </div>
+      )}
 
       {/* ═══════ SECTION 1: HERO ═══════ */}
       <section style={{ background: '#FFFFFF', paddingTop: 120, paddingBottom: 60 }}>

@@ -5,7 +5,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Sunstone Studio',
   description: 'The all-in-one platform for permanent jewelry artists and booth-based businesses.',
-  icons: { icon: '/favicon.ico' },
+  icons: { icon: '/icon.svg' },
 };
 
 export const viewport: Viewport = {

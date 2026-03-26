@@ -94,7 +94,14 @@ export const useCartStore = create<CartStore>((set, get) => ({
   },
 
   removeItem: (id) => {
-    set((s) => ({ items: s.items.filter((i) => i.id !== id) }));
+    set((s) => {
+      const remaining = s.items.filter((i) => i.id !== id);
+      // Clear cart-level warranty when cart becomes empty
+      if (remaining.length === 0) {
+        return { items: remaining, _cartWarrantyAmount: 0, _cartDiscountType: null, _cartDiscountValue: 0 } as any;
+      }
+      return { items: remaining };
+    });
     get().recalculate();
   },
 

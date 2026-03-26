@@ -122,13 +122,15 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
     }
   }, [fetchOpenDrawer]);
 
-  // Auto-prompt in event mode when no drawer is open (skip if fetch errored)
+  // Auto-prompt in event mode when no drawer is open (skip if fetch errored or already dismissed this session)
   useEffect(() => {
     if (mode === 'event' && !loading && !drawer && !fetchError) {
+      const dismissKey = `cash-drawer-dismissed-${eventId || 'store'}`;
+      if (sessionStorage.getItem(dismissKey)) return;
       const timer = setTimeout(() => setShowOpen(true), 1500);
       return () => clearTimeout(timer);
     }
-  }, [mode, loading, drawer, fetchError]);
+  }, [mode, loading, drawer, fetchError, eventId]);
 
   // ── Refresh drawer data when refreshTrigger changes (e.g. after cash sale) ──
 
@@ -316,7 +318,7 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
       </button>
 
       {/* ── Open Drawer Modal ──────────────────────────────────────────── */}
-      <Modal isOpen={showOpen} onClose={() => setShowOpen(false)} size="sm">
+      <Modal isOpen={showOpen} onClose={() => { setShowOpen(false); sessionStorage.setItem(`cash-drawer-dismissed-${eventId || 'store'}`, '1'); }} size="sm">
         <ModalHeader>
           <h3 className="text-lg font-semibold text-[var(--text-primary)]">Open Cash Drawer</h3>
           <p className="text-sm text-[var(--text-tertiary)] mt-1">How much cash are you starting with?</p>
@@ -350,7 +352,7 @@ export default function CashDrawerPanel({ tenantId, eventId, mode, onDrawerChang
           </div>
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" onClick={() => setShowOpen(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => { setShowOpen(false); sessionStorage.setItem(`cash-drawer-dismissed-${eventId || 'store'}`, '1'); }}>Cancel</Button>
           <Button
             onClick={handleOpen}
             disabled={submitting || !openingAmount || parseFloat(openingAmount) < 0}

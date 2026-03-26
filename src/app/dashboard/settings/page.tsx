@@ -1719,7 +1719,7 @@ function SettingsPage() {
                   <tr>
                     <td className="py-2.5 pr-4 text-[var(--text-secondary)]">
                       Processing fee
-                      <span className="block text-xs text-[var(--text-tertiary)]">(customer pays)</span>
+                      <span className="block text-xs text-[var(--text-tertiary)]">(deducted from payouts)</span>
                     </td>
                     <td className="py-2.5 px-3 text-center text-[var(--text-primary)]">3%</td>
                     <td className="py-2.5 px-3 text-center text-[var(--text-primary)]">1.5%</td>
