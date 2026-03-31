@@ -1,18 +1,19 @@
 // ============================================================================
 // Artist Ambassador Dashboard — src/app/dashboard/ambassador/page.tsx
 // ============================================================================
-// In-app ambassador page: enrollment CTA or basic dashboard with
-// referral link, stats, and referral list.
+// In-app ambassador page: enrollment CTA, referral dashboard, Stripe Connect
+// onboarding, and pending earnings overview.
 // ============================================================================
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useTenant } from '@/hooks/use-tenant';
 import { Button, Card } from '@/components/ui';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 interface AmbassadorData {
   id: string;
@@ -20,6 +21,7 @@ interface AmbassadorData {
   status: string;
   name: string;
   referral_code: string;
+  stripe_connect_onboarded: boolean;
   created_at: string;
 }
 
@@ -41,13 +43,29 @@ interface DashboardStats {
   totalPaid: number;
 }
 
+interface PendingCommissions {
+  total: number;
+  count: number;
+}
+
 export default function AmbassadorPage() {
+  return (
+    <Suspense>
+      <AmbassadorPageInner />
+    </Suspense>
+  );
+}
+
+function AmbassadorPageInner() {
   const { tenant } = useTenant();
+  const searchParams = useSearchParams();
   const [ambassador, setAmbassador] = useState<AmbassadorData | null>(null);
   const [referrals, setReferrals] = useState<ReferralData[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [pending, setPending] = useState<PendingCommissions>({ total: 0, count: 0 });
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
+  const [connectLoading, setConnectLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -58,6 +76,7 @@ export default function AmbassadorPage() {
       setAmbassador(data.ambassador);
       setReferrals(data.referrals || []);
       setStats(data.stats);
+      setPending(data.pending || { total: 0, count: 0 });
     } catch {
       // Not enrolled — that's ok
     } finally {
@@ -66,6 +85,33 @@ export default function AmbassadorPage() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Handle ?connect=complete or ?connect=refresh from Stripe return
+  useEffect(() => {
+    const connectParam = searchParams.get('connect');
+    if (!connectParam) return;
+
+    if (connectParam === 'complete') {
+      // Check if onboarding is actually complete
+      fetch('/api/ambassador/connect/status')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.onboarded) {
+            toast.success('Payouts connected! You\'ll receive monthly payouts on the 15th.');
+            loadData(); // Refresh to show updated state
+          } else {
+            toast.error('Payout setup is incomplete. Please try again.');
+          }
+        })
+        .catch(() => toast.error('Failed to verify payout setup'));
+
+      // Clean the URL
+      window.history.replaceState({}, '', '/dashboard/ambassador');
+    } else if (connectParam === 'refresh') {
+      toast('Please complete your payout setup to receive commissions.');
+      window.history.replaceState({}, '', '/dashboard/ambassador');
+    }
+  }, [searchParams, loadData]);
 
   const handleEnroll = async () => {
     setEnrolling(true);
@@ -85,6 +131,38 @@ export default function AmbassadorPage() {
     }
   };
 
+  const handleConnectSetup = async () => {
+    setConnectLoading(true);
+    try {
+      const res = await fetch('/api/ambassador/connect', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to start payout setup');
+        return;
+      }
+      // Redirect to Stripe Connect onboarding
+      window.location.href = data.url;
+    } catch {
+      toast.error('Failed to start payout setup');
+    } finally {
+      setConnectLoading(false);
+    }
+  };
+
+  const handleConnectLogin = async () => {
+    try {
+      const res = await fetch('/api/ambassador/connect/login');
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to open payout dashboard');
+        return;
+      }
+      window.open(data.url, '_blank');
+    } catch {
+      toast.error('Failed to open payout dashboard');
+    }
+  };
+
   const referralLink = ambassador
     ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://sunstonepj.app'}/join/${ambassador.referral_code}`
     : '';
@@ -94,6 +172,15 @@ export default function AmbassadorPage() {
     setCopied(true);
     toast.success('Link copied!');
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Calculate next payout date (15th of current or next month)
+  const getNextPayoutDate = () => {
+    const now = new Date();
+    if (now.getDate() < 15) {
+      return new Date(now.getFullYear(), now.getMonth(), 15);
+    }
+    return new Date(now.getFullYear(), now.getMonth() + 1, 15);
   };
 
   if (loading) {
@@ -201,6 +288,53 @@ export default function AmbassadorPage() {
         <p className="text-sm text-[var(--text-secondary)] mt-1">Share your link and earn commission on referrals</p>
       </div>
 
+      {/* Stripe Connect Setup / Status */}
+      {!ambassador.stripe_connect_onboarded ? (
+        <Card className="p-6 space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-full bg-[var(--accent-50)] flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-[var(--accent-600)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Set Up Your Payouts</h3>
+              <p className="text-sm text-[var(--text-secondary)] mt-1">
+                Connect your bank account to receive commission payments. Takes about 2 minutes.
+              </p>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleConnectSetup}
+                loading={connectLoading}
+                className="mt-3 min-h-[44px]"
+              >
+                Connect Bank Account
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <p className="text-sm text-[var(--text-primary)]">Payouts active — bank account connected</p>
+            </div>
+            <button
+              onClick={handleConnectLogin}
+              className="text-xs text-[var(--accent-600)] hover:text-[var(--accent-700)] font-medium min-h-[44px] px-3"
+            >
+              Manage payout settings
+            </button>
+          </div>
+        </Card>
+      )}
+
       {/* Referral Link Card */}
       <Card className="p-6 space-y-4">
         <div>
@@ -238,6 +372,32 @@ export default function AmbassadorPage() {
         </div>
       )}
 
+      {/* Pending Earnings Card */}
+      {pending.total > 0 && (
+        <Card className="p-6 space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wider">Pending Earnings</p>
+              <p className="text-2xl font-bold text-[var(--accent-600)] mt-1">${pending.total.toFixed(2)}</p>
+              <p className="text-xs text-[var(--text-tertiary)] mt-1">
+                {pending.count} commission{pending.count !== 1 ? 's' : ''} pending
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-[var(--text-tertiary)]">Next payout</p>
+              <p className="text-sm font-medium text-[var(--text-primary)]">
+                {format(getNextPayoutDate(), 'MMM d, yyyy')}
+              </p>
+            </div>
+          </div>
+          {pending.total < 25 && (
+            <p className="text-xs text-[var(--text-tertiary)] pt-1">
+              Minimum payout: $25. Commissions below this threshold roll over to the next month.
+            </p>
+          )}
+        </Card>
+      )}
+
       {/* Referrals List */}
       <Card className="overflow-hidden">
         <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
@@ -257,6 +417,8 @@ export default function AmbassadorPage() {
                       r.status === 'converted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                       r.status === 'signed_up' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                       r.status === 'clicked' ? 'bg-gray-50 text-gray-600 border-gray-200' :
+                      r.status === 'churned' ? 'bg-red-50 text-red-600 border-red-200' :
+                      r.status === 'expired' ? 'bg-amber-50 text-amber-600 border-amber-200' :
                       'bg-gray-50 text-gray-500 border-gray-200'
                     }`}>
                       {r.status.replace('_', ' ')}
@@ -279,11 +441,6 @@ export default function AmbassadorPage() {
           </div>
         )}
       </Card>
-
-      {/* Coming soon note */}
-      <div className="text-center text-xs text-[var(--text-tertiary)] py-4">
-        Full earnings dashboard and payout tracking coming soon.
-      </div>
     </div>
   );
 }

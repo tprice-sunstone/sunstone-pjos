@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
+import { getPendingCommissions } from '@/lib/commission-engine';
 
 export async function GET() {
   try {
@@ -23,7 +24,7 @@ export async function GET() {
       .single();
 
     if (!ambassador) {
-      return NextResponse.json({ ambassador: null, referrals: [], stats: null });
+      return NextResponse.json({ ambassador: null, referrals: [], stats: null, pending: { total: 0, count: 0 } });
     }
 
     // Get referrals
@@ -43,7 +44,10 @@ export async function GET() {
       totalPaid: allReferrals.reduce((sum, r) => sum + Number(r.total_commission_paid || 0), 0),
     };
 
-    return NextResponse.json({ ambassador, referrals: allReferrals, stats });
+    // Get pending commissions
+    const pending = await getPendingCommissions(ambassador.id);
+
+    return NextResponse.json({ ambassador, referrals: allReferrals, stats, pending });
   } catch (error: any) {
     console.error('[Ambassador Dashboard] Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

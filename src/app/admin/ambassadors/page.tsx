@@ -27,6 +27,7 @@ interface Ambassador {
   email: string;
   phone: string | null;
   referral_code: string;
+  stripe_connect_onboarded: boolean;
   community_description: string | null;
   social_links: string | null;
   approved_at: string | null;
@@ -34,6 +35,8 @@ interface Ambassador {
   suspended_reason: string | null;
   created_at: string;
   stats: AmbassadorStats;
+  pendingCommission: number;
+  lastPayout: { amount: number; date: string } | null;
 }
 
 interface Summary {
@@ -42,13 +45,15 @@ interface Summary {
   pending: number;
   totalReferrals: number;
   totalEarned: number;
+  totalPendingCommissions: number;
+  nextPayoutDate: string;
 }
 
 type FilterStatus = 'all' | 'pending' | 'active' | 'suspended';
 
 export default function AdminAmbassadorsPage() {
   const [ambassadors, setAmbassadors] = useState<Ambassador[]>([]);
-  const [summary, setSummary] = useState<Summary>({ total: 0, active: 0, pending: 0, totalReferrals: 0, totalEarned: 0 });
+  const [summary, setSummary] = useState<Summary>({ total: 0, active: 0, pending: 0, totalReferrals: 0, totalEarned: 0, totalPendingCommissions: 0, nextPayoutDate: '' });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -59,7 +64,7 @@ export default function AdminAmbassadorsPage() {
       if (!res.ok) throw new Error('Failed to load');
       const data = await res.json();
       setAmbassadors(data.ambassadors || []);
-      setSummary(data.summary || { total: 0, active: 0, pending: 0, totalReferrals: 0, totalEarned: 0 });
+      setSummary(data.summary || { total: 0, active: 0, pending: 0, totalReferrals: 0, totalEarned: 0, totalPendingCommissions: 0, nextPayoutDate: '' });
     } catch {
       toast.error('Failed to load ambassadors');
     } finally {
@@ -131,13 +136,15 @@ export default function AdminAmbassadorsPage() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
         {[
           { label: 'Total', value: summary.total },
           { label: 'Active', value: summary.active },
           { label: 'Pending', value: summary.pending },
           { label: 'Referrals', value: summary.totalReferrals },
           { label: 'Earned (All)', value: `$${summary.totalEarned.toFixed(2)}` },
+          { label: 'Pending Payouts', value: `$${summary.totalPendingCommissions.toFixed(2)}` },
+          { label: 'Next Payout', value: summary.nextPayoutDate || '—' },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-white/10 bg-white/5 p-4">
             <p className="text-xs text-gray-400 uppercase tracking-wider">{s.label}</p>
@@ -168,13 +175,15 @@ export default function AdminAmbassadorsPage() {
       {/* Table */}
       <div className="rounded-xl border border-white/10 overflow-hidden">
         {/* Header */}
-        <div className="hidden sm:grid grid-cols-[1fr_120px_80px_80px_100px_100px_140px] gap-4 px-4 py-3 bg-white/5 text-xs font-medium text-gray-400 uppercase tracking-wider">
+        <div className="hidden sm:grid grid-cols-[1fr_120px_80px_80px_60px_100px_100px_100px_140px] gap-4 px-4 py-3 bg-white/5 text-xs font-medium text-gray-400 uppercase tracking-wider">
           <div>Ambassador</div>
           <div>Code</div>
           <div>Type</div>
           <div>Status</div>
+          <div className="text-center">Payouts</div>
           <div className="text-right">Referrals</div>
           <div className="text-right">Earned</div>
+          <div className="text-right">Pending</div>
           <div className="text-right">Actions</div>
         </div>
 
@@ -183,7 +192,7 @@ export default function AdminAmbassadorsPage() {
         ) : (
           <div className="divide-y divide-white/5">
             {filtered.map((a) => (
-              <div key={a.id} className="px-4 py-3 sm:grid sm:grid-cols-[1fr_120px_80px_80px_100px_100px_140px] sm:gap-4 sm:items-center hover:bg-white/[0.02] transition-colors">
+              <div key={a.id} className="px-4 py-3 sm:grid sm:grid-cols-[1fr_120px_80px_80px_60px_100px_100px_100px_140px] sm:gap-4 sm:items-center hover:bg-white/[0.02] transition-colors">
                 {/* Name + Email */}
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-white truncate">{a.name}</p>
@@ -202,11 +211,35 @@ export default function AdminAmbassadorsPage() {
                 {/* Status */}
                 <div>{statusBadge(a.status)}</div>
 
+                {/* Connect */}
+                <div className="text-center">
+                  {a.stripe_connect_onboarded ? (
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-500/20 text-gray-500">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </span>
+                  )}
+                </div>
+
                 {/* Referrals */}
                 <div className="text-right text-sm text-gray-300">{a.stats.totalReferrals}</div>
 
                 {/* Earned */}
                 <div className="text-right text-sm text-gray-300">${a.stats.totalEarned.toFixed(2)}</div>
+
+                {/* Pending Commission */}
+                <div className="text-right text-sm text-gray-300">
+                  {a.pendingCommission > 0 ? (
+                    <span className="text-[#FF7A00]">${a.pendingCommission.toFixed(2)}</span>
+                  ) : '—'}
+                </div>
 
                 {/* Actions */}
                 <div className="flex items-center justify-end gap-2">

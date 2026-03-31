@@ -11,8 +11,9 @@
 //   - customer.subscription.created
 //   - customer.subscription.updated
 //   - customer.subscription.deleted
-//   - invoice.payment_succeeded
+//   - invoice.payment_succeeded (+ ambassador commission creation)
 //   - invoice.payment_failed
+//   - account.updated (ambassador Connect onboarding)
 // ============================================================================
 
 export const runtime = 'nodejs';
@@ -22,6 +23,7 @@ import Stripe from 'stripe';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { getPlatformFeePercent, type SubscriptionTier } from '@/lib/subscription';
 import { sendSMS } from '@/lib/twilio';
+import { markReferralConverted, markReferralChurned, createCommissionEntry } from '@/lib/commission-engine';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia' as any,
@@ -451,6 +453,13 @@ export async function POST(request: NextRequest) {
           })
           .eq('id', tenant.id);
 
+        // Ambassador: mark referral as churned (stops future commissions)
+        try {
+          await markReferralChurned(tenant.id);
+        } catch (commErr: any) {
+          console.warn('[Webhook] Referral churn tracking failed (non-fatal):', commErr.message);
+        }
+
         console.log(`[Webhook] subscription.deleted — tenant ${tenant.id} → starter`);
         break;
       }
@@ -482,7 +491,7 @@ export async function POST(request: NextRequest) {
       }
 
       // ================================================================
-      // Payment succeeded — recover from past_due
+      // Payment succeeded — recover from past_due + ambassador commissions
       // ================================================================
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
@@ -492,7 +501,7 @@ export async function POST(request: NextRequest) {
 
         const { data: tenant } = await serviceRole
           .from('tenants')
-          .select('id, subscription_status')
+          .select('id, subscription_status, referred_by_ambassador_id')
           .eq('stripe_customer_id', customerId)
           .single();
 
@@ -503,6 +512,53 @@ export async function POST(request: NextRequest) {
             .eq('id', tenant.id);
 
           console.log(`[Webhook] invoice.payment_succeeded — tenant ${tenant.id} → active (recovered)`);
+        }
+
+        // Ambassador commission: if this tenant was referred, create commission
+        if (tenant?.referred_by_ambassador_id) {
+          try {
+            // First paid invoice transitions referral from signed_up → converted
+            await markReferralConverted(tenant.id);
+
+            // Create commission entry (idempotent — skips if already exists)
+            const amount = (invoice.amount_paid ?? 0) / 100; // cents → dollars
+            if (amount > 0) {
+              await createCommissionEntry({
+                tenantId: tenant.id,
+                stripeInvoiceId: invoice.id,
+                invoiceAmount: amount,
+                billingPeriodStart: new Date((invoice as any).period_start * 1000).toISOString().split('T')[0],
+                billingPeriodEnd: new Date((invoice as any).period_end * 1000).toISOString().split('T')[0],
+              });
+            }
+          } catch (commErr: any) {
+            console.warn('[Webhook] Commission creation failed (non-fatal):', commErr.message);
+          }
+        }
+
+        break;
+      }
+
+      // ================================================================
+      // Account updated — ambassador Stripe Connect onboarding
+      // ================================================================
+      case 'account.updated': {
+        const account = event.data.object as Stripe.Account;
+
+        // Check if this is an ambassador's Connect account
+        if (account.metadata?.ambassador_id) {
+          const ambassadorId = account.metadata.ambassador_id;
+          if (account.details_submitted) {
+            await serviceRole
+              .from('ambassadors')
+              .update({
+                stripe_connect_onboarded: true,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', ambassadorId);
+
+            console.log(`[Webhook] account.updated — ambassador ${ambassadorId} Connect onboarding complete`);
+          }
         }
         break;
       }
