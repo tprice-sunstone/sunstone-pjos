@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 import { provisionPhoneNumber } from '@/lib/twilio';
+import { sendReferralSignupEmail } from '@/lib/ambassador-emails';
 
 const RATE_LIMIT = { prefix: 'signup', limit: 5, windowSeconds: 300 };
 
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
       try {
         const { data: ambassador } = await supabase
           .from('ambassadors')
-          .select('id, email, status')
+          .select('id, name, email, status')
           .eq('referral_code', referralCode.toLowerCase())
           .eq('status', 'active')
           .single();
@@ -164,6 +165,13 @@ export async function POST(request: NextRequest) {
               signed_up_at: new Date().toISOString(),
             });
           }
+
+          // Notify ambassador (non-blocking, fire-and-forget)
+          sendReferralSignupEmail({
+            ambassadorEmail: ambassador.email,
+            ambassadorName: ambassador.name || 'Ambassador',
+            referralCode: referralCode.toLowerCase(),
+          }).catch(() => {});
         }
       } catch (refErr) {
         console.warn('[Signup] Referral attribution failed (non-fatal):', refErr);

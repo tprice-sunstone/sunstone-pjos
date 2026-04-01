@@ -86,19 +86,81 @@ export async function GET() {
       nextPayoutDate = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-15`;
     }
 
+    // Get all paid payouts for total paid out
+    const { data: allPaidPayouts } = await supabase
+      .from('ambassador_payouts')
+      .select('ambassador_id, amount')
+      .eq('status', 'paid');
+
+    const totalPaidOut = (allPaidPayouts || []).reduce((sum, p) => sum + Number(p.amount), 0);
+
+    // Build per-ambassador paid map
+    const paidMap: Record<string, number> = {};
+    for (const p of allPaidPayouts || []) {
+      paidMap[p.ambassador_id] = (paidMap[p.ambassador_id] || 0) + Number(p.amount);
+    }
+
+    // Get all commission entries for monthly trend (last 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const { data: recentCommissions } = await supabase
+      .from('commission_entries')
+      .select('commission_amount, created_at, status')
+      .gte('created_at', sixMonthsAgo.toISOString())
+      .order('created_at', { ascending: true });
+
+    // Aggregate monthly trend
+    const monthlyTrend: { month: string; earned: number; paid: number; count: number }[] = [];
+    const monthMap: Record<string, { earned: number; paid: number; count: number }> = {};
+    for (const c of recentCommissions || []) {
+      const d = new Date(c.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthMap[key]) monthMap[key] = { earned: 0, paid: 0, count: 0 };
+      monthMap[key].earned += Number(c.commission_amount);
+      if (c.status === 'paid') monthMap[key].paid += Number(c.commission_amount);
+      monthMap[key].count++;
+    }
+    for (const [month, data] of Object.entries(monthMap).sort()) {
+      monthlyTrend.push({ month, ...data });
+    }
+
+    // Referral lifecycle counts
+    const allRefs = referrals || [];
+    const convertedCount = allRefs.filter(r => r.status === 'converted').length;
+    const churnedCount = allRefs.filter(r => r.status === 'churned').length;
+    const signupCount = allRefs.filter(r => ['signed_up', 'converted', 'churned', 'expired'].includes(r.status)).length;
+
     // Aggregate stats
     const totalPendingCommissions = Object.values(pendingMap).reduce((sum, v) => sum + v, 0);
     const summary = {
       total: enriched.length,
       active: enriched.filter((a) => a.status === 'active').length,
       pending: enriched.filter((a) => a.status === 'pending').length,
-      totalReferrals: (referrals || []).length,
+      totalReferrals: allRefs.length,
       totalEarned: Object.values(statsMap).reduce((sum, s) => sum + s.totalEarned, 0),
+      totalPaidOut,
       totalPendingCommissions,
+      conversionRate: signupCount > 0 ? convertedCount / signupCount : 0,
+      churnRate: (convertedCount + churnedCount) > 0 ? churnedCount / (convertedCount + churnedCount) : 0,
       nextPayoutDate,
     };
 
-    return NextResponse.json({ ambassadors: enriched, summary });
+    // Top ambassadors by earnings (top 5)
+    const topAmbassadors = [...enriched]
+      .filter(a => a.status === 'active')
+      .sort((a, b) => b.stats.totalEarned - a.stats.totalEarned)
+      .slice(0, 5)
+      .map(a => ({
+        id: a.id,
+        name: a.name,
+        referral_code: a.referral_code,
+        totalEarned: a.stats.totalEarned,
+        totalPaid: paidMap[a.id] || 0,
+        converted: a.stats.converted,
+        totalReferrals: a.stats.totalReferrals,
+      }));
+
+    return NextResponse.json({ ambassadors: enriched, summary, topAmbassadors, monthlyTrend });
   } catch (err) {
     if (err instanceof AdminAuthError) {
       return NextResponse.json({ error: err.message }, { status: err.status });

@@ -4,16 +4,26 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { Suspense } from 'react';
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageInner />
+    </Suspense>
+  );
+}
+
+function LoginPageInner() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -39,8 +49,9 @@ export default function LoginPage() {
         refresh_token: data.refresh_token,
       });
 
-      // Redirect through root page which handles admin check
-      router.push('/');
+      // Redirect to specified page or through root page (handles admin check)
+      const redirectTo = searchParams.get('redirect');
+      router.push(redirectTo && redirectTo.startsWith('/') ? redirectTo : '/');
       router.refresh();
     } catch (err: any) {
       toast.error('An unexpected error occurred');

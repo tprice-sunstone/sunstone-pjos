@@ -7,6 +7,7 @@
 
 import Stripe from 'stripe';
 import { createServiceRoleClient } from '@/lib/supabase/server';
+import { sendReferralConvertedEmail, sendPayoutProcessedEmail } from '@/lib/ambassador-emails';
 
 const COMMISSION_RATE = 0.20; // 20%
 const COMMISSION_DURATION_MONTHS = 8;
@@ -141,7 +142,7 @@ export async function markReferralConverted(tenantId: string): Promise<void> {
   // Find the referral with status 'signed_up' for this tenant
   const { data: referral } = await supabase
     .from('referrals')
-    .select('id, status')
+    .select('id, status, ambassador_id')
     .eq('referred_tenant_id', tenantId)
     .eq('status', 'signed_up')
     .single();
@@ -163,6 +164,36 @@ export async function markReferralConverted(tenantId: string): Promise<void> {
     .eq('id', referral.id);
 
   console.log(`[Commission] Referral ${referral.id} converted — commission window: 8 months`);
+
+  // Notify ambassador of conversion (fire-and-forget)
+  try {
+    const { data: amb } = await supabase
+      .from('ambassadors')
+      .select('name, email')
+      .eq('id', referral.ambassador_id)
+      .single();
+
+    if (amb?.email) {
+      // Get tenant plan to calculate first commission amount
+      const { data: t } = await supabase
+        .from('tenants')
+        .select('subscription_tier')
+        .eq('id', tenantId)
+        .single();
+
+      const tierPrices: Record<string, number> = { starter: 99, pro: 169, business: 279 };
+      const monthlyPrice = tierPrices[t?.subscription_tier || 'starter'] || 99;
+      const commissionAmount = monthlyPrice * COMMISSION_RATE;
+
+      sendReferralConvertedEmail({
+        ambassadorEmail: amb.email,
+        ambassadorName: amb.name || 'Ambassador',
+        commissionAmount,
+      }).catch(() => {});
+    }
+  } catch {
+    // Non-fatal
+  }
 }
 
 /**
@@ -314,6 +345,16 @@ export async function processMonthlyPayouts(): Promise<{
       results.processed++;
       results.totalPaid += totalAmount;
       console.log(`[Payouts] ${ambassador.name}: $${totalAmount.toFixed(2)} transferred (${transfer.id})`);
+
+      // Notify ambassador of payout (fire-and-forget)
+      if (ambassador.email) {
+        sendPayoutProcessedEmail({
+          ambassadorEmail: ambassador.email,
+          ambassadorName: ambassador.name || 'Ambassador',
+          payoutAmount: totalAmount,
+          commissionCount: pendingEntries.length,
+        }).catch(() => {});
+      }
     } catch (err: any) {
       results.failed++;
       results.errors.push(`${ambassador.name}: ${err.message}`);
