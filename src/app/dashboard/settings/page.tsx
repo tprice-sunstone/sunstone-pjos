@@ -39,6 +39,7 @@ import { getCrmStatus } from '@/lib/crm-status';
 import SunnyTutorial from '@/components/SunnyTutorial';
 import ProductTypesSection from '@/components/settings/ProductTypesSection';
 import SuppliersSection from '@/components/settings/SuppliersSection';
+import { canShowBillingUI, BILLING_WEB_URL } from '@/lib/billing-gate';
 
 // ============================================================================
 // Constants
@@ -1521,9 +1522,21 @@ function SettingsPage() {
                   <p className="text-sm text-error-600 mt-1">
                     Your last payment didn&apos;t go through. Please update your payment method to keep your subscription active.
                   </p>
-                  <Button variant="danger" className="mt-3" onClick={handleManageSubscription}>
-                    Update Payment Method
-                  </Button>
+                  {canShowBillingUI() ? (
+                    <Button variant="danger" className="mt-3" onClick={handleManageSubscription}>
+                      Update Payment Method
+                    </Button>
+                  ) : (
+                    <button
+                      onClick={() => window.open(BILLING_WEB_URL, '_blank')}
+                      className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-error-600 hover:underline"
+                    >
+                      Update payment at sunstonepj.app
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1541,9 +1554,21 @@ function SettingsPage() {
                 </span>
                 <span className="text-xs text-success-600 font-medium">Active</span>
               </div>
-              <Button variant="secondary" onClick={handleManageSubscription}>
-                Manage Subscription
-              </Button>
+              {canShowBillingUI() ? (
+                <Button variant="secondary" onClick={handleManageSubscription}>
+                  Manage Subscription
+                </Button>
+              ) : (
+                <button
+                  onClick={() => window.open(BILLING_WEB_URL, '_blank')}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent-primary)] hover:underline"
+                >
+                  Manage at sunstonepj.app
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                  </svg>
+                </button>
+              )}
             </div>
           )}
 
@@ -1552,13 +1577,26 @@ function SettingsPage() {
             <div className="bg-error-50 border border-error-200 rounded-2xl p-5">
               <h3 className="text-base font-semibold text-error-600">No Active Plan</h3>
               <p className="text-sm text-error-600 mt-1">
-                Your trial has ended. Choose a plan below to unlock your POS, CRM, reports, and all features. Your data is safe and waiting.
+                {canShowBillingUI()
+                  ? 'Your trial has ended. Choose a plan below to unlock your POS, CRM, reports, and all features. Your data is safe and waiting.'
+                  : 'Your trial has ended. Visit sunstonepj.app in your browser to choose a plan and unlock all features. Your data is safe and waiting.'}
               </p>
+              {!canShowBillingUI() && (
+                <button
+                  onClick={() => window.open(BILLING_WEB_URL, '_blank')}
+                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                  </svg>
+                  Choose a Plan at sunstonepj.app
+                </button>
+              )}
             </div>
           )}
 
-          {/* Plan cards — show when no active subscription, OR trialing without a plan selected */}
-          {(!hasActiveSubscription || (trialActive && !tenant.stripe_subscription_id)) && (
+          {/* Plan cards — show when no active subscription, OR trialing without a plan selected (web only) */}
+          {canShowBillingUI() && (!hasActiveSubscription || (trialActive && !tenant.stripe_subscription_id)) && (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Pro card */}
@@ -1630,6 +1668,24 @@ function SettingsPage() {
             </>
           )}
 
+          {/* Native app — redirect to web for plan selection */}
+          {!canShowBillingUI() && (!hasActiveSubscription || (trialActive && !tenant.stripe_subscription_id)) && (
+            <div className="border border-[var(--border-default)] rounded-2xl p-5 bg-[var(--surface-base)] text-center space-y-3">
+              <p className="text-sm text-[var(--text-secondary)]">
+                Manage your subscription at sunstonepj.app
+              </p>
+              <button
+                onClick={() => window.open(BILLING_WEB_URL, '_blank')}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent-primary)] text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                </svg>
+                Choose a Plan
+              </button>
+            </div>
+          )}
+
           {/* Plan selected during trial — show manage options */}
           {trialActive && tenant.stripe_subscription_id && (
             <div className="flex items-center justify-between p-4 rounded-xl border border-success-200 bg-success-50">
@@ -1640,9 +1696,21 @@ function SettingsPage() {
                 <span className="text-sm text-[var(--text-secondary)]">Selected &mdash; starts after trial</span>
               </div>
               <div className="flex gap-2">
-                <Button variant="secondary" size="sm" onClick={handleManageSubscription}>
-                  Change Plan
-                </Button>
+                {canShowBillingUI() ? (
+                  <Button variant="secondary" size="sm" onClick={handleManageSubscription}>
+                    Change Plan
+                  </Button>
+                ) : (
+                  <button
+                    onClick={() => window.open(BILLING_WEB_URL, '_blank')}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--accent-primary)] hover:underline"
+                  >
+                    Manage at sunstonepj.app
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -1675,9 +1743,21 @@ function SettingsPage() {
                     See what&rsquo;s included &rarr;
                   </a>
                 </div>
-                <Button variant="secondary" className="shrink-0" onClick={handleCrmCheckout} loading={crmCheckingOut}>
-                  Add CRM
-                </Button>
+                {canShowBillingUI() ? (
+                  <Button variant="secondary" className="shrink-0" onClick={handleCrmCheckout} loading={crmCheckingOut}>
+                    Add CRM
+                  </Button>
+                ) : (
+                  <button
+                    onClick={() => window.open(BILLING_WEB_URL, '_blank')}
+                    className="shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--accent-primary)] hover:underline"
+                  >
+                    Add at sunstonepj.app
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
           ) : !hasActiveSubscription && !trialActive ? (

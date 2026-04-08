@@ -21,6 +21,7 @@ import QuickReplyToast from '@/components/QuickReplyToast';
 import DemoBanner from '@/components/DemoBanner';
 import { getSubscriptionTier, isTrialActive } from '@/lib/subscription';
 import { getCrmStatus } from '@/lib/crm-status';
+import { canShowBillingUI, BILLING_WEB_URL } from '@/lib/billing-gate';
 
 // ============================================================================
 // Unread message count hook (polls every 30s)
@@ -890,12 +891,21 @@ function TrialBanner() {
           </svg>
           <span className="font-medium">{message}</span>
         </div>
-        <Link
-          href="/dashboard/settings?tab=subscription"
-          className={`shrink-0 ml-4 text-sm font-semibold ${textClass} hover:underline underline-offset-2`}
-        >
-          {buttonLabel}
-        </Link>
+        {canShowBillingUI() ? (
+          <Link
+            href="/dashboard/settings?tab=subscription"
+            className={`shrink-0 ml-4 text-sm font-semibold ${textClass} hover:underline underline-offset-2`}
+          >
+            {buttonLabel}
+          </Link>
+        ) : (
+          <button
+            onClick={() => window.open(BILLING_WEB_URL, '_blank')}
+            className={`shrink-0 ml-4 text-sm font-semibold ${textClass} hover:underline underline-offset-2`}
+          >
+            {buttonLabel}
+          </button>
+        )}
       </div>
     );
   }
@@ -970,63 +980,89 @@ function TrialExpiredOverlay() {
           </p>
         </div>
 
-        {/* Plan cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
-          {/* Starter */}
-          <button
-            onClick={() => handleSubscribe('starter')}
-            disabled={subscribing}
-            className="border border-[var(--border-default)] rounded-xl p-4 bg-[var(--surface-base)] hover:border-[var(--accent-300)] transition-colors text-left disabled:opacity-60"
-          >
-            <p className="font-semibold text-[var(--text-primary)]">Starter</p>
-            <p className="text-lg font-bold text-[var(--text-primary)]">$99<span className="text-sm font-normal text-[var(--text-tertiary)]">/mo</span></p>
-            <p className="text-xs text-[var(--text-tertiary)] mt-1">3% fee</p>
-          </button>
+        {canShowBillingUI() ? (
+          <>
+            {/* Plan cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+              {/* Starter */}
+              <button
+                onClick={() => handleSubscribe('starter')}
+                disabled={subscribing}
+                className="border border-[var(--border-default)] rounded-xl p-4 bg-[var(--surface-base)] hover:border-[var(--accent-300)] transition-colors text-left disabled:opacity-60"
+              >
+                <p className="font-semibold text-[var(--text-primary)]">Starter</p>
+                <p className="text-lg font-bold text-[var(--text-primary)]">$99<span className="text-sm font-normal text-[var(--text-tertiary)]">/mo</span></p>
+                <p className="text-xs text-[var(--text-tertiary)] mt-1">3% fee</p>
+              </button>
 
-          {/* Pro — recommended */}
-          <button
-            onClick={() => handleSubscribe('pro')}
-            disabled={subscribing}
-            className="border-2 border-[var(--accent-primary)] rounded-xl p-4 bg-[var(--surface-base)] hover:bg-[var(--accent-50)] transition-colors text-left relative disabled:opacity-60"
-          >
-            <span className="absolute -top-2.5 right-3 text-[10px] font-bold uppercase tracking-wider bg-[var(--accent-primary)] text-white px-2 py-0.5 rounded-full">
-              Recommended
-            </span>
-            <p className="font-semibold text-[var(--text-primary)]">Pro</p>
-            <p className="text-lg font-bold text-[var(--text-primary)]">$169<span className="text-sm font-normal text-[var(--text-tertiary)]">/mo</span></p>
-            <p className="text-xs text-[var(--text-tertiary)] mt-1">1.5% fee, unlimited AI</p>
-          </button>
+              {/* Pro — recommended */}
+              <button
+                onClick={() => handleSubscribe('pro')}
+                disabled={subscribing}
+                className="border-2 border-[var(--accent-primary)] rounded-xl p-4 bg-[var(--surface-base)] hover:bg-[var(--accent-50)] transition-colors text-left relative disabled:opacity-60"
+              >
+                <span className="absolute -top-2.5 right-3 text-[10px] font-bold uppercase tracking-wider bg-[var(--accent-primary)] text-white px-2 py-0.5 rounded-full">
+                  Recommended
+                </span>
+                <p className="font-semibold text-[var(--text-primary)]">Pro</p>
+                <p className="text-lg font-bold text-[var(--text-primary)]">$169<span className="text-sm font-normal text-[var(--text-tertiary)]">/mo</span></p>
+                <p className="text-xs text-[var(--text-tertiary)] mt-1">1.5% fee, unlimited AI</p>
+              </button>
 
-          {/* Business */}
-          <button
-            onClick={() => handleSubscribe('business')}
-            disabled={subscribing}
-            className="border border-[var(--border-default)] rounded-xl p-4 bg-[var(--surface-base)] hover:border-[var(--accent-300)] transition-colors text-left disabled:opacity-60"
-          >
-            <p className="font-semibold text-[var(--text-primary)]">Business</p>
-            <p className="text-lg font-bold text-[var(--text-primary)]">$279<span className="text-sm font-normal text-[var(--text-tertiary)]">/mo</span></p>
-            <p className="text-xs text-[var(--text-tertiary)] mt-1">0% fee, unlimited team</p>
-          </button>
-        </div>
+              {/* Business */}
+              <button
+                onClick={() => handleSubscribe('business')}
+                disabled={subscribing}
+                className="border border-[var(--border-default)] rounded-xl p-4 bg-[var(--surface-base)] hover:border-[var(--accent-300)] transition-colors text-left disabled:opacity-60"
+              >
+                <p className="font-semibold text-[var(--text-primary)]">Business</p>
+                <p className="text-lg font-bold text-[var(--text-primary)]">$279<span className="text-sm font-normal text-[var(--text-tertiary)]">/mo</span></p>
+                <p className="text-xs text-[var(--text-tertiary)] mt-1">0% fee, unlimited team</p>
+              </button>
+            </div>
 
-        <p className="text-xs text-[var(--text-tertiary)]">
-          All plans include your existing data, inventory, and client records. Add CRM for $69/mo.
-        </p>
+            <p className="text-xs text-[var(--text-tertiary)]">
+              All plans include your existing data, inventory, and client records. Add CRM for $69/mo.
+            </p>
 
-        <div className="flex items-center justify-center gap-4 text-sm">
-          <Link
-            href="/dashboard/settings?tab=subscription"
-            className="text-[var(--accent-600)] hover:underline font-medium"
-          >
-            Compare Plans
-          </Link>
-          <button
-            onClick={handleSignOut}
-            className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-          >
-            Sign Out
-          </button>
-        </div>
+            <div className="flex items-center justify-center gap-4 text-sm">
+              <Link
+                href="/dashboard/settings?tab=subscription"
+                className="text-[var(--accent-600)] hover:underline font-medium"
+              >
+                Compare Plans
+              </Link>
+              <button
+                onClick={handleSignOut}
+                className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+              >
+                Sign Out
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Native app — redirect to web for billing */}
+            <p className="text-sm text-[var(--text-secondary)]">
+              To choose a plan, visit sunstonepj.app in your browser.
+            </p>
+            <button
+              onClick={() => window.open(BILLING_WEB_URL, '_blank')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent-primary)] text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+              </svg>
+              Manage Subscription
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="text-sm text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+            >
+              Sign Out
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
