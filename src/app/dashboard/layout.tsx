@@ -172,6 +172,18 @@ function DashboardInnerLayout({ children }: { children: React.ReactNode }) {
     }
   }, [tenantLoading, tenant]);
 
+  // Track last owner login (once per browser session for onboarding drip emails)
+  useEffect(() => {
+    if (!tenantLoading && tenant && !sessionStorage.getItem('login_tracked')) {
+      sessionStorage.setItem('login_tracked', 'true');
+      fetch('/api/track-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tenant.id }),
+      }).catch(() => {});
+    }
+  }, [tenantLoading, tenant]);
+
   // Fetch spotlight data for mini card (once on mount)
   useEffect(() => {
     let cancelled = false;

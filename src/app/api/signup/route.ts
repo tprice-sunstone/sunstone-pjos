@@ -9,8 +9,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
-import { provisionPhoneNumber } from '@/lib/twilio';
+import { provisionPhoneNumber, sendSMS } from '@/lib/twilio';
 import { sendReferralSignupEmail } from '@/lib/ambassador-emails';
+import { sendOnboardingEmail } from '@/lib/emails/onboarding-emails';
 
 const RATE_LIMIT = { prefix: 'signup', limit: 5, windowSeconds: 300 };
 
@@ -182,6 +183,55 @@ export async function POST(request: NextRequest) {
     provisionPhoneNumber(tenant.id).catch(err =>
       console.warn('[Signup] Auto-provision phone failed:', err.message)
     );
+
+    // 6. Send welcome onboarding email immediately (non-blocking)
+    const parsedFirst = firstName
+      ? firstName.trim().split(/\s+/)[0] || firstName.trim()
+      : null;
+    const ownerEmail = user.email;
+
+    if (ownerEmail) {
+      (async () => {
+        try {
+          await sendOnboardingEmail(
+            {
+              businessName,
+              ownerEmail,
+              ownerFirstName: parsedFirst,
+              tenantCreatedAt: new Date(),
+            },
+            'welcome'
+          );
+          // Mark as sent so cron doesn't re-send
+          await supabase
+            .from('tenants')
+            .update({ onboarding_welcome_sent_at: new Date().toISOString() })
+            .eq('id', tenant.id);
+          console.log(`[Signup] Welcome email sent to ${ownerEmail}`);
+        } catch (emailErr: any) {
+          console.warn('[Signup] Welcome email failed (non-fatal):', emailErr.message);
+        }
+      })();
+    }
+
+    // 7. Send Sunny welcome SMS if artist has a phone number (non-blocking)
+    const artistPhone = user.phone || (user.user_metadata?.phone as string);
+    if (artistPhone) {
+      (async () => {
+        try {
+          const sunnyName = parsedFirst || 'there';
+          await sendSMS({
+            to: artistPhone,
+            body: `Hey ${sunnyName}! 👋 I'm Sunny, your AI assistant in Sunstone Studio. Anytime you have a question about welding, pricing, or running your business — just open the app and ask me. I'm here to help! - Sunny`,
+            tenantId: tenant.id,
+            skipConsentCheck: true,
+          });
+          console.log(`[Signup] Sunny welcome SMS sent to ${artistPhone}`);
+        } catch (smsErr: any) {
+          console.warn('[Signup] Sunny SMS failed (non-fatal):', smsErr.message);
+        }
+      })();
+    }
 
     return NextResponse.json({ tenantId: tenant.id });
   } catch (error: any) {
