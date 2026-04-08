@@ -110,7 +110,7 @@ const TEMPLATES: Record<string, { label: string; day: string; render: () => { su
   },
   'trial-7day': {
     label: 'Trial — 7 Days Left',
-    day: 'Day 53',
+    day: 'Day 23',
     render: () => trialEmail7Day({
       businessName: "Luna's Jewelry",
       ownerEmail: 'luna@example.com',
@@ -121,7 +121,7 @@ const TEMPLATES: Record<string, { label: string; day: string; render: () => { su
   },
   'trial-1day': {
     label: 'Trial — 1 Day Left',
-    day: 'Day 59',
+    day: 'Day 29',
     render: () => trialEmail1Day({
       businessName: "Luna's Jewelry",
       ownerEmail: 'luna@example.com',
@@ -132,13 +132,13 @@ const TEMPLATES: Record<string, { label: string; day: string; render: () => { su
   },
   'trial-expired': {
     label: 'Trial Expired',
-    day: 'Day 60',
+    day: 'Day 31',
     render: () => trialEmailExpired({
       businessName: "Luna's Jewelry",
       ownerEmail: 'luna@example.com',
       ownerFirstName: 'Luna',
       daysRemaining: 0,
-      trialEndsAt: new Date(),
+      trialEndsAt: new Date(Date.now() - 86_400_000),
     }),
   },
 };
