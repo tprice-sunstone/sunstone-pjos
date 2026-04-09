@@ -1,5 +1,5 @@
 # Sunstone Studio — Project Status & Context Document
-## Last Updated: March 17, 2026 (Late Evening)
+## Last Updated: April 8, 2026 (Capacitor Shell + Email Systems + Admin Upgrade)
 
 ---
 
@@ -17,13 +17,13 @@ This is the single source of truth for the Sunstone Studio project. It contains 
 **Founder:** Tony Price
 **Stack:** Next.js 15, TypeScript, Supabase (Postgres + Auth + RLS), Tailwind CSS, Vercel
 
-**What it does:** All-in-one business platform for permanent jewelry artists — POS (Event Mode + Store Mode), smart inventory management with tier pricing, client CRM with two-way SMS, AI mentor (Sunny), AI admin intelligence (Atlas), event/queue management, digital waivers, gift cards, warranty protection system, financial reporting with transaction-level detail, automated workflows, Stripe payments, subscription billing, Artist Storefront (public profile page), private party booking engine, and a 9-theme design system.
+**What it does:** All-in-one business platform for permanent jewelry artists — POS (Event Mode + Store Mode) with variant support, smart inventory management with variants and tier pricing, client CRM with two-way SMS, AI mentor (Sunny with smart Sonnet/Opus routing), AI admin intelligence (Atlas), event/queue management, digital waivers, gift cards, warranty protection system, financial reporting with transaction-level detail, automated workflows, Stripe payments (artist sales), subscription billing, Artist Storefront (public profile page), private party booking engine, in-app supply reordering with multi-item cart and Salesforce + Authorize.net payment integration, Shop Sunstone catalog browser, supplier directory, admin catalog management, bulk import/export for clients and inventory, and a 9-theme design system.
 
 **Business model:**
 - Subscription tiers: Starter ($99/mo), Pro ($169/mo), Business ($279/mo)
 - Platform fee: 3% / 1.5% / 0% deducted from artist's Stripe payouts (artist-absorbed, customer never sees it)
-- CRM add-on: $69/mo (included free in 60-day Pro trial)
-- 60-day Pro trial for all new signups, no credit card required
+- CRM add-on: $69/mo (included free in 30-day Pro trial)
+- 30-day Pro trial for all new signups, no credit card required
 - Revenue streams: subscriptions + platform fees + CRM add-on + Sunstone product sales (driven by in-app reorder)
 
 ---
@@ -43,463 +43,321 @@ This is the single source of truth for the Sunstone Studio project. It contains 
 - Progressive chain filter by material type
 - Tier filter chips when pricing_mode = 'tier' (additive with material filter)
 - Per-product flat pricing (customer never sees inch measurements)
+- Variant picker — non-chain items with variants show selection modal before adding to cart
+- Per-variant inventory deduction (deducts from variant, parent recalculated as SUM)
 - Tip screen with percentage presets (15/20/25%)
 - Payment: "Charge Customer" (Stripe QR/text link) or "Record External Payment" (cash/Venmo/external card)
 - Jump ring auto-deduction with confirmation step
 - Discounts (per-item and cart-level)
 - Warranty protection (per-item and per-invoice, editable amounts at sale time)
-- Cash drawer (open/close/track)
-- Party event tagging: sales at party events auto-tagged with party_request_id for revenue tracking
-- **Tappable revenue display** — tap the revenue number in POS header to see all transactions for current event (Event Mode) or today's store sales (Store Mode) in a slide-up SalesPanel
-- **Mobile navigation** — Tab order: Home → Messages → POS (raised center) → CRM → More. Bottom nav hidden inside POS sessions. POS raised button z-index fixed.
-- **POS Event Mode header** — 2-row layout: Row 1 = back button + title + icon buttons; Row 2 = queue pill. Safe area inset padding for iPhone notch. Back button 44px touch target.
+- Cash drawer (open/close/track) — session-based dismiss state (FIXED March 26)
+- Party event tagging: sales auto-tagged with party_request_id
+- Tappable revenue display — tap revenue number for transaction list
+- Mobile navigation — Home → Messages → POS (raised center) → CRM → More
+- POS Event Mode header — 2-row layout with safe area insets
+- Sunny Tips auto-hides when cart has items (FIXED March 26)
 
-### Stripe Payment Flow (FULLY WORKING — March 15, 2026)
-- **QR code payment** — customer scans and pays on their phone ✅ End-to-end working
-- **Text-to-pay** — send payment link via SMS ✅ End-to-end working (was completely broken, fixed March 15)
-- Stripe Connect: artist connects their own Stripe account, payments flow directly to them
-- application_fee_amount: platform fee deducted from artist's payout automatically
-- Payment link route authenticated, line items fetched from DB (not client-supplied)
-- `/pay/[sessionId]` redirect page — avoids iOS SMS URL truncation of raw Stripe URLs with `#` characters
-- `checkout_sessions` table (migration 052) — stores session→tenant mapping at creation so `/pay` page can resolve `stripe_account_id` before payment completes
-- `/api/session-status` route is public (security via unguessable cs_live_xxx session ID) — previously had auth gate that blocked polling
-- Session status polling: checks DB every 3s, Stripe API fallback every 9s, 10-minute timeout with retry button
-- **Belt-and-suspenders sale status update:** Polling updates sale to `payment_status: 'completed'` immediately on detection (with `.eq('payment_status', 'pending')` guard). Webhook remains authoritative source — polling is the UX fast-path.
-- Branded `/payment-success` page — customer sees checkmark + "Payment Complete!" instead of being redirected to login
-- `success_url` uses Stripe template variable: `${baseUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`
-- Pending sales excluded from reports until payment confirmed
-- Inventory only deducted after payment confirmed
+### Stripe Payment Flow (FULLY WORKING)
+- QR code payment — customer scans and pays on their phone
+- Text-to-pay — send payment link via SMS
+- Stripe Connect: payments flow directly to artist's account
+- application_fee_amount: platform fee deducted automatically
+- `/pay/[sessionId]` redirect page — avoids iOS SMS URL truncation
+- `checkout_sessions` table — session→tenant mapping
+- Session status polling: DB every 3s, Stripe API fallback every 9s
+- Belt-and-suspenders sale status update (polling + webhook)
+- Branded `/payment-success` page for customers
+- Pending sales excluded from reports until confirmed
+- Inventory deducted only after payment confirmed
 
 ### Gift Cards
-- Purchase via POS (preset or custom amounts)
-- **Stripe payment support** — "Charge Customer" (QR + Text Link) in addition to "Record External Payment" (SHIPPED March 15)
-- Gift card only activated/delivered AFTER Stripe payment confirmed (not on pending)
-- Platform fee applies to gift card Stripe payments same as regular sales
-- SMS phone pre-filled from recipient phone number in Stripe text link flow
-- Form data stored in refs to avoid stale closure issues during polling
+- Purchase via POS (preset $25/$50/$75/$100/$150 or custom amounts)
+- Stripe payment support ("Charge Customer" QR + Text Link)
+- Gift card activated/delivered AFTER Stripe payment confirmed
 - Deliver via SMS, email, or print
-- Redemption at POS with code lookup
-- Partial redemptions supported, balance tracking
+- Redemption at POS with code lookup, partial redemptions, balance tracking
 
-### Pricing Tiers (SHIPPED — March 14, 2026)
+### Pricing Tiers (SHIPPED March 14)
 - Third pricing mode alongside Flat Rate and Per Product
-- `pricing_tiers` table: tenant-scoped, named tiers (e.g., "Sterling Silver," "Gold Filled," "Premium/14k")
-- Each tier stores default prices for all product types (bracelet, anklet, ring, necklace/inch, hand chain)
-- `tenants.pricing_mode` column: 'flat', 'per_product', or 'tier'
-- Settings → Default Pricing: pricing mode selector (3 visual cards), full tier CRUD (add/edit/delete/reorder)
-- Inventory: chain edit shows tier dropdown when mode = tier, auto-fills product prices from tier defaults
-- POS: tier filter chips in product picker (additive with material filter), both Event Mode and Store Mode
-- Events: "Select by Tier" quick-select in event inventory setup, shows X/Y chain counts per tier
-- Artist Storefront: optional "Show pricing by tier" toggle, renders tier cards with product prices on public page
-- Onboarding: "By Tier" third option in pricing wizard
-- Underlying data stays in chain_product_prices — tiers are a convenience layer that batch-sets and groups prices
+- `pricing_tiers` table: tenant-scoped named tiers
+- Default prices for all product types (bracelet, anklet, ring, necklace, hand chain)
+- Necklace tier pricing is FLAT (not per-inch) — matches all other product types
+- Settings → Default Pricing: mode selector, full tier CRUD
+- POS tier filter chips, event "Select by Tier," Storefront tier display
+- Underlying data stays in chain_product_prices — tiers are a convenience layer
 
-### Warranty Protection System (SHIPPED — March 14, 2026)
-- Warranty sales: per-item (shield icon on each cart line) and per-invoice (cart summary button)
-- Default amounts configurable in Settings, editable at POS during each sale
-- Tax handling: taxable by default with toggle to exempt (most US states tax warranties)
-- Coverage terms: editable text in Settings, snapshotted on each warranty at time of sale
-- Duration options: Lifetime (default), 6 months, 1 year, 2 years, or custom days
-- `warranties` table: linked to sale, sale_item (per-item), client; tracks status, coverage terms, expiration, photo_url (future)
-- `warranty_claims` table: full claim workflow with description, repair details, status (submitted → in_progress → completed/denied)
-- Dashboard → Warranties tab: list view with stat cards (total, active, claimed, value), status badges, search/filter, detail modal
-- Claim filing from warranty detail: description, status, repair details, notes
-- Claim management: edit claims, "Mark Completed" quick action, resolution timestamps
-- Void warranty with confirmation dialog
-- Receipts: per-item warranty shows beneath warranted item, per-invoice warranty in summary, coverage terms block at bottom
-- All receipt channels updated: in-app ReceiptScreen, email (Resend HTML), SMS
-- `photo_url` field ready for future camera/watermark feature (TASK-21)
-- Future: when photo capture ships, warranty purchases will include a photo on file
+### Warranty Protection System (SHIPPED March 14)
+- Per-item and per-invoice warranty sales
+- Default amounts configurable, editable at POS
+- Tax: taxable by default with toggle to exempt
+- Coverage terms: editable, snapshotted at sale time
+- Duration: Lifetime (default), 6mo, 1yr, 2yr, or custom
+- Full claim workflow (submitted → in_progress → completed/denied)
+- Dashboard → Warranties tab with stat cards and claim management
+- Invoice warranty auto-clears when cart is emptied (FIXED March 26)
 
-### Inventory
+### Inventory (MAJOR UPDATES March 20-22)
+- 3-tab layout: My Inventory | Shop Sunstone | Order History
+- Simplified header: title + count + Import + "+ Add Item" button
+- Smart contextual banner: shows unlinked Sunstone item count with "Link now"
+- Overflow menus per row: Add to Cart, Edit, Link, Deactivate, Delete
 - Chain management (inches-based with cost_per_inch)
-- Per-product-type pricing: bracelet_price, anklet_price, ring_price, necklace_price_per_inch
-- Material and supplier fields
-- Jump ring tracking
-- Inventory movements (sale, restock, waste, adjustment)
-- Low stock alerts via reorder_threshold
-- Product types with configurable default lengths
-- **Scroll position preserved** when editing items — saves scrollTop before modal, restores via requestAnimationFrame after save/cancel
-- **Cost entry per-inch/per-foot toggle** for chains — artist can enter supplier's per-foot price, auto-converts to per-inch (÷12) with live preview
-- Gear icon navigates to Settings → Default Pricing (shortcut, not separate modal)
-- UTF-8 encoding fixed on search placeholder
+- Per-product-type pricing
+- Inventory item variants — optional sub-variants per item
+- Variant-level Sunstone linking
+- Material and supplier fields (supplier now FK to suppliers table)
+- Jump ring tracking, inventory movements with variant awareness
+- Low stock alerts (per-variant when applicable)
+- Scroll position preserved, cost entry per-inch/per-foot toggle
+- **Bulk Import/Export (SHIPPED March 26):** CSV import with template download, preview/validation, duplicate merge (never overwrites existing data), type normalization ("jump ring" → jump_ring). Export via overflow menu with date-stamped filenames. Import hidden on Shop Sunstone/Order History tabs.
+
+### Shop Sunstone Catalog Browser (SHIPPED March 21)
+- Collection filter pills (Chain, Connectors, Accessories, Supplies)
+- Product cards with images, title, type, pricing, variant count
+- Product detail slide-in with formatted descriptions
+- Chain variants in collapsible accordion grouped by material
+- "Add" button adds to cart (with length picker for chains)
+- Lazy-loaded on tab selection, cached across tab switches
+
+### Multi-Item Cart + Checkout (SHIPPED March 21)
+- Zustand cart store
+- Cart icon with badge count in inventory header
+- Cart drawer with quantity controls, line totals, subtotal
+- Full checkout: review → shipping → payment → confirmation
+
+### Supplier Directory (SHIPPED March 22)
+- `suppliers` table with full CRUD
+- Sunstone supplier flagged as Primary, not deletable
+- Tappable supplier name on inventory items
+
+### Salesforce Direct Order Integration (v2 — SHIPPED March 20-22)
+- jsforce authentication with token caching
+- Multi-strategy account resolution
+- Authorize.net payment via StudioReorderAPI Apex REST
+- See SF_INTEGRATION_PLAYBOOK.md (v2.2, 24 lessons)
+
+### Zone-Based Shipping (SHIPPED March 22)
+- West/Midwest/East from Utah, weight-class aware, hazmat-restricted (argon = ground only)
+
+### Smart AI Model Routing (SHIPPED March 22)
+- Sunny defaults to Sonnet, upgrades to Opus when 2+ complexity signals fire
+
+### Admin Catalog Management (SHIPPED March 22)
+- /admin/catalog with visibility toggles per product, bulk hide/show
 
 ### Clients & CRM
 - Client management with activity timeline, notes, tags, segments
-- Conversation history (two-way SMS) with phone normalization
-- Secondary phone numbers per client (client_phone_numbers table)
-- Phone number matching uses normalized 10-digit comparison (catches all format variations)
-- Orphaned conversations retroactively linked when client is matched
-- "Link to Client" action for unknown number conversations
-- Unread message badges on client cards
-- Message templates with variable support ({{first_name}}, {{business_name}}, plus party-specific vars)
-- SMS/email broadcasts with recipient targeting and tenant ownership checks
+- Two-way SMS with phone normalization, secondary phone numbers
+- Message templates with variable support ({{client_name}}, {{business_name}})
+- SMS/email broadcasts with recipient targeting
 - Automated workflows with step builder (trigger → delay → send template)
-- Workflow enrollment from client profiles (mobile-friendly)
-- Follow-up queuing
-- "Send Party Booking Link" from client profile (sends SMS with storefront booking link)
+- Workflow enrollment from client profiles, Bulk Enroll by Tag
+- "Send Party Booking Link" from client profile
+- **Copy Waiver Link button on Clients page header (SHIPPED March 26):** Copies tenant's generic waiver URL to clipboard with toast. Waiver submissions create clients automatically.
+- **Bulk Import/Export (SHIPPED March 26):** CSV import with template, preview, validation, merge. Export via overflow menu.
+- Activity timeline now shows purchase history correctly (FIXED March 26)
 
-### SMS & Twilio (FULLY LIVE — March 12, 2026)
-- **A2P 10DLC campaign approved and connected to Messaging Service**
-- All outbound SMS sent via Messaging Service SID (A2P compliant)
-- Phone number provisioning via app: auto-buys number, sets webhook, adds to Messaging Service sender pool
-- Phone number release: removes from Messaging Service, releases in Twilio
-- Inbound SMS webhook at /api/twilio/inbound — routes by dedicated_phone_number to correct tenant
-- Two-way SMS conversations working (inbound + outbound)
-- Auto-reply support (configurable per tenant)
-- Sunny AI text mode: auto (sends AI reply) or suggest (stores suggestion for artist to review)
-- SMS consent checkbox on waiver page with carrier-required language
-- Env vars: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, TWILIO_MESSAGING_SERVICE_SID
+### Waivers & Queue
+- Event QR codes, digital waivers with signature capture + PDF generation
+- SMS consent checkbox with carrier-required language
+- Queue management with SMS notifications (Twilio)
+- Waiver PDF auto-emailed to signer, "Resend Waiver" on client profile
+- **Conditional queue logic (SHIPPED March 26):** Queue entries ONLY created when event_id is present AND event is active/today. No event → "Thank you" confirmation (no queue mention). Future events → no queue. Invalid events → graceful handling, no errors.
 
-### Artist Storefront (SHIPPED — March 12, 2026)
-- Public profile page at /studio/[slug] — no auth required
-- Auto-populated from existing tenant data (zero setup)
-- Sections: hero (name, bio, location, logo), services & pricing menu, upcoming events with waiver links, party booking form, contact & social links
-- Optional tier pricing display (when pricing_mode = tier and toggle enabled)
-- Uses tenant's accent color for brand consistency
-- "Powered by Sunstone Studio" footer (brand growth engine)
-- SEO meta tags with dynamic content (Open Graph, title, description)
-- Profile settings in dashboard: enable/disable, section visibility toggles, bio, social URLs, city/state, show tier pricing toggle
-- Default: enabled for all tenants
-- Middleware exclusion: /studio/ routes are public
-- Available on ALL tiers (competitive differentiator vs Vault's $300/mo website hosting)
+### SMS & Twilio (FULLY LIVE)
+- A2P 10DLC approved and connected
+- Phone provisioning/release via app
+- Two-way conversations, auto-reply, Sunny AI text modes
+- SMS consent on waiver
 
-### Party Booking Engine (SHIPPED — March 12, 2026)
-**Basic (ALL tiers):**
-- Booking request form on Artist Storefront (inline, not modal)
-- Party request fields: host name, email, phone, date, time, guests, occasion, message
-- Dashboard → Parties page with list view and detail panel
-- Status management: New → Contacted → Confirmed → Deposit Paid → Completed → Cancelled
-- RSVP page at /studio/[slug]/party/[partyId] — shareable link for guests
-- RSVP with attendance toggle, plus-ones
-- Waiver option on RSVP: "Sign My Waiver Now" or "I'll Sign at the Party"
-- Booking confirmation SMS auto-sends to host on submission
-- Rate-limited public submissions (5/hour/IP)
-- Create event from party request (pre-fills event details)
+### Artist Storefront
+- Public profile at /studio/[slug], auto-populated from tenant data
+- Available on ALL tiers
 
-**Advanced (CRM add-on):**
-- Stripe deposit collection: "Send Deposit Link" → Stripe Checkout on artist's Connect account, no platform fee (FIXED March 15 — was silently failing due to useEffect dependency resetting deposit amount)
-- Deposit webhook updates party status and notifies artist + host
-- Enhanced RSVP management: waiver status tracking, guest count with plus-ones, CSV export
-- Minimum sales guarantee: editable per party, visual progress bar, post-party tracking
-- Host rewards system: configurable threshold and reward, auto-calculates on completion, "Mark Redeemed"
-- Post-party revenue breakdown: total revenue, per-guest spending, top products, sales linked via party_request_id
-- Party reward settings in tenant settings (CRM-gated)
-
-**Automated Host Sequences (CRM-gated except booking confirmation):**
-- 9 host templates: booking confirmation, confirmed, 1-week reminder, day-before, morning-of, post-party thank you, host reward earned, guest RSVP reminder, cancellation
-- Trigger on status changes: new → confirmation, confirmed → schedules reminders, completed → thank you + reward, cancelled → cancels pending + notifies host
-- Scheduled messages with individual cancel capability
-- Messages tab in party detail shows sent + scheduled messages
-- Settings: auto-reminders toggle, template customization
-
-**Automated Guest Sequences (SHIPPED — March 12, 2026, CRM-gated except aftercare):**
-- Two-track system: Track A (waiver signers, full consent) = 4 messages, Track B (RSVP-only) = 2 messages
-- Track A messages: Day 0 aftercare, Day 3 social share ask, Day 10 "book your own party," Day 21 stack/collection nudge
-- Track B messages: Day 0 aftercare, Day 3 opt-in invite (no further marketing)
-- Auto-creates clients from Track A guests with "Party Guest" tag
-- Smart exit conditions: Day 10 and Day 21 messages skipped if guest has booked a party or made a purchase
-- Skipped messages logged with reason
-- Guest messages visible in party detail Messages tab (grouped by recipient)
-- Settings: guest sequences toggle, template customization
+### Party Booking Engine
+- Basic (ALL tiers): Booking form, status management, RSVP, confirmation SMS
+- Advanced (CRM): Stripe deposits, enhanced RSVP, min sales guarantee, host rewards
 
 ### Events & Queue
-- Event CRUD with booth fee, tax profiles
-- **Event chain selection** — selected_chain_ids on events table, tier-based quick-select in event setup
-- QR codes for public waiver access
-- Digital waiver with signature capture, PDF generation, SMS consent checkbox
-- Queue management with position notifications
-- Store Mode queue (waiver check-in gate)
+- Event CRUD with booth fee, tax profiles, chain selection
+- QR codes, digital waivers, queue management with SMS, Store Mode queue
 
-### Reports & Financial (ENHANCED — March 15, 2026)
-- **Transactions tab** — new tab alongside Overview and Events showing individual sale detail (SHIPPED March 15)
-- Each transaction row: time, client name (or "Walk-in"), items summary, total amount, payment method icon/label, payment status badge
-- Expandable rows: full line items with individual prices, tip, tax, warranty, discount, platform fee
-- **Shared TransactionList component** — used in both Reports and POS SalesPanel
-- CSV export includes transaction-level detail
-- Event P&L with COGS breakdown (chain costs + jump ring costs)
-- Business-wide reports with date/source filters
-- **Date picker timezone fix** — dates parsed as local timezone (appends T00:00:00) instead of UTC, preventing off-by-one day shift (FIXED March 15)
-- Platform fee tracking (platform_fee_collected on sales)
-- Cash drawer summary in event reports
-- Gift card metrics
-- Payment method breakdown (stripe_link, cash, venmo, card_external, gift_card)
-- Manual expense tracking with categories and recurring expenses
-- Full P&L with expense breakdown and refund support
-- Warranty revenue included in sale totals
+### Reports & Financial
+- Transactions tab with expandable detail, event P&L with COGS
+- Date range/source filters, platform fee tracking, CSV export
+- Manual expense tracking with 11 categories (FIXED March 26 — API was returning 500)
+- Recurring expense support (Weekly/Monthly/Quarterly/Yearly)
+- Full P&L with refund support, warranty revenue
+- Event P&L infinite loading loop fixed (FIXED March 26 — expenseTotals dependency loop)
 
 ### Subscription & Billing
-- Stripe Checkout for base subscriptions with deferred billing during trial
-- CRM add-on checkout ($69/mo) with deferred billing
-- Trial warnings at 14/7/3/1 days
-- Post-trial lockout overlay (can see data, can't use features)
-- CRM gating: features lock when trial expires without CRM subscription
+- Stripe Checkout with deferred trial billing
+- CRM add-on ($69/mo), trial warnings, post-trial lockout
+- Plan comparison table with correct fee labels (FIXED March 26 — "deducted from payouts")
+- Trial expiration email notifications (3 automated emails: 7-day, 1-day, expired)
+- Onboarding drip email system (8 behavior-triggered emails: welcome, inventory nudge, first sale nudge, week 1 active/inactive, Stripe nudge, week 2 active/inactive)
+- Welcome email sent immediately at signup + Sunny welcome SMS
+- Email preview route for marketing (/api/email-preview with ?key= authentication)
+- Daily cron jobs: onboarding emails (4pm UTC), trial emails (3pm UTC)
+- Behavior-based triggers: checks inventory count, sale count, Stripe connection, last login
+- Reactivation tracking (trial_reactivated_at set when expired trial converts)
 
 ### AI — Sunny (Mentor)
-- 1,457+ line knowledge base from 45+ official Sunstone documents
-- Streaming chat with subsection-level keyword matching (43 chunks, 28 keywords for weld settings)
-- Agentic tool execution (35 tools — added `list_pricing_tiers` and `assign_pricing_tier` on March 15)
-- Anti-narration instruction — Sunny acts first, doesn't list data before acting
-- Prompt caching for ~70% cost reduction
-- Dedicated --mentor-bubble-* CSS variables for readable contrast on all 9 themes
-- Rate limited (5 questions/month on Starter to protect PJ University content)
-- **Official weld settings chart** embedded in knowledge base — all 4 gauge categories × 6 materials × 3 welders with guardrails preventing Sunny from guessing joule settings
-- **Aftercare policy unified** — "free repairs for life as long as you still have the chain" across all knowledge sections, templates, and messages
-- Knowledge gap detection: logs unanswerable questions to mentor_knowledge_gaps table
-- **User-reported error flagging:** thumbs-down button on every assistant message + text detection for correction phrases (e.g., "that's wrong")
-- Learning system: Admin reviews gaps → approves/dismisses → approved answers stored in mentor_knowledge_additions. Source badges distinguish auto-detected gaps from artist-flagged errors.
-- **Sunny personality presets** for customer-facing messages (SMS/email): 5 tones (Warm & Bubbly, Polished & Professional, Luxe & Elegant, Fun & Playful, Short & Sweet) + custom flavor text. Does NOT affect in-app mentor chat personality.
-- **Chat input UX** — starts as single line, auto-expands to 120px max. Bottom safe-area padding. Stray border on send button removed.
+- 1,457+ line knowledge base from 45+ documents
+- Streaming chat, 43 subsection chunks, 35+ agentic tools
+- Smart Sonnet/Opus routing
+- Prompt caching (~70% cost reduction)
+- Official weld settings chart, knowledge gap detection + user flagging
+- 5 personality presets for customer-facing messages
+- QA verified: weld settings accurate, correct welder models only, real product references, no hallucination
 
 ### AI — Atlas (Admin)
-- 11 tools for platform management
-- Tenant management, platform stats, revenue queries
-- Knowledge gap tools: list pending gaps, approve/dismiss
-- Streaming chat with slate/amber styling
+- 11 tools, tenant management, revenue queries, knowledge gap review
 
 ### Admin Portal
-- Platform admin at /admin
-- Tenant management, revenue dashboard
-- Admin cost tracker (Anthropic API, Twilio SMS, Resend email costs per tenant)
-- Sunny's Learning tab: review pending knowledge gaps, approve/dismiss, manual additions. **Filter by source:** auto-detected gaps vs artist-flagged errors (thumbs-down) vs artist text corrections. Artist-flagged items sort to top. Shows flagged message, correction note, and conversation context.
-- CRM toggle per tenant
-- Tenant detail returns explicit safe column list (no payment credentials exposed)
+- Tenant management, revenue dashboard, cost tracker
+- Sunny's Learning tab, Catalog Management
+- Onboarding Journey panel in tenant detail — visual timeline of all 11 emails sent/pending/skipped per tenant
+- Last Active column in tenant list with relative time display and sort
+- Manual tier override — admin can force any tier regardless of payment status (admin_tier_override flag)
+- Trial extension — admin can extend trial_ends_at with date picker or quick +7/+14/+30 day buttons
+- Marketing admin role — level 2 access to Overview, Tenants, Revenue, Spotlight, Catalog, Ambassadors
+- Mobile-responsive admin — full-screen detail panels, stacked layouts, full-screen broadcast modal on mobile
+
+### Native App (Capacitor Shell)
+- Capacitor v8.3.0 initialized with remote-URL config pointing to sunstonepj.app
+- Android native project created and building successfully (Gradle assembleDebug passes)
+- iOS native project created (pending Xcode build on Mac)
+- App icons generated: Deep Wine (#852454) background, white "S" foreground, all Android densities (mipmap-mdpi through xxxhdpi, adaptive + legacy + round) and iOS 1024x1024
+- Splash screens generated: white background with Deep Wine "S" for both platforms
+- 5 Capacitor plugins configured: Camera, Haptics, Push Notifications, Splash Screen, Status Bar
+- Billing gate wired: canShowBillingUI() gates all subscription purchase UI in native app — TrialBanner, TrialExpiredOverlay, Settings subscription tab, CRM add-on, plan cards all redirect to sunstonepj.app in external browser when running in Capacitor shell
+- Android permissions: INTERNET, CAMERA, POST_NOTIFICATIONS
+- iOS permissions: Camera usage description, push notification background mode
+- Native detection utilities: src/lib/native.ts (isNativeApp, getPlatform, isPluginAvailable)
+- App ID: app.sunstonepj.studio
+- npm scripts: cap:sync, cap:open:android, cap:open:ios, cap:build
+
+### Tradeshow Demo System (SHIPPED March 19, FIXED March 26)
+- Three demo personas with rich seed data, branded kiosk launcher, auto-reset
+- Demo account passwords updated and env vars synced (FIXED March 26)
 
 ### Marketing & Public Pages
-- Landing page at sunstonepj.app with "Your Artist Storefront" feature section (screenshot + copy)
-- Pricing tier comparison: Artist Storefront + basic party booking on all tiers
-- CRM section: advanced party booking features (deposits, RSVP, reminders, host rewards)
-- CRM marketing page at /crm with updated party booking features
-- Privacy policy at /privacy (SMS-specific sections for A2P compliance)
-- Terms of service at /terms
-- Static server-rendered SMS consent page at /sms-consent
-- Sunny demo widget on landing page
-
-### Shopify Catalog (Partial)
-- Read-only Storefront API sync working — products syncing into app
-- Sunny references real Sunstone products and prices
-- Cost data auto-populates inventory items
-- Credentials: Client ID + Client Secret (read-only scope currently)
-- **Next step:** Admin updating Shopify app to add write_products + write_draft_orders scopes → will generate shpat_ Admin API token. Add as SHOPIFY_ADMIN_TOKEN in Vercel to unblock one-touch reorder (TASK-7).
+- Landing page with brand fonts, hero screenshot (3x DPR), lifestyle photos
+- Mobile hamburger menu (SHIPPED March 26)
+- Pricing nav scroll fixed (SHIPPED March 26)
+- Favicon added (SHIPPED March 26)
+- Pricing comparison, CRM page, privacy/terms, SMS consent page, Sunny demo widget
 
 ---
 
-## 3. CURRENT STATUS — MARCH 17, 2026
+## 3. CURRENT STATUS — APRIL 8, 2026
 
-**Platform is in final pre-launch state.** Security audit complete. All critical/high vulnerabilities fixed. SMS pipeline fully live. Artist Storefront and Party Booking shipped. Tier Pricing and Warranty systems shipped. Stripe payment flow fully working end-to-end (QR + Text Link). Manual QA (180-test checklist) is the remaining gate before launch.
+Capacitor native shell built, Android build confirmed, iOS build pending Mac setup. Email automation systems complete (11 automated emails covering full artist lifecycle from signup through trial expiration). Admin portal upgraded with onboarding visibility, manual tier controls, and mobile responsiveness.
 
-**Completed March 16-17 — Dashboard, Landing Page, Sunny KB, Bug Fixes:**
+**Blocked on:**
+- Mac setup (Xcode downloading, software update in progress)
+- Apple Developer account renewal ($99) and Account Holder transfer from Kyle Kinyon to Tony Price
+- Push notification infrastructure (Firebase + APNs — needed before App Store submission to avoid "thin wrapper" rejection)
 
-Dashboard UX:
-- ✅ Getting Started card: dismiss button + theme step auto-complete on click-through
-- ✅ Getting Started: 3-second "You're all set!" congrats then auto-dismiss (no more 7-day timer)
-- ✅ Today's Priorities card: data-driven action items (upcoming events, low stock, unread messages, party requests, warranty claims)
-- ✅ Growth Tip card: rules-based, stage-aware (new/growth/established), daily rotation, Sunny branding
+### QA Gauntlet Results (March 26, 2026) — LAUNCH GATE CLEARED
 
-Landing Page (3 full overhaul passes):
-- ✅ Complete rewrite with Sunstone brand fonts (The Picnic Club Bold/Regular/Italic/Script via woff2)
-- ✅ Montserrat for body text (Google Fonts)
-- ✅ Marketing-fonts.css isolated from app UI — dashboard fonts unchanged
-- ✅ Benefits-first copy: "Grow Your PJ Business with Confidence"
-- ✅ Color palette: #7A234A primary, #FAF7F0 header/footer, #1D1D1D text, #FFFFFF backgrounds
-- ✅ 3 rendered Sunny phone mockup demos (HTML/CSS, not screenshots): "Your AI Writing Partner", "Always Professional", "Takes Action For You"
-- ✅ Mobile Sunny demos: vertical stack (not horizontal carousel)
-- ✅ 4 professional human photos placed throughout page
-- ✅ "Start Free" CTA after benefits section
-- ✅ "Still have questions?" section before final CTA
-- ✅ Footer updated to #FAF7F0 warm cream
-- ✅ Hero: dashboard screenshot only on desktop, human photo as separate divider
-- ✅ Feature card screenshots with contain styling + border treatment
-- ✅ Mobile nav links restored (Features, Pricing, FAQ)
-- ✅ CRM page colors updated to match
+Platform passed 168 tests across 20 categories with 95.8% pass rate. All critical and high-severity bugs found during QA have been fixed and deployed.
 
-Landing Page (continued — March 17 evening):
-- ✅ Photo composition fixes: all divider images given proper container heights (500-550px desktop, 350px mobile) and object-position values to prevent aggressive cropping that was cutting off faces/compositions
-- ✅ Hero layout: restored split layout on desktop (text 38% left, dashboard 60% right), stacked centered on mobile
-- ✅ Hero dashboard screenshot: upgraded to 4320×2837 (3x DPR), fills 60% column with shadow and 12px radius
-- ✅ Hero subline copy updated: "The all-in-one app for POS, inventory, clients, and AI-powered business intelligence — built by Sunstone for permanent jewelry artists."
-- ✅ "From the Pioneers of Permanent Jewelry" pill: centered on desktop above fold, left-aligned within text column on split layout
-- ✅ IMG-154 (woman on couch with laptop) swapped in to replace welding tutorial closeup between Features and Artist Storefront — communicates "manage your business anywhere" instead of "how to weld"
-- ✅ 6 of 7 feature card screenshots replaced with 3x DPR high-res versions (3600×2832 average): POS, Inventory, CRM, Sunny, Reports, Hero Dashboard. Auto-converted from PNG to WebP at quality 85 — total size reduced from 4.7MB to 1.0MB
-- ✅ Storefront screenshot diagnosed: source file was 494px wide (needs 640+ for Retina). Storefront section DOES look sharp now after earlier fix — no action needed unless retaking for even higher res
-- ✅ Party Booking feature card screenshot replaced with 3x DPR version (3600×3954), converted to WebP q85
-- ✅ Champagne toast (final CTA) photo confirmed working, no changes needed
+| Category | Tests | Pass | Fail |
+|----------|-------|------|------|
+| Landing & Public Pages | 12 | 11 | 1 |
+| Auth & Onboarding | 11 | 11 | 0 |
+| Dashboard Home | 8 | 8 | 0 |
+| Inventory Management | 22 | 22 | 0 |
+| POS Event Mode | 20 | 15 | 1 |
+| POS Store Mode | 8 | 8 | 0 |
+| Clients & CRM | 20 | 20 | 0 |
+| Waivers & Queue | 14 | 12 | 0 |
+| Gift Cards | 10 | 9 | 1 |
+| Pricing Tiers & Warranty | 10 | 9 | 1 |
+| Reports & Financial | 14 | 9 | 2 |
+| Payments & Billing | 12 | 7 | 0 |
+| Refunds | 8 | 0 | 1 |
+| AI Sunny | 10 | 8 | 0 |
+| Themes & Responsive | 16 | 16 | 0 |
+| Settings | 12 | 12 | 0 |
+| Permissions & Security | 8 | 8 | 0 |
+| Demo System | 6 | 5 | 1 |
+| Import/Export | 10 | 10 | 0 |
+| Edge Cases & Stress | 10 | 10 | 0 |
 
-Bug Fixes:
-- ✅ Migration 053: auto_email_receipt + receipt columns on tenants table
-- ✅ Duplicate Sunstone supplier: dropdown dedup by name (case-insensitive)
-- ✅ "Clasp" added as inventory item type
-- ✅ "Lavinia" spelling fixed in 4 code files + SQL data fix for existing tenants
-- ✅ Sunny chat widget ✦ sparkle rendering fixed
-- ✅ Sunny chat widget send button → arrow rendering fixed
+### Bugs Found and Fixed During QA (March 26)
 
-Sunny Knowledge Base Overhaul:
-- ✅ Full 18-finding audit across all KB documents (contradictions, gaps, misspellings, missing docs)
-- ✅ Consolidated SUNNY_KNOWLEDGE_BASE.md (730 lines, 18 sections) — single source of truth
-- ✅ Synced to mentor-knowledge.ts: 9 content updates + 8 new chunks (ring welding, removal, stainless steel, jump rings, yield math, chain universality, customer journey, objection handling, shipping/policies)
-- ✅ System prompt updated (secondary phone number, communication style)
-- ✅ 249-test retrieval suite — 100% passing (scripts/test-sunny-knowledge.ts)
-- ✅ 50-test response quality suite ready for manual runs (scripts/test-sunny-responses.ts)
-- ✅ 20 subsection keyword expansions to fix retrieval gaps
-- ✅ npm run test:sunny:retrieval / test:sunny:responses / test:sunny scripts added
+| Bug | Severity | Status |
+|-----|----------|--------|
+| create_sale_transaction function overload (ALL POS sales broken) | CRITICAL | FIXED — migration 065 |
+| Expenses API 500 / Event P&L infinite loop | HIGH | FIXED — dependency array |
+| Client activity timeline empty (blocked refunds) | HIGH | FIXED — removed non-existent columns |
+| Demo persona login (Luna + Spark) | HIGH | FIXED — env vars updated |
+| Mobile hamburger menu missing on landing page | MEDIUM | FIXED |
+| Pricing nav scrolled to wrong section | MEDIUM | FIXED |
+| Sunny Tips button overlapping Checkout | MEDIUM | FIXED — hidden when cart has items |
+| Ghost warranty on empty cart | LOW | FIXED — auto-clear on empty |
+| Cash drawer auto-prompt every Event Mode load | LOW | FIXED — sessionStorage dismiss |
+| Copy Waiver Link icon broken | LOW | FIXED — correct icon |
+| Fee label "customer pays" → "deducted from payouts" | LOW | FIXED |
+| favicon.ico 404 | LOW | FIXED — icon.svg created |
 
-Key KB decisions locked:
-- Aftercare: free repairs for life with chain. No 24-hour lotion rule. No 60-day/$20.
-- Repairs: free for your customers, charge walk-ins $25-35
-- Power settings: simplified ranges as default, chart when machine/material specified, MUST ask gauge if material given without gauge
-- Removal: cut jump ring not chain link
-- Ring welding: off-hand, measure snug, great upsell opportunity
-- Stainless: weldable, no judgment, hard-wire cutters required, SS/GF jump rings for safety break point
-- Enamel: fine to use, distinguish from plated by metal quality
-- Chain naming: Sunstone names first, style descriptions secondary
-- Jump rings: thickest gauge that fits, 3mm ID standard, match visual weight
-- Never precut chains
-- KB17 brevity default everywhere, full answers only when asked
-- Emoji toggle: no in mentor chat, artist-controlled for customer-facing (feature backlogged)
-- KB18 replaced by Shopify catalog
-- Both phone numbers active (385-999-5240 default, 801-658-0015 main)
+### Features Shipped March 26
+1. **Conditional waiver queue logic** — waivers only create queue entries for active/today events
+2. **Copy Waiver Link button** — Clients page header, copies generic waiver URL
+3. **Bulk import/export** — CSV import with template/preview/validation for both Clients and Inventory
+4. **QA Gauntlet execution** — 168 automated browser tests via Playwright MCP
 
-**Completed March 15 — Payment Flow, Transaction Visibility, Bug Fixes:**
-
-Payment Flow (was completely broken, now fully working):
-- ✅ Silent error handling replaced with real error surfacing via toast across PaymentScreen and API routes
-- ✅ `expires_after` → `expires_at` (Unix timestamp) fixed in payment-link and party deposit routes
-- ✅ iOS SMS URL truncation at `#` fixed — new `/pay/[sessionId]` redirect page, SMS sends `sunstonepj.app/pay/cs_live_xxx`
-- ✅ Next.js `redirect()` swallowed by bare `catch{}` — moved outside try/catch
-- ✅ `checkout_sessions` table (migration 052) — session→tenant mapping for `/pay` page
-- ✅ `/pay` and `/payment-success` added to public middleware routes
-- ✅ Auth gate removed from `/api/session-status` route — was blocking all polling (security via unguessable session ID)
-- ✅ Stale closure bug fixed — `startPolling(saleId)` → `startPolling(saleId, sessionId)`, session ID passed as parameter instead of read from stale closure
-- ✅ Belt-and-suspenders: polling now updates `payment_status: 'completed'` in DB on detection (with pending guard)
-- ✅ `credentials: 'include'` added to all 5 authenticated fetch calls in PaymentScreen + PendingPayments
-- ✅ Branded `/payment-success` page with checkmark + "Payment Complete!" for customers
-- ✅ `success_url` uses Stripe template variable for session ID
-
-Gift Card Stripe Payments:
-- ✅ New `/api/gift-cards/checkout` route — creates sale record, Stripe Checkout Session, stores checkout_sessions mapping
-- ✅ GiftCardModal rewritten: "Charge Customer" (QR + Text Link) + "Record External Payment"
-- ✅ Gift card activated/delivered only after Stripe payment confirmed
-- ✅ Form data stored in refs to avoid stale closure issues
-- ✅ SMS phone pre-filled from recipient phone number
-
-Reports & Transaction Visibility:
-- ✅ New Transactions tab in Reports with shared TransactionList component
-- ✅ Expandable transaction rows with full line item detail
-- ✅ Tappable revenue in POS — SalesPanel shows all transactions for event/store session
-- ✅ Date picker timezone fix (UTC → local, prevents off-by-one)
-- ✅ Belt-and-suspenders sale status update ensures sales appear in reports immediately
-
-Party Deposit:
-- ✅ "Send Link" button fixed — useEffect dependency was resetting deposit amount on unrelated state changes
-- ✅ Silent guard replaced with toast.error('Enter a deposit amount')
-- ✅ `credentials: 'include'` added
-
-Data Consistency:
-- ✅ `payment_status` enum audit: `pending`, `completed`, `failed`, `refunded` — all consistent
-- ✅ `'expired'` was used in 3 places but isn't a valid enum value — changed to `'failed'` in webhook, PendingPayments, and party revenue route
-
-Mobile & UX:
-- ✅ Mobile nav tab order fixed (Home → Messages → POS → CRM → More)
-- ✅ POS raised button z-index fixed
-- ✅ Bottom nav hidden inside POS sessions
-- ✅ POS Event Mode header reorganized (2-row layout with safe area insets)
-- ✅ Sunny chat input: single line → auto-expand to 120px max, safe-area padding, border fix
-- ✅ Inventory search placeholder UTF-8 encoding fixed
-
-Sunny AI:
-- ✅ `list_pricing_tiers` and `assign_pricing_tier` tools added (tools 34-35)
-- ✅ Anti-narration instruction added to system prompt
-
-**Completed March 14:**
-- ✅ Inventory scroll position fix
-- ✅ Tier Pricing: full system (DB, Settings, Inventory assignment, POS filter, Event selection, Storefront display, Onboarding option)
-- ✅ Warranty Protection: full system (DB, Settings, POS per-item + per-invoice, sale recording, Tracking tab with claims workflow, Receipt integration across all channels)
-- ✅ Settings consolidation — Product Type Defaults moved into Settings → Default Pricing
-- ✅ Cost entry per-inch/per-foot toggle for chains
-
-**Completed March 13:**
-- ✅ Weld settings chart added to Sunny knowledge base
-- ✅ Thumbs-down flagging + text detection for wrong answers
-- ✅ Admin Learning tab upgraded with source badges and filters
-- ✅ Settings Communications reorganized into 3 accordion cards
-- ✅ Sunny personality presets (5 tones + custom)
-- ✅ Aftercare content unified ("free repairs for life with the chain")
-- ✅ MentorChat focus bug fixed
-- ✅ Thumbs-down icon fixed
-
-**Completed March 12:**
-- ✅ Twilio A2P 10DLC campaign connected to Messaging Service
-- ✅ Two-way SMS fully operational
-- ✅ Artist Storefront (public profile page)
-- ✅ Full party booking engine (basic all tiers + advanced CRM-gated)
-- ✅ Host + Guest automated sequences
-- ✅ Landing page, pricing table, CRM page copy updated
-
-**Migrations applied:** 001-053
-- 047: knowledge gap user flags
-- 048: sunny personality columns
-- 049: pricing_tiers table, tenants.pricing_mode, inventory_items.pricing_tier_id
-- 050: events.selected_chain_ids for event chain selection
-- 051: warranty system (warranties table, warranty_claims table, tenant warranty settings, sales/sale_items warranty_amount)
-- 052: checkout_sessions table (session→tenant mapping for /pay redirect page)
-- 053: auto_email_receipt + receipt columns on tenants table
-
-**Primary remaining work:**
-- Manual QA Gauntlet (180 tests) — final launch gate (now includes tier pricing + warranty + payment flow testing)
-- Apple Developer Account setup (in progress — needed for Capacitor/App Store)
-- TASK-7: Shopify one-touch reorder (pending shpat_ Admin API token from Shopify admin)
-- TASK-4/5/6: Push notifications, Capacitor shell, Stripe Terminal (post-launch)
+### Known Remaining Issues (Not Launch Blockers)
+- React #310 on hard navigation (console error only — pages render correctly, only affects direct URL entry)
+- Gift cards cannot be purchased via Stripe (only external payment) — post-launch
+- No warranty revenue breakout in Reports — post-launch
+- Necklace tier pricing in demo seed data uses per-inch values (investigate if code or seed data issue)
+- ThePicnicClub font woff2 decode warnings (cosmetic, fallback fonts work)
 
 ---
 
-## 4. KNOWN BUGS & ACTIVE ISSUES
+## 4. UPCOMING WORK
 
-### All Previously Known Bugs — RESOLVED
-- Cash drawer 500 error — ✅ Fixed
-- Sunny contrast on light themes — ✅ Fixed
-- Platform fee misleading copy — ✅ Fixed
-- Workflow enrollment mobile — ✅ Fixed
-- SMS consent on waiver — ✅ Fixed
-- Duplicate Sunstone supplier — ✅ Fixed
-- Getting Started cards disappearing — ✅ Fixed
-- Sunny knowledge gap learning system — ✅ Fixed (migration 040)
-- Duplicate SMS conversations — ✅ Fixed (migration 045, phone normalization)
-- "Send Party Booking Link" 400 error — ✅ Fixed (property name mismatch: body → message)
-- "Create Event from Party" crash — ✅ Fixed (Suspense boundary + useSearchParams + Link component)
-- Sunny giving wrong weld settings — ✅ Fixed (quickRuleOfThumb shortcuts + narrow keywords)
-- MentorChat input losing focus — ✅ Fixed
-- Thumbs-down icon rendering as yellow blob — ✅ Fixed (lucide-react)
-- Aftercare content inconsistent — ✅ Unified
-- Inventory scroll jumping to top after save — ✅ Fixed (scroll position preserved)
-- Stripe QR payment not working — ✅ Fixed (multiple issues, March 15)
-- Stripe Text Link payment not detected — ✅ Fixed (auth gate + stale closure, March 15)
-- Party deposit "Send Link" not working — ✅ Fixed (useEffect dependency reset, March 15)
-- Reports date picker off by one day — ✅ Fixed (UTC→local timezone, March 15)
-- Sales not appearing in reports — ✅ Fixed (belt-and-suspenders status update + enum consistency, March 15)
-- `'expired'` status not in DB enum — ✅ Fixed (changed to 'failed' in 3 places, March 15)
+### Immediate (when Mac is ready)
+1. Clone repo onto Mac, install Node.js, CocoaPods
+2. Test Android on Mac emulator (Apple Silicon runs it fast)
+3. Build iOS in Xcode simulator
+4. Push notification setup (Firebase Cloud Messaging for Android, APNs for iOS)
+5. Renew Apple Developer account + transfer Account Holder
+6. TestFlight + Google Play Internal Testing submission
+7. App Store + Play Store public submission
 
-### No Active Bugs as of March 15, 2026 (evening)
+### Near-term (first 2 weeks post-launch)
+- MRR dashboard in admin (subscription revenue from Stripe not currently tracked)
+- Trial-to-paid conversion rate tracking
+- Broadcast history page in admin
+- Stripe Terminal + Tap to Pay (Phase 2 of Capacitor — native SDK bridge)
+- SF sync of Studio subscribers (Studio_Subscriber__c flag on SF Contacts)
 
-Comprehensive QA testing of all features pending (180-test checklist).
+### Post-Launch (Month 1-2)
+- Push notifications via Capacitor (TASK-4)
+- Predictive reorder intelligence (TASK-8)
+- Phone/SMS authentication (decided March 26 — Supabase Phone provider + Twilio OTP)
+- Promotional control layer, admin cost dashboard
+- Ambassador Program (20% commission, Stripe Connect Express)
+
+### Month 2-4
+- Aftercare Sequences, Lead Capture, Event Benchmarking
+- Offline Payments, Photo Capture + Watermark, Multi-Vertical Expansion
 
 ---
 
 ## 5. TWILIO / SMS STATUS — FULLY LIVE
 
-- ✅ A2P 10DLC campaign approved
-- ✅ Campaign connected to "Sunstone Studio" Messaging Service (MGb67a7737a07801aa79c211...)
-- ✅ Outbound SMS via Messaging Service SID (A2P compliant)
-- ✅ Inbound SMS webhook at /api/twilio/inbound — routing by dedicated_phone_number
-- ✅ Phone provisioning via app — auto-buys, sets webhook, adds to Messaging Service
-- ✅ Phone release — removes from Messaging Service, releases in Twilio
-- ✅ Two-way conversations working
-- ✅ Auto-reply and Sunny AI text modes functional
-- ✅ Phone number matching normalized (10-digit comparison)
-- ✅ Secondary phone numbers supported
-
-**Twilio Console Cleanup (optional):** Two legacy messaging services with red warning icons ("Sunstone PJ" and "Low Volume Mixed A2P") can be deleted. Only "Sunstone Studio" is active.
-
-**Env vars required:** TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, TWILIO_MESSAGING_SERVICE_SID
+- A2P 10DLC approved, connected to Messaging Service
+- Outbound via Messaging Service SID (A2P compliant)
+- Inbound webhook routing by dedicated_phone_number
+- Phone provisioning/release via app
+- Two-way conversations, auto-reply, Sunny AI text modes
+- Normalized 10-digit matching, secondary phone numbers
 
 ---
 
@@ -509,234 +367,212 @@ Comprehensive QA testing of all features pending (180-test checklist).
 |---|---|---|---|
 | Monthly Price | $99 | $169 | $279 |
 | Platform Fee | 3% | 1.5% | 0% |
-| Fee Model | Deducted from artist's Stripe payout | Same | No fee |
 | Sunny AI | 5/month | Unlimited | Unlimited |
-| Team Members | 1 (owner only) | Up to 3 | Unlimited |
+| Team Members | 1 | Up to 3 | Unlimited |
 | AI Insights | No | Yes | Yes |
-| Full Reports | Basic only | Full + CSV | Full + CSV |
-| Sunstone Catalog Reorder | ✅ All tiers | ✅ | ✅ |
-| Artist Storefront | ✅ All tiers | ✅ | ✅ |
-| Basic Party Booking | ✅ All tiers | ✅ | ✅ |
+| Full Reports | Basic | Full + CSV | Full + CSV |
+| Catalog Reorder | All tiers | All | All |
+| Storefront | All tiers | All | All |
+| Party Booking | Basic | Full | Full |
 
-**CRM Add-On:** $69/month, single tier
-- Included free during 60-day Pro trial
-- Dedicated phone number, two-way SMS, workflows, broadcasts, Sunny text responder
-- Advanced party booking: deposits, RSVP tracking, automated reminders, host rewards, guest marketing sequences
-- Automated aftercare sequences
-
-**Trial:** 60 days Pro + CRM, no credit card required
+**CRM Add-On:** $69/month — dedicated number, two-way SMS, workflows, broadcasts, advanced party booking
+**Trial:** 30 days Pro + CRM, no credit card required
 
 ---
 
 ## 7. KEY BUSINESS RULES
 
-- **Chain model:** Chain is raw material tracked in inches. Customers see finished products (bracelet, anklet, etc.), never inch measurements.
-- **Chain cost entry:** Artists can enter cost per inch OR per foot in the inventory form. Per-foot divides by 12 and stores as cost_per_inch. Toggle is UI-only, not persisted.
-- **Pricing modes:** Three options — Flat Rate (all chains same price), Per Product (individual prices per chain), By Tier (chains grouped into named pricing tiers with tier-level default prices). Underlying storage is always per-chain in chain_product_prices.
-- **Jump rings:** 1 per item, 2 for hand chains. Material matching by material_id.
-- **Platform fee:** Deducted from artist's Stripe payout via application_fee_amount. Customer never sees a fee. Only counts as cost in P&L when fee_handling = 'absorb'.
-- **Payment recording:** "Charge Customer" = Stripe processes payment. "Record External Payment" = just bookkeeping.
-- **Pending sales:** Sales with payment_status='pending' don't appear in reports; inventory not deducted until payment confirmed.
-- **Payment status values:** `pending` → `completed` → `failed` → `refunded`. Stripe's `'paid'` maps to `'completed'`. Expired sessions map to `'failed'`. No `'expired'` in DB enum.
-- **Revenue calculation:** Uses subtotal + tax + tip (not sale.total).
-- **COGS:** Pulls snapshotted chain_material_cost and jump_ring_cost from sale_items, not real-time inventory lookups.
-- **Warranty:** Sold per-item or per-invoice. Taxable by default (most US states require it), with toggle to exempt. Coverage terms snapshotted at time of sale. Duration configurable (lifetime default). Warranty revenue is part of gross revenue. Platform fee applies to warranty amounts.
-- **Party deposit:** No platform fee on deposits (artist's money). Deposits go to artist's Stripe Connect account.
-- **Guest sequences:** Track A (waiver signers) get full marketing sequence. Track B (RSVP-only) get aftercare + opt-in invite only.
-- **Sunny rules:** Only 3 Sunstone welders exist (Zapp, Zapp Plus 2, mPulse). Never hallucinate products. Always reference the official weld settings chart for joule recommendations — never guess.
-- **Aftercare policy:** Free repairs for life as long as the customer still has the chain. No time limits, no fees. Care instructions: soap/water/toothbrush, avoid harsh chemicals and prolonged pool time, pat dry.
-- **CRM requires base plan:** Can't purchase CRM standalone after trial.
-- **App Store subscriptions:** Subscription purchase/upgrade UI is NOT in the native app — billing at sunstonepj.app only.
+- **Chain model:** Tracked in inches. Customers see flat product prices, never inches.
+- **Pricing modes:** Flat Rate, Per Product, or By Tier. Storage always per-chain in chain_product_prices.
+- **Tier necklace pricing:** Flat rate (not per-inch).
+- **Jump rings:** 1 per item, 2 for hand chains.
+- **Platform fee:** Deducted from artist's Stripe payout. Customer never sees it.
+- **Revenue calculation:** subtotal + tax + tip (not sale.total).
+- **COGS:** Snapshotted from sale_items, not real-time inventory.
+- **Warranty:** Taxable by default, lifetime duration default, coverage snapshotted. Invoice warranty auto-clears when cart empties.
+- **Aftercare:** Free repairs for life with chain.
+- **Inventory variants:** Optional. Chains = separate items by metal. Connectors/charms = variants for months/sizes.
+- **Variant linking:** Each inventory variant links to its own Shopify variant.
+- **Shipping:** Zone-based (West/Mid/East), weight-aware (heavy/light), hazmat-restricted (argon = ground only).
+- **Payment status:** pending → completed → failed → refunded. No 'expired' in enum.
+- **Guest sequences:** Track A (waiver) = full marketing. Track B (RSVP) = aftercare + opt-in only.
+- **Sunny:** 3 welders only (Zapp, Zapp Plus 2, mPulse). Never hallucinate. Use official weld chart.
+- **App Store:** Billing at sunstonepj.app only. No in-app subscription UI.
+- **Waiver queue logic:** Queue entry only created when event_id present AND event is active/today. No event = waiver only.
 
 ---
 
 ## 8. SECURITY AUDIT — COMPLETED MARCH 7, 2026
 
-Full pre-launch security audit performed. All Critical and High issues fixed.
-
-### Critical Fixes (7/7 — ALL RESOLVED)
-- C1-C7: Payment links, SMS, receipts, signup, RLS, debug tools, catalog tables
-
-### High Fixes (6/6 — ALL RESOLVED)
-- H1-H6: Tenant ID derivation, broadcast ownership, rate limiting, RLS recursion, untracked tables, admin exposure
-
-### Remaining (not launch-blocking)
-- 11 Medium issues (error message sanitization, OAuth state signing, gift card rate limiting, etc.)
-- 8 Low issues (input validation library, missing DELETE policies on append-only tables, etc.)
-- Will address in first 2 weeks post-launch
+All Critical (7/7) and High (6/6) fixed. 11 Medium + 8 Low remaining (not launch-blocking).
 
 ---
 
-## 9. TECHNICAL ARCHITECTURE
+## 9. SALESFORCE INTEGRATION (v2 — Production Verified)
+
+### Architecture
+```
+Match SF Account → Opp (Quote Sent) → Quote (with ShippingHandling)
+→ QuoteLineItems → Sync → Avalara tax → Charge card → Close Won
+→ SF auto-creates Order with tax + shipping line items
+```
+
+**App does NOT:** Create Orders, create OrderItems, set Direct_Order__c.
+
+### Key Details
+- StudioReorderAPI Apex REST (6 actions), jsforce auth, multi-item QuoteLineItems
+- Studio_Created__c/Studio_Modified__c audit fields, Account_Type__c = 'Customer'
+- CloseDate = America/Denver timezone, ShippingHandling = 0 for Will Call
+- Quote number as shared reference, sf_pending on Close Won failure
+- See SF_INTEGRATION_PLAYBOOK.md (v2.2, 24 lessons)
+
+---
+
+## 10. TECHNICAL ARCHITECTURE
 
 ### Database (Supabase/Postgres)
-- RLS on ALL tables, verified via security audit
+- RLS on ALL tables
 - SECURITY DEFINER functions: get_user_tenant_ids(), get_user_tenant_role(), find_client_by_phone(), link_orphaned_conversations()
-- Custom function: create_sale_transaction (handles sale creation, sale items, inventory deduction, queue updates)
-- Migrations numbered 001-052 in supabase/migrations/
-- Key new tables (March 12): party_requests, party_rsvps, party_scheduled_messages, client_phone_numbers
-- Key new tables (March 14): pricing_tiers, warranties, warranty_claims
-- Key new table (March 15): checkout_sessions (session→tenant mapping for /pay redirect)
-- Key new columns (March 13): mentor_knowledge_gaps.source/flagged_message/user_correction_note/conversation_context, tenants.sunny_tone_preset/sunny_tone_custom
-- Key new columns (March 14): tenants.pricing_mode, tenants.warranty_enabled/warranty_per_item_default/warranty_per_invoice_default/warranty_taxable/warranty_coverage_terms/warranty_duration_days, inventory_items.pricing_tier_id, events.selected_chain_ids, sales.warranty_amount, sale_items.warranty_amount
+- Variant-aware functions: create_sale_transaction (duplicate overload fixed March 26 — migration 065), decrement_inventory
+- Migrations 001-070 applied
 
-### API Routes (Next.js App Router)
-- All at src/app/api/
-- ALL routes authenticated (verified in security audit) except public endpoints:
-  - /api/party-requests POST (public submission, rate-limited)
-  - /api/party-rsvps POST (public RSVP)
-  - /api/public/profile GET (returns tier pricing data when enabled)
-  - /api/public/party GET
-  - /api/twilio/inbound POST (Twilio webhook, signature-verified)
-  - /api/session-status GET (public — security via unguessable cs_live_xxx session ID)
-  - /api/gift-cards/checkout POST (authenticated — creates Stripe session for gift card)
-- ALL authenticated routes derive tenant_id from session via tenant_members lookup
-- Public routes added to middleware: /pay/[sessionId], /payment-success
+### Migrations Added March 26
+- 065: Drop duplicate create_sale_transaction overload
 
-### Key Components (March 15 additions)
-- `src/components/reports/TransactionList.tsx` — shared expandable transaction table, supports compact mode for POS
-- `src/components/pos/SalesPanel.tsx` — slide-up modal for POS revenue tap, shows event/store transactions
-- `src/components/pos/GiftCardModal.tsx` — rewritten with Stripe QR/Text Link payment support
-- `src/app/pay/[sessionId]/page.tsx` — redirect page for iOS-safe Stripe payment links
-- `src/app/payment-success/page.tsx` — branded customer-facing payment confirmation
+### Migrations Added April 8
+- 068: Trial email tracking columns (trial_email_7day_sent_at, trial_email_1day_sent_at, trial_email_expired_sent_at, trial_reactivated_at)
+- 069: Onboarding email tracking columns (8 onboarding_*_sent_at + last_owner_login_at)
+- 070: Admin tier override (admin_tier_override boolean)
 
-### Key Components (March 14)
-- `src/components/inventory/ChainPricingConfig.tsx` — tier dropdown + auto-fill for inventory edit
-- `src/components/pos/ProductSelector.tsx` — tier filter chips in POS
-- `src/lib/warranty.ts` — shared createWarrantyRecords() utility for sale creation
-- `src/app/dashboard/warranties/page.tsx` — warranty tracking dashboard with claims workflow
+### Key New Files (March 26)
+- src/lib/csv-templates.ts — CSV template generators for client/inventory import
+- src/lib/csv-parser.ts — Manual CSV parser with phone/type normalization
+- src/components/ImportModal.tsx — 3-step import modal (upload → preview → process)
+- src/app/icon.svg — Favicon (wine "S" on rounded square)
+
+### QA Infrastructure (March 26)
+- Playwright MCP configured: `claude mcp add playwright npx @playwright/mcp@latest`
+- Auto-approve config: `.claude/settings.json` with permissions.allow for all Playwright/Bash/Write/Read tools
+- QA Gauntlet document: `QA_GAUNTLET_MARCH_2026.md` — 234 planned tests across 20 categories
+
+### Demo Accounts
+| Email | Tenant | Pricing Mode |
+|-------|--------|-------------|
+| demo.golden@sunstonestudio.app | Golden PJ Studio | Tier (72 chains, 215 clients) |
+| demo.luna@sunstonestudio.app | Luna PJ Studio | Flat (14 chains, 28 clients) |
+| demo.spark@sunstonestudio.app | Spark PJ Studio | Per Product (38 chains, 95 clients) |
+| Password (all three) | DemoQA2026! | |
 
 ### Environment Variables (Vercel)
 - STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, STRIPE_CLIENT_ID, STRIPE_WEBHOOK_SECRET
 - STRIPE_PRICE_STARTER, STRIPE_PRICE_PRO, STRIPE_PRICE_BUSINESS, STRIPE_PRICE_CRM
 - SQUARE_APP_ID, SQUARE_APP_SECRET, SQUARE_ENVIRONMENT
 - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, TWILIO_MESSAGING_SERVICE_SID
-- ANTHROPIC_API_KEY
-- RESEND_API_KEY
+- ANTHROPIC_API_KEY, RESEND_API_KEY
 - NEXT_PUBLIC_APP_URL=https://sunstonepj.app
 - NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
-
----
-
-## 10. UPCOMING FEATURE ROADMAP (Priority Order)
-
-### RIGHT NOW — Pre-Launch Gate
-1. **Landing page** — all screenshots now 3x DPR high-res. Final visual QA pass needed.
-2. **Emoji toggle** in Sunny personality Settings (small feature, backlogged)
-3. **Run 50 Sunny response quality tests** against live API
-4. **Manual QA Gauntlet** — 180-test checklist + tier pricing + warranty + payment flow testing. LAST GATE BEFORE LAUNCH.
-
-### FIRST 2 WEEKS POST-LAUNCH
-2. **Push notifications** (TASK-4) — queue alerts, low stock, event reminders via Capacitor
-3. **Capacitor shell + App Store** (TASK-5) — iOS/Android native wrapper (waiting on Apple Developer Account)
-4. **Stripe Terminal + Tap to Pay** (TASK-6) — card-present payments, $0 hardware
-5. **One-Touch Sunstone Reorder** (TASK-7) — Shopify Admin API, two-path reorder UX (waiting on shpat_ token)
-6. **Predictive Reorder Intelligence** (TASK-8) — sales velocity modeling, depletion forecasts
-7. **Promotional Control Layer** (TASK-9) — admin pushes announcements to all artists
-8. **Admin cost tracking dashboard** (TASK-23)
-9. **Admin team member management** (TASK-24)
-
-### FIRST 30 DAYS POST-LAUNCH
-10. ~~**Advanced Inventory — Pricing Tiers & Bundles** (TASK-10)~~ — **DONE (March 14, 2026). Tier pricing shipped. Bundles TBD.**
-11. **Weld Activity Modeling** (TASK-11)
-12. **Referral Tracking** (TASK-12)
-13. **AI Business Coach v2** (TASK-17)
-
-### MONTH 2
-14. **Aftercare Sequences** (TASK-15)
-15. **Lead Capture Tools** (TASK-16)
-16. **Event Performance Benchmarking** (TASK-18)
-17. **Sunny Learning System** (TASK-19)
-
-### MONTH 3-4
-18. **Offline Payments** (TASK-20)
-19. **Photo Capture + Watermark** (TASK-21) — will integrate with warranty system (photo attached to warranty file)
-20. **Multi-Vertical Expansion** (TASK-22)
-
-### ONGOING
-21. **Ambassador Program** — 20%/8 months, Stripe Connect Express. Full spec in AMBASSADOR_PROGRAM_ROADMAP.md.
+- SHOPIFY_STORE_DOMAIN, SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET
+- SF_LOGIN_URL, SF_CLIENT_ID, SF_CLIENT_SECRET, SF_USERNAME, SF_PASSWORD, SF_SECURITY_TOKEN
+- DEMO_RESET_ENABLED, NEXT_PUBLIC_DEMO_*_TENANT_ID, NEXT_PUBLIC_DEMO_*_PASSWORD (3 demo tenants)
 
 ---
 
 ## 11. KEY DECISIONS LOG
 
 | Decision | Choice | Rationale |
-|---|---|---|
-| App name | Sunstone Studio | Approachable, not techy, resonates with artists |
-| Cash/Venmo platform fee | Don't collect | Industry standard, incentivizes card payments |
-| Square coexistence | Keep as option | Some artists are used to Square |
-| Capacitor over React Native | Capacitor | Web-first, simpler toolchain |
-| Stripe over Square for Terminal | Stripe | Native platform fee support, Tap to Pay |
+|----------|--------|-----------|
+| App name | Sunstone Studio | Approachable, resonates with artists |
+| Cash/Venmo platform fee | Don't collect | Industry standard |
+| Square coexistence | Keep as option | Some artists prefer Square |
+| Capacitor over React Native | Capacitor | Web-first, simpler |
+| Stripe over Square for Terminal | Stripe | Native platform fee, Tap to Pay |
 | AI architecture | Single agent (Sunny) | Multi-agent adds latency |
-| Ambassador commission | 20% / 8 months | Beats competitor's 15%, lower total payout |
-| Ambassador payouts | Cash via Stripe Connect | Influencers need cash, not subscription credit |
+| AI model routing | Sonnet default, Opus for complex (2+ signals) | 80%+ simple; saves cost |
+| SF Order creation | Let SF auto-create on Close Won (v2) | Manual bypassed accounting pipeline |
+| Shipping before tax | ShippingHandling on Quote before Avalara | Correct tax calculation |
+| Shipping rates | Zone-based all methods | Flat rates inaccurate |
+| Variant data model | Separate table | Proper relational with per-variant stock |
+| Variant linking | Per-variant sunstone_variant_id | Each month links to own Shopify variant |
+| Product visibility | Admin-controlled table | Shopify data not always clean |
+| Supplier model | Dedicated table with FK | Free-text was unstructured |
+| Cart state | Zustand in-memory | Simple, no persistence complexity |
+| CloseDate timezone | America/Denver locale | UTC wrong after 5pm MST |
+| Ambassador commission | 20% / 8 months | Beats competitor's 15% |
 | IAP strategy | No in-app subscription UI | Avoids Apple's 15-30% cut |
-| Public profile branding | "Artist Storefront" | Sounds better than "website hosting," positions artist as business |
-| Profile page gating | All tiers | Growth tool — every page drives Sunstone brand awareness |
-| Party booking gating | Basic all tiers, advanced CRM | Booking form free, deposits/RSVP/rewards gated |
-| Guest sequence tracks | Track A (waiver) + Track B (RSVP) | Respects consent levels while maximizing reach |
-| Stack nudge timing | Day 21 with exit conditions | Late enough for identity attachment, smart enough to skip if converted |
-| Party booking nudge | Day 10 | While party energy is still high |
-| Review ask format | Social share + IG tag | Artists care about social proof more than Google reviews |
-| Aftercare repair policy | Free for life with chain | Simpler, more generous, better selling point than 60-day/$20 |
-| Sunny error detection | Thumbs-down + text detection | Gap detection only caught uncertainty, not confident errors |
-| Sunny personality scope | Customer-facing SMS/email only | Mentor chat stays expert/knowledgeable; personality for customer tone |
-| Settings communications layout | 3 accordion cards | Business Number / Text Messaging / Sunny Personality — each answers a different question |
-| Pricing config location | All in Settings → Default Pricing | Single source of truth; inventory gear icon is a shortcut |
-| Tier pricing data model | Tiers as a convenience layer | Underlying per-chain prices in chain_product_prices unchanged; tiers batch-set and group |
-| Warranty tax default | Taxable, with toggle to exempt | Most US states tax warranties; artist can override if their state exempts |
-| Warranty duration default | Lifetime | Generous default, artist can set 6mo/1yr/2yr/custom |
-| Warranty claim workflow | Full (submitted → in_progress → completed/denied) | Artists need repair tracking, not just yes/no |
-| Cost entry convenience | Per-inch/per-foot toggle (UI only) | Suppliers list per-foot; stored value always per-inch |
-| Session status auth | Public route, unguessable session ID | Auth gate was blocking polling; cs_live_xxx is sufficiently unguessable |
-| Payment link URL format | /pay/[sessionId] redirect | Raw Stripe URLs with # get truncated by iOS SMS |
-| Sale status update | Belt-and-suspenders (polling + webhook) | Polling updates immediately for UX; webhook is authoritative |
-| Transaction visibility | Shared TransactionList component | Used in Reports tab and POS SalesPanel — single component, two contexts |
+| Profile gating | All tiers | Growth tool, brand awareness |
+| Aftercare policy | Free for life with chain | Simpler, more generous |
+| Trademark | "Sunstone Studio" Class 42 | No blocking registrations |
+| Trial period | 30 days (from 60) | Shorter time-to-conversion |
+| QA approach | Playwright MCP automated browser testing | Faster than manual, catches real bugs |
+| Waiver queue logic | URL context determines queue | No toggle/setting needed — smart defaults |
+| Phone auth | Post-launch | Infrastructure ready (Twilio), but UI work not worth delaying launch |
+| Import format | CSV (not Excel) | No dependencies, universal compatibility |
 
 ---
 
 ## 12. KEY TECHNICAL LEARNINGS
 
-- **Client-side rendering is invisible to automated reviewers:** Any compliance or public-facing page must be server-rendered or static.
-- **Vercel function logs are the critical debug tool:** Browser console shows only status codes; Vercel logs expose exact error strings.
-- **Audit before fix:** Claude Code prompts with explicit audit phases before fix phases produce better results.
-- **RLS recursive policies:** tenant_members required SECURITY DEFINER functions.
-- **Financial accuracy:** Platform fees only count as costs when fee_handling = 'absorb'. Revenue = subtotal + tax + tip.
-- **Phone normalization:** Strip to 10 digits for matching. Check both clients.phone and client_phone_numbers.
-- **Twilio Messaging Service:** Numbers MUST be in the Messaging Service sender pool for A2P compliant sending. Provisioning auto-adds, but manually purchased numbers need manual config.
-- **Property name mismatches:** The "Send Party Booking Link" bug was `{ body }` vs `{ message }` — always check both sides of the API contract.
-- **React hydration errors:** Next.js 15 requires Suspense boundaries around useSearchParams(). Full page reloads via `<a>` tags cause hydration mismatches — use `<Link>` instead.
-- **Knowledge base retrieval matters as much as content:** The weld chart data was already in mentor-knowledge.ts, but Sunny ignored it because quickRuleOfThumb was easier to match and keywords were too narrow (10→28 fixed it).
-- **Confident AI errors are invisible to gap detection:** Auto-detection only catches expressed uncertainty. User flagging (thumbs-down + text detection) is required to catch confidently wrong answers.
-- **requestAnimationFrame for focus management:** When React re-renders add new interactive elements (e.g., thumbs-down button appearing after streaming), use rAF to refocus the input after the render cycle completes. tabIndex={-1} on non-input interactive elements prevents tab-stealing.
-- **requestAnimationFrame for scroll restoration:** After a data refetch re-renders a list, use rAF to restore scrollTop — direct assignment after setState won't work because the DOM hasn't updated yet.
-- **Config consolidation prevents user confusion:** When pricing/settings are split across multiple locations, artists will miss one. Single source of truth in Settings with shortcut links from relevant pages.
-- **Migration numbering with multiple prompts:** When a multi-prompt build session creates unexpected intermediate migrations (e.g., 050 for event_chain_selections), subsequent prompts must be renumbered. Always verify the last migration number before pasting a prompt.
-- **React stale closures in polling:** `setState` schedules an update but the enclosing closure captures the old value. When a `useCallback` reads state that was just set, it reads `null`. Fix: pass the value as a direct parameter to the function instead of reading from state. This bit us twice on March 15 (payment polling + gift card form data).
-- **useEffect dependency arrays cause silent resets:** An effect with `[selectedId, requests]` that resets form fields will fire every time `requests` gets a new array reference (e.g., from unrelated saves). Narrowing to `[selectedId]` fixed the party deposit amount being silently wiped.
-- **Silent guards hide real bugs:** `if (!value) return` with no error feedback means the user clicks a button and nothing happens. Always surface a toast or error message so the failure is visible.
-- **JavaScript date parsing timezone trap:** `new Date('2026-03-15')` parses as midnight UTC = previous evening in US timezones. Fix: append `'T00:00:00'` to force local timezone interpretation.
-- **Stripe Checkout session status values:** Stripe returns `'paid'` but the DB enum uses `'completed'`. The session-status route correctly maps between them. Expired sessions map to `'failed'`, not a nonexistent `'expired'` enum value.
-- **iOS SMS URL truncation:** URLs containing `#` characters get truncated when sent via SMS on iOS. Solution: create a redirect page (`/pay/[sessionId]`) that sends a clean URL and redirects to the full Stripe URL server-side.
+### March 26 (QA Gauntlet Session)
+- **Playwright MCP + Claude Code = automated QA.** 168 browser tests in ~3 hours. Setup: `claude mcp add playwright npx @playwright/mcp@latest`.
+- **Claude Code auto-approve:** `.claude/settings.json` with `"permissions":{"allow":["mcp__playwright__*","Bash(*)","Write(*)","Read(*)"]}` eliminates permission prompts.
+- **Duplicate Postgres functions don't replace — they overload.** CREATE OR REPLACE only replaces if parameter types match exactly. Different parameter ORDER creates a second function. Named parameter calls then fail with ambiguity.
+- **useEffect dependency arrays can cause infinite loops** when including values that are recalculated by child components (expenseTotals in Event P&L).
+- **useMemo dependency arrays with function references** cause cascade re-renders on hard navigation when the entire component tree remounts with new references.
+- **Supabase .select() with non-existent columns** returns null data silently (no throw), which can mask the real error downstream.
+- **Session-scoped state (sessionStorage)** is better than localStorage for per-session preferences like cash drawer dismiss state.
+
+### March 20-22
+- **SF auto-creates Orders from Closed Won + synced Quote.** Do NOT create manually.
+- **ShippingHandling must ALWAYS be a number** (0 for Will Call, never null).
+- **UTC timezone produces wrong dates after 5pm MST.** Use `toLocaleDateString('en-CA', { timeZone: 'America/Denver' })`.
+- **Unstable createClient() references cause infinite re-render loops.** Wrap in useMemo.
+- **Shopify productType = full strings** ("Permanent Jewelry Chain" not "Chain").
+- **Per-variant Sunstone linking essential** for non-chain products.
+
+### April 8 (Capacitor + Email + Admin Session)
+- **Capacitor remote-URL is correct for server-rendered Next.js.** Static export is impossible with Supabase Auth + Stripe + Twilio. The native shell loads sunstonepj.app in a WebView.
+- **Apple "thin wrapper" rejection risk is real.** Ship push notifications as active native capability before App Store submission.
+- **All subscriptions must remain web-only.** canShowBillingUI() gates native app to avoid Apple IAP requirements. Physical goods reorders are exempt.
+- **Android emulator may not work on Surface tablets.** Hyper-V and virtualization performance can be insufficient. Test on Mac or physical device instead.
+- **Android resource linking fails if colors.xml is missing.** Capacitor's default styles.xml references colors that must be defined.
+- **Behavior-triggered emails beat time-based drips.** Check inventory_count, sale_count, last_owner_login_at instead of just days-since-signup.
+- **admin_tier_override flag lets admins bypass all Stripe/trial logic.** getSubscriptionTier() checks this first and returns the manual tier if set.
+- **Marketing admin role uses existing platform_admins table.** No migration needed — just code-level role filtering in verify-platform-admin.ts and admin-shell.tsx.
+
+### Earlier Sessions
+- **Vercel function logs are the critical debug tool.**
+- **Audit-first prompts produce better results** in Claude Code.
+- **RLS recursion** → SECURITY DEFINER functions.
+- **Revenue = subtotal + tax + tip** (not sale.total).
+- **React stale closures in polling** — pass values as parameters.
+- **useEffect deps cause silent resets** — narrow to actual triggers.
+- **Silent guards hide bugs** — always surface toasts/errors.
+- **Stripe 'paid' → DB 'completed'**, expired → 'failed'.
+- **iOS SMS truncates URLs with #** — use redirect page.
+- **trial_ends_at is single source of truth** — all logic reads dynamically.
 
 ---
 
 ## 13. KEY PROJECT DOCUMENTS
 
-**In Project Knowledge (upload updated versions here):**
-- PROJECT_STATUS_MARCH_2026.md — this document
-- SUNSTONE_STUDIO_ROADMAP_MARCH_2026.md — master roadmap with all tasks detailed
+**In Project Knowledge:**
+- PROJECT_STATUS_MARCH_26.md — THIS document
+- QA_GAUNTLET_MARCH_2026.md — 234-test QA checklist across 20 categories
+- SUNSTONE_STUDIO_ROADMAP_MARCH_2026.md — master roadmap
+- SF_INTEGRATION_PLAYBOOK.md — v2.2, 24 lessons
 - AMBASSADOR_PROGRAM_ROADMAP.md — affiliate program spec
-- STRIPE_TERMINAL_ARCHITECTURE.md — Capacitor + Terminal research and plan
+- STRIPE_TERMINAL_ARCHITECTURE.md — Capacitor + Terminal research
 - CONTROL_THREAD_PROMPT_V4.md — control thread instructions
 - DESIGN_SYSTEM.md — design philosophy and tokens
-- KB_DOCUMENT_*.docx — Sunny's knowledge base (critical, do not remove)
+- SUNNY_KNOWLEDGE_BASE.md — Sunny's full knowledge reference
+- KB_DOCUMENT_*.docx — Sunny's source documents
 
 **In Repo:**
-- docs/PROJECT_STATUS.md — copy of this document
+- docs/project-status.md — copy of this document
 - CLAUDE.md — project-level instructions for Claude Code
-- supabase/migrations/ — 001 through 052
+- .claude/settings.json — Playwright MCP auto-approve config
+- supabase/migrations/ — 001 through 070
 
 ---
 
-*Last updated March 17, 2026 (late evening). Session included: Landing page photo composition fixes (container heights, object-position), hero split layout restored with 60% dashboard column, hero subline updated to clarify product positioning, IMG-154 lifestyle photo swap, all 7 feature screenshots replaced with 3x DPR high-res WebP versions (4.7MB→1.0MB), storefront screenshot confirmed sharp, party booking screenshot upgraded to 3600×3954.*
+*Last updated April 8, 2026. Capacitor native shell built — Android build passing, iOS pending Mac setup. 11 automated lifecycle emails built (8 onboarding + 3 trial). Admin portal upgraded with onboarding journey tracking, manual tier override, trial extension, marketing role, and mobile fixes. Migrations at 070. Apple Developer account renewal + Account Holder transfer pending. Next step: Mac setup → iOS build → push notifications → App Store + Play Store submission.*
