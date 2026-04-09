@@ -122,7 +122,7 @@ export function onboardingInventoryNudge(params: OnboardingEmailParams): { subje
       </p>
       ${ctaButton('Add My Inventory', 'https://sunstonepj.app/dashboard/inventory')}
       <p style="color: #999; font-size: 13px; text-align: center; margin: 16px 0 0;">
-        Need help? Just reply to this email - we're here for you.
+        Questions? Ask Sunny in your Studio dashboard, or email us at <a href="mailto:sales@sunstonewelders.com" style="color: #852454; text-decoration: underline;">sales@sunstonewelders.com</a>
       </p>
     `),
   };
@@ -267,10 +267,10 @@ export function onboardingWeek2Inactive(params: OnboardingEmailParams): { subjec
     html: emailLayout(`
       <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">Hi ${firstName},</p>
       <p style="color: #555; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
-        Sunstone has been in the permanent jewelry world for over 20 years. We built Studio because we saw artists juggling Square, spreadsheets, text messages, and a dozen other tools just to run their business.
+        Running a permanent jewelry business means juggling sales, client follow-ups, inventory tracking, and a dozen other things - all at once.
       </p>
       <p style="color: #555; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
-        Sunstone Studio puts it all in one place - POS, inventory, clients, events, waivers, messaging, and an AI mentor who actually knows permanent jewelry. Built by artists, for artists.
+        That's exactly why we built Sunstone Studio. With 20 years in permanent jewelry, we know what artists need because we've been in the trenches too. POS, inventory, clients, events, waivers, messaging, and an AI mentor who actually knows permanent jewelry - all in one place.
       </p>
       <p style="color: #555; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
         We'd love for you to come back and see what's possible.

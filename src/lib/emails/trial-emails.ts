@@ -88,7 +88,7 @@ export function trialEmail7Day(params: TrialEmailParams): { subject: string; htm
       <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">Hi ${firstName},</p>
       <p style="color: #555; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
         Your free Pro trial for <strong>${params.businessName}</strong> wraps up on <strong>${endDate}</strong>.
-        We hope you've had a chance to explore your POS, manage your client list, and start tracking your inventory.
+        You've seen how easy it is to run your sales, stay connected with clients, and keep your inventory fully under control.
       </p>
       <p style="color: #555; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
         When you subscribe, everything you've built stays exactly where it is - your clients, sales history, events, and settings all carry over seamlessly.
@@ -101,7 +101,7 @@ export function trialEmail7Day(params: TrialEmailParams): { subject: string; htm
       </div>
       ${ctaButton('Choose Your Plan')}
       <p style="color: #999; font-size: 13px; text-align: center; margin: 16px 0 0;">
-        Questions? Just reply to this email - we're here to help.
+        Questions? Ask Sunny in your Studio dashboard, or email us at <a href="mailto:sales@sunstonewelders.com" style="color: #852454; text-decoration: underline;">sales@sunstonewelders.com</a>
       </p>
     `),
   };
@@ -143,7 +143,7 @@ export function trialEmailExpired(params: TrialEmailParams): { subject: string; 
     html: emailLayout(`
       <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">Hi ${firstName},</p>
       <p style="color: #555; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
-        Your free trial for <strong>${params.businessName}</strong> has ended. But don't worry - nothing is lost.
+        Your free trial for <strong>${params.businessName}</strong> has ended. But here's the good news - your data is completely safe and nothing has been deleted.
       </p>
       <div style="background: #F0FDF4; border-radius: 10px; padding: 16px 20px; margin: 20px 0;">
         <p style="color: #15803D; font-size: 14px; font-weight: 600; margin: 0 0 8px;">Everything is exactly how you left it:</p>
