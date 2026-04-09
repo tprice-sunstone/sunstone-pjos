@@ -13,11 +13,12 @@ export interface PlatformAdmin {
 export const ROLE_HIERARCHY: Record<string, number> = {
   super_admin: 4,
   admin: 3,
+  marketing: 2,
   support: 2,
   viewer: 1,
 };
 
-export const VALID_ROLES = ['super_admin', 'admin', 'support', 'viewer'];
+export const VALID_ROLES = ['super_admin', 'admin', 'marketing', 'support', 'viewer'];
 
 /**
  * Verify the current request is from a platform admin.

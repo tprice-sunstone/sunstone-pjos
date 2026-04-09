@@ -18,7 +18,19 @@ export async function GET(
     // Full tenant record — explicit column list to avoid leaking future sensitive fields
     const { data: tenant, error } = await serviceClient
       .from('tenants')
-      .select('id, name, slug, owner_id, subscription_tier, subscription_status, trial_ends_at, stripe_account_id, stripe_customer_id, is_suspended, suspended_at, suspended_reason, crm_enabled, created_at, updated_at, phone, email, website, dedicated_phone_number, dedicated_phone_sid, platform_fee_percent')
+      .select(`
+        id, name, slug, owner_id, subscription_tier, subscription_status, trial_ends_at,
+        stripe_account_id, stripe_customer_id, is_suspended, suspended_at, suspended_reason,
+        crm_enabled, created_at, updated_at, phone, email, website,
+        dedicated_phone_number, dedicated_phone_sid, platform_fee_percent,
+        admin_tier_override, last_owner_login_at,
+        onboarding_welcome_sent_at, onboarding_inventory_nudge_sent_at,
+        onboarding_first_sale_nudge_sent_at, onboarding_week1_active_sent_at,
+        onboarding_week1_inactive_sent_at, onboarding_stripe_nudge_sent_at,
+        onboarding_week2_active_sent_at, onboarding_week2_inactive_sent_at,
+        trial_email_7day_sent_at, trial_email_1day_sent_at,
+        trial_email_expired_sent_at, trial_reactivated_at
+      `)
       .eq('id', id)
       .single();
 
@@ -105,6 +117,23 @@ export async function PATCH(
 
     if (body.crm_enabled !== undefined) {
       update.crm_enabled = Boolean(body.crm_enabled);
+    }
+
+    if (body.trial_ends_at !== undefined) {
+      // Allow setting to a valid ISO date string or null
+      if (body.trial_ends_at !== null) {
+        const parsed = new Date(body.trial_ends_at);
+        if (isNaN(parsed.getTime())) {
+          return NextResponse.json({ error: 'Invalid trial_ends_at date' }, { status: 400 });
+        }
+        update.trial_ends_at = parsed.toISOString();
+      } else {
+        update.trial_ends_at = null;
+      }
+    }
+
+    if (body.admin_tier_override !== undefined) {
+      update.admin_tier_override = Boolean(body.admin_tier_override);
     }
 
     if (Object.keys(update).length === 0) {

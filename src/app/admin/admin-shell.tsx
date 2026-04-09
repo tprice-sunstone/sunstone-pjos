@@ -56,6 +56,7 @@ const OBSIDIAN_VARS: Record<string, string> = {
 const ROLE_LEVEL: Record<string, number> = {
   super_admin: 4,
   admin: 3,
+  marketing: 2,
   support: 2,
   viewer: 1,
 };
@@ -71,23 +72,31 @@ interface NavItem {
   exact?: boolean;
   badge?: boolean;
   requiredRole?: string;
+  /** Roles explicitly denied access even if their level is sufficient */
+  denyRoles?: string[];
+  /** Roles explicitly granted access regardless of level-based checks */
+  allowRoles?: string[];
 }
 
 const allNavItems: NavItem[] = [
   { href: '/admin', label: 'Overview', icon: OverviewIcon, exact: true },
   { href: '/admin/tenants', label: 'Tenants', icon: TenantsIcon },
-  { href: '/admin/revenue', label: 'Revenue', icon: RevenueIcon, requiredRole: 'admin' },
+  { href: '/admin/revenue', label: 'Revenue', icon: RevenueIcon, requiredRole: 'admin', allowRoles: ['marketing'] },
   { href: '/admin/costs', label: 'Costs', icon: CostsIcon, requiredRole: 'admin' },
-  { href: '/admin/spotlight', label: 'Spotlight', icon: SpotlightIcon, requiredRole: 'admin' },
-  { href: '/admin/catalog', label: 'Catalog', icon: CatalogIcon, requiredRole: 'admin' },
-  { href: '/admin/ambassadors', label: 'Ambassadors', icon: AmbassadorsIcon, requiredRole: 'admin' },
-  { href: '/admin/mentor', label: 'Learning', icon: SunnyIcon, badge: true },
+  { href: '/admin/spotlight', label: 'Spotlight', icon: SpotlightIcon, requiredRole: 'admin', allowRoles: ['marketing'] },
+  { href: '/admin/catalog', label: 'Catalog', icon: CatalogIcon, requiredRole: 'admin', allowRoles: ['marketing'] },
+  { href: '/admin/ambassadors', label: 'Ambassadors', icon: AmbassadorsIcon, requiredRole: 'admin', allowRoles: ['marketing'] },
+  { href: '/admin/mentor', label: 'Learning', icon: SunnyIcon, badge: true, denyRoles: ['marketing'] },
   { href: '/admin/team', label: 'Team', icon: TeamIcon, requiredRole: 'super_admin' },
 ];
 
 function filterNavByRole(items: NavItem[], role: string): NavItem[] {
   const userLevel = ROLE_LEVEL[role] ?? 0;
   return items.filter(item => {
+    // Explicit deny takes priority
+    if (item.denyRoles?.includes(role)) return false;
+    // Explicit allow bypasses level check
+    if (item.allowRoles?.includes(role)) return true;
     if (!item.requiredRole) return true;
     return userLevel >= (ROLE_LEVEL[item.requiredRole] ?? 0);
   });

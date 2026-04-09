@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
         id, name, slug, owner_id, subscription_tier, subscription_status, trial_ends_at,
         square_merchant_id, stripe_account_id, stripe_onboarding_complete,
         onboarding_completed, is_suspended, suspended_at, suspended_reason,
-        crm_enabled, brand_color, logo_url, created_at, updated_at
+        crm_enabled, brand_color, logo_url, created_at, updated_at,
+        last_owner_login_at
       `)
       .order('created_at', { ascending: false });
 
@@ -72,6 +73,7 @@ export async function GET(request: NextRequest) {
           : 'None',
       sales_count: salesByTenant[t.id]?.count || 0,
       last_active: salesByTenant[t.id]?.lastSale || null,
+      last_owner_login_at: t.last_owner_login_at || null,
     }));
 
     return NextResponse.json({ tenants: enrichedTenants });

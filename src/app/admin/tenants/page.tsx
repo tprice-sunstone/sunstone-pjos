@@ -23,8 +23,11 @@ interface Tenant {
   crm_enabled: boolean;
   sales_count: number;
   last_active: string | null;
+  last_owner_login_at: string | null;
   created_at: string;
   brand_color: string;
+  admin_tier_override?: boolean;
+  trial_ends_at?: string | null;
 }
 
 interface TenantMember {
@@ -73,7 +76,7 @@ interface Suggestion {
   urgency: number;
 }
 
-type SortKey = 'name' | 'created_at' | 'sales_count' | 'subscription_tier';
+type SortKey = 'name' | 'created_at' | 'sales_count' | 'subscription_tier' | 'last_owner_login_at';
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
@@ -196,6 +199,7 @@ export default function AdminTenantsPage() {
         case 'created_at': cmp = a.created_at.localeCompare(b.created_at); break;
         case 'sales_count': cmp = a.sales_count - b.sales_count; break;
         case 'subscription_tier': cmp = a.subscription_tier.localeCompare(b.subscription_tier); break;
+        case 'last_owner_login_at': cmp = (a.last_owner_login_at || '').localeCompare(b.last_owner_login_at || ''); break;
       }
       return sortAsc ? cmp : -cmp;
     });
@@ -296,17 +300,18 @@ export default function AdminTenantsPage() {
             <thead>
               <tr className="border-b border-[var(--border-subtle)]">
                 <SortHeader label="Business" sortKey="name" current={sortBy} asc={sortAsc} onSort={handleSort} />
-                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Owner</th>
+                <th className="hidden md:table-cell text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Owner</th>
                 <SortHeader label="Plan" sortKey="subscription_tier" current={sortBy} asc={sortAsc} onSort={handleSort} />
-                <SortHeader label="Sales" sortKey="sales_count" current={sortBy} asc={sortAsc} onSort={handleSort} />
-                <SortHeader label="Created" sortKey="created_at" current={sortBy} asc={sortAsc} onSort={handleSort} />
-                <th className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Status</th>
+                <SortHeader label="Last Active" sortKey="last_owner_login_at" current={sortBy} asc={sortAsc} onSort={handleSort} className="hidden sm:table-cell" />
+                <SortHeader label="Sales" sortKey="sales_count" current={sortBy} asc={sortAsc} onSort={handleSort} className="hidden md:table-cell" />
+                <SortHeader label="Created" sortKey="created_at" current={sortBy} asc={sortAsc} onSort={handleSort} className="hidden md:table-cell" />
+                <th className="hidden md:table-cell text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-subtle)]">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-[var(--text-tertiary)]">
+                  <td colSpan={7} className="px-4 py-12 text-center text-[var(--text-tertiary)]">
                     {search ? 'No tenants match your search' : 'No tenants yet'}
                   </td>
                 </tr>
@@ -331,11 +336,14 @@ export default function AdminTenantsPage() {
                       <span className="font-medium text-[var(--text-primary)] truncate max-w-[200px]">{t.name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)] truncate max-w-[200px]">{t.owner_email}</td>
+                  <td className="hidden md:table-cell px-4 py-3 text-[var(--text-secondary)] truncate max-w-[200px]">{t.owner_email}</td>
                   <td className="px-4 py-3"><TierBadge tier={t.subscription_tier} /></td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)]">{t.sales_count}</td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)]">{new Date(t.created_at).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
+                  <td className="hidden sm:table-cell px-4 py-3">
+                    <LastActiveLabel dateStr={t.last_owner_login_at} />
+                  </td>
+                  <td className="hidden md:table-cell px-4 py-3 text-[var(--text-secondary)]">{t.sales_count}</td>
+                  <td className="hidden md:table-cell px-4 py-3 text-[var(--text-secondary)]">{new Date(t.created_at).toLocaleDateString()}</td>
+                  <td className="hidden md:table-cell px-4 py-3">
                     {t.is_suspended ? (
                       <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-500/10 text-red-400">
                         Suspended
@@ -361,7 +369,7 @@ export default function AdminTenantsPage() {
           loading={detailLoading}
           actionLoading={actionLoading === selectedId}
           onClose={() => { setSelectedId(null); setDetail(null); }}
-          onUpdatePlan={tier => updateTenant(selectedId, { subscription_tier: tier })}
+          onUpdateTenant={updates => updateTenant(selectedId, updates)}
           onToggleSuspend={() => updateTenant(selectedId, {
             is_suspended: !selectedTenant.is_suspended,
             suspended_reason: !selectedTenant.is_suspended ? 'Suspended by platform admin' : undefined,
@@ -392,7 +400,7 @@ function TenantProfilePanel({
   loading,
   actionLoading,
   onClose,
-  onUpdatePlan,
+  onUpdateTenant,
   onToggleSuspend,
   onToggleCrm,
   onMessage,
@@ -403,7 +411,7 @@ function TenantProfilePanel({
   loading: boolean;
   actionLoading: boolean;
   onClose: () => void;
-  onUpdatePlan: (tier: string) => void;
+  onUpdateTenant: (updates: Record<string, any>) => void;
   onToggleSuspend: () => void;
   onToggleCrm: () => void;
   onMessage: () => void;
@@ -453,15 +461,27 @@ function TenantProfilePanel({
 
   return (
     <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
+      {/* Backdrop — hidden on mobile (full-screen panel) */}
+      <div className="fixed inset-0 bg-black/50 z-40 hidden md:block" onClick={onClose} />
 
-      {/* Panel */}
-      <div className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-[var(--surface-raised)] border-l border-[var(--border-default)] z-50 overflow-y-auto">
-        {/* Close */}
+      {/* Panel — full-screen on mobile, slide-in on desktop */}
+      <div className="fixed inset-0 md:inset-auto md:right-0 md:top-0 md:bottom-0 md:w-full md:max-w-md bg-[var(--surface-raised)] md:border-l border-[var(--border-default)] z-50 overflow-y-auto">
+        {/* Mobile back button */}
+        <div className="md:hidden flex items-center gap-3 px-4 h-14 border-b border-[var(--border-subtle)] shrink-0">
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <span className="text-sm font-semibold text-[var(--text-primary)] truncate">{tenant.name}</span>
+        </div>
+        {/* Desktop close */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[var(--surface-subtle)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors z-10"
+          className="hidden md:flex absolute top-4 right-4 w-8 h-8 rounded-full bg-[var(--surface-subtle)] items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors z-10"
         >
           <XIcon className="w-4 h-4" />
         </button>
@@ -521,12 +541,17 @@ function TenantProfilePanel({
 
             {/* ── Stats Row ── */}
             {detail && (
-              <div className="grid grid-cols-4 gap-3 px-6 pb-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-6 pb-6">
                 <StatCard label="Revenue" value={formatCurrency(detail.counts.totalRevenue)} />
                 <StatCard label="Sales" value={String(detail.counts.salesCount)} />
                 <StatCard label="Clients" value={String(detail.counts.clients)} />
                 <StatCard label="Members" value={String(detail.counts.members)} />
               </div>
+            )}
+
+            {/* ── Onboarding Journey ── */}
+            {detail?.tenant && (
+              <OnboardingJourney tenant={detail.tenant} />
             )}
 
             {/* ── Team Section ── */}
@@ -571,16 +596,16 @@ function TenantProfilePanel({
               </div>
             )}
 
-            {/* ── Account Details ── */}
+            {/* ── Subscription Management ── */}
             <div ref={accountRef} className="px-6 pb-6">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-3">Account Details</h3>
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-3">Subscription Management</h3>
               <div className="bg-[var(--surface-subtle)] rounded-lg border border-[var(--border-default)] divide-y divide-[var(--border-subtle)]">
                 {/* Plan selector */}
                 <div className="px-4 py-3 flex items-center justify-between">
                   <span className="text-sm text-[var(--text-secondary)]">Plan</span>
                   <select
                     value={tenant.subscription_tier}
-                    onChange={e => onUpdatePlan(e.target.value)}
+                    onChange={e => onUpdateTenant({ subscription_tier: e.target.value })}
                     disabled={actionLoading}
                     className="text-sm border border-[var(--border-default)] rounded-lg px-3 py-1 bg-[var(--surface-raised)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#FF7A00] disabled:opacity-50"
                   >
@@ -588,6 +613,50 @@ function TenantProfilePanel({
                     <option value="pro">Pro</option>
                     <option value="business">Business</option>
                   </select>
+                </div>
+
+                {/* Admin tier override */}
+                <div className="px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <span className="text-sm text-[var(--text-secondary)]">Manual Override</span>
+                    <p className="text-[11px] text-[var(--text-tertiary)]">Ignore payment status</p>
+                  </div>
+                  <button
+                    onClick={() => onUpdateTenant({ admin_tier_override: !detail?.tenant?.admin_tier_override })}
+                    disabled={actionLoading}
+                    className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${
+                      detail?.tenant?.admin_tier_override ? 'bg-[#FF7A00]' : 'bg-[var(--surface-raised)] border border-[var(--border-default)]'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                      detail?.tenant?.admin_tier_override ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+
+                {/* Trial Extension */}
+                {detail?.tenant && (
+                  <TrialExtensionRow
+                    trialEndsAt={detail.tenant.trial_ends_at}
+                    onExtend={(newDate) => onUpdateTenant({ trial_ends_at: newDate })}
+                    disabled={actionLoading}
+                  />
+                )}
+
+                {/* CRM toggle */}
+                <div className="px-4 py-3 flex items-center justify-between">
+                  <span className="text-sm text-[var(--text-secondary)]">CRM Features</span>
+                  <button
+                    onClick={onToggleCrm}
+                    disabled={actionLoading}
+                    className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${
+                      tenant.crm_enabled ? 'bg-[#FF7A00]' : 'bg-[var(--surface-raised)] border border-[var(--border-default)]'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                      tenant.crm_enabled ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </button>
                 </div>
 
                 {/* Suspend toggle */}
@@ -606,27 +675,18 @@ function TenantProfilePanel({
                     {tenant.is_suspended ? 'Unsuspend' : 'Suspend'}
                   </button>
                 </div>
+              </div>
+            </div>
 
-                {/* CRM toggle */}
-                <div className="px-4 py-3 flex items-center justify-between">
-                  <span className="text-sm text-[var(--text-secondary)]">CRM Features</span>
-                  <button
-                    onClick={onToggleCrm}
-                    disabled={actionLoading}
-                    className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${
-                      tenant.crm_enabled ? 'bg-[#FF7A00]' : 'bg-[var(--surface-raised)] border border-[var(--border-default)]'
-                    }`}
-                  >
-                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-                      tenant.crm_enabled ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                </div>
-
+            {/* ── Account Details ── */}
+            <div className="px-6 pb-6">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-3">Account Details</h3>
+              <div className="bg-[var(--surface-subtle)] rounded-lg border border-[var(--border-default)] divide-y divide-[var(--border-subtle)]">
                 <InfoRow label="Payment" value={tenant.payment_processor || 'None'} />
                 <InfoRow label="Slug" value={`/${tenant.slug}`} />
                 <InfoRow label="Onboarded" value={tenant.onboarding_completed ? 'Yes' : 'No'} />
                 <InfoRow label="Created" value={new Date(tenant.created_at).toLocaleDateString()} />
+                <InfoRow label="Last Login" value={detail?.tenant?.last_owner_login_at ? adminRelativeTime(detail.tenant.last_owner_login_at) : 'Never'} />
                 {tenant.is_suspended && tenant.suspended_reason && (
                   <InfoRow label="Suspend Reason" value={tenant.suspended_reason} />
                 )}
@@ -817,7 +877,7 @@ function BroadcastModal({
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />
-      <div className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg bg-[var(--surface-raised)] rounded-xl border border-[var(--border-default)] z-50 overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="fixed inset-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-lg bg-[var(--surface-raised)] md:rounded-xl border border-[var(--border-default)] z-50 overflow-hidden flex flex-col md:max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)]">
           <h2 className="text-lg font-bold text-[var(--text-primary)]">Broadcast to Tenants</h2>
@@ -839,7 +899,7 @@ function BroadcastModal({
                   key={opt}
                   onClick={() => setAudience(opt)}
                   className={cn(
-                    'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border',
+                    'px-4 py-2.5 md:px-3 md:py-1.5 rounded-lg text-sm font-medium transition-colors border min-h-[44px] md:min-h-0',
                     audience === opt
                       ? 'border-[#FF7A00] text-[#FF7A00] bg-[rgba(255,122,0,0.08)]'
                       : 'border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -903,7 +963,7 @@ function BroadcastModal({
                   key={ch}
                   onClick={() => setChannel(ch)}
                   className={cn(
-                    'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors border',
+                    'px-5 py-2.5 md:px-4 md:py-1.5 rounded-lg text-sm font-medium transition-colors border min-h-[44px] md:min-h-0',
                     channel === ch
                       ? 'border-[#FF7A00] text-[#FF7A00] bg-[rgba(255,122,0,0.08)]'
                       : 'border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -964,6 +1024,228 @@ function BroadcastModal({
   );
 }
 
+// ─── Last Active Label ────────────────────────────────────────────────────────
+
+function LastActiveLabel({ dateStr }: { dateStr: string | null }) {
+  if (!dateStr) {
+    return <span className="text-sm font-medium text-amber-400/80">Never</span>;
+  }
+  return <span className="text-sm text-[var(--text-secondary)]">{adminRelativeTime(dateStr)}</span>;
+}
+
+// ─── Onboarding Journey ──────────────────────────────────────────────────────
+
+interface EmailMilestone {
+  label: string;
+  sentAt: string | null;
+  /** For week1/week2 — variant label if applicable */
+  variant?: string;
+  /** Day the email is expected (from signup) */
+  dayTarget: number;
+  /** Whether this is a trial warning email */
+  isTrialWarning?: boolean;
+}
+
+function OnboardingJourney({ tenant }: { tenant: any }) {
+  const createdAt = new Date(tenant.created_at);
+  const now = new Date();
+  const daysSinceSignup = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+
+  // Trial info
+  const trialEndsAt = tenant.trial_ends_at ? new Date(tenant.trial_ends_at) : null;
+  const trialDays = trialEndsAt ? Math.ceil((trialEndsAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)) : 30;
+  const currentTrialDay = Math.min(daysSinceSignup + 1, trialDays + 1);
+  const trialActive = trialEndsAt ? trialEndsAt > now : false;
+
+  // Week 1 check-in: determine which variant was sent
+  const week1Sent = tenant.onboarding_week1_active_sent_at || tenant.onboarding_week1_inactive_sent_at;
+  const week1Variant = tenant.onboarding_week1_active_sent_at ? 'active' : tenant.onboarding_week1_inactive_sent_at ? 'inactive' : undefined;
+
+  // Week 2 check-in
+  const week2Sent = tenant.onboarding_week2_active_sent_at || tenant.onboarding_week2_inactive_sent_at;
+  const week2Variant = tenant.onboarding_week2_active_sent_at ? 'active' : tenant.onboarding_week2_inactive_sent_at ? 'inactive' : undefined;
+
+  const onboardingEmails: EmailMilestone[] = [
+    { label: 'Welcome Email', sentAt: tenant.onboarding_welcome_sent_at, dayTarget: 0 },
+    { label: 'Inventory Nudge', sentAt: tenant.onboarding_inventory_nudge_sent_at, dayTarget: 2 },
+    { label: 'First Sale Nudge', sentAt: tenant.onboarding_first_sale_nudge_sent_at, dayTarget: 4 },
+    { label: 'Week 1 Check-in', sentAt: week1Sent, variant: week1Variant, dayTarget: 7 },
+    { label: 'Stripe Connection Nudge', sentAt: tenant.onboarding_stripe_nudge_sent_at, dayTarget: 10 },
+    { label: 'Week 2 Check-in', sentAt: week2Sent, variant: week2Variant, dayTarget: 14 },
+  ];
+
+  const trialEmails: EmailMilestone[] = [
+    { label: '7-Day Warning', sentAt: tenant.trial_email_7day_sent_at, dayTarget: trialDays - 7, isTrialWarning: true },
+    { label: '1-Day Warning', sentAt: tenant.trial_email_1day_sent_at, dayTarget: trialDays - 1, isTrialWarning: true },
+    { label: 'Trial Expired', sentAt: tenant.trial_email_expired_sent_at, dayTarget: trialDays + 1, isTrialWarning: true },
+  ];
+
+  function getStatus(m: EmailMilestone): { icon: string; color: string; label: string } {
+    if (m.sentAt) {
+      const dateStr = format(new Date(m.sentAt), 'MMM d, h:mma').toLowerCase();
+      const variantStr = m.variant ? ` (${m.variant})` : '';
+      return { icon: '\u2705', color: '#4ADE80', label: `sent ${dateStr}${variantStr}` };
+    }
+    if (daysSinceSignup >= m.dayTarget + 3) {
+      // Window has passed — skipped
+      return { icon: '\u23ED\uFE0F', color: '#6B6560', label: 'skipped' };
+    }
+    return { icon: '\u2B1C', color: '#6B6560', label: `pending (day ${m.dayTarget})` };
+  }
+
+  return (
+    <div className="px-6 pb-6">
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-3">Onboarding Journey</h3>
+
+      {/* Quick stats */}
+      <div className="flex flex-wrap gap-3 mb-3">
+        <div className="text-xs text-[var(--text-secondary)]">
+          <span className="text-[var(--text-tertiary)]">Signed up:</span>{' '}
+          <span className="font-medium">{daysSinceSignup}d ago</span>
+        </div>
+        {trialActive && (
+          <div className="text-xs text-[var(--text-secondary)]">
+            <span className="text-[var(--text-tertiary)]">Trial:</span>{' '}
+            <span className="font-medium">Day {currentTrialDay} of {trialDays}</span>
+          </div>
+        )}
+        <div className="text-xs text-[var(--text-secondary)]">
+          <span className="text-[var(--text-tertiary)]">Last login:</span>{' '}
+          <span className={cn('font-medium', !tenant.last_owner_login_at && 'text-amber-400')}>
+            {tenant.last_owner_login_at ? adminRelativeTime(tenant.last_owner_login_at) : 'Never'}
+          </span>
+        </div>
+      </div>
+
+      <div className="bg-[var(--surface-subtle)] rounded-lg border border-[var(--border-default)] overflow-hidden">
+        {/* Onboarding emails */}
+        {onboardingEmails.map((m, i) => {
+          const status = getStatus(m);
+          return (
+            <div key={i} className={cn('px-4 py-2 flex items-start gap-3 text-sm', i > 0 && 'border-t border-[var(--border-subtle)]')}>
+              <span className="shrink-0 text-xs mt-0.5">{status.icon}</span>
+              <div className="flex-1 min-w-0">
+                <span className="text-[var(--text-primary)] font-medium">{m.label}</span>
+                <span className="text-[var(--text-tertiary)] text-xs ml-2">{status.label}</span>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Divider */}
+        <div className="px-4 py-1.5 bg-[var(--surface-raised)] border-t border-[var(--border-subtle)]">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Trial Warnings</span>
+        </div>
+
+        {/* Trial emails */}
+        {trialEmails.map((m, i) => {
+          const status = getStatus(m);
+          return (
+            <div key={`trial-${i}`} className="px-4 py-2 flex items-start gap-3 text-sm border-t border-[var(--border-subtle)]">
+              <span className="shrink-0 text-xs mt-0.5">{status.icon}</span>
+              <div className="flex-1 min-w-0">
+                <span className="text-[var(--text-primary)] font-medium">{m.label}</span>
+                <span className="text-[var(--text-tertiary)] text-xs ml-2">{status.label}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Trial Extension Row ─────────────────────────────────────────────────────
+
+function TrialExtensionRow({
+  trialEndsAt,
+  onExtend,
+  disabled,
+}: {
+  trialEndsAt: string | null;
+  onExtend: (newDate: string) => void;
+  disabled: boolean;
+}) {
+  const [showPicker, setShowPicker] = useState(false);
+  const [customDate, setCustomDate] = useState('');
+
+  const currentEnd = trialEndsAt ? new Date(trialEndsAt) : null;
+  const isExpired = currentEnd ? currentEnd <= new Date() : true;
+
+  function handleQuickExtend(days: number) {
+    const base = currentEnd && currentEnd > new Date() ? currentEnd : new Date();
+    const newEnd = new Date(base);
+    newEnd.setDate(newEnd.getDate() + days);
+    onExtend(newEnd.toISOString());
+    setShowPicker(false);
+  }
+
+  function handleCustomDate() {
+    if (customDate) {
+      onExtend(new Date(customDate + 'T23:59:59').toISOString());
+      setShowPicker(false);
+      setCustomDate('');
+    }
+  }
+
+  return (
+    <div className="px-4 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <span className="text-sm text-[var(--text-secondary)]">Trial Ends</span>
+          <p className="text-xs text-[var(--text-tertiary)]">
+            {currentEnd
+              ? isExpired
+                ? `Expired ${format(currentEnd, 'MMM d, yyyy')}`
+                : format(currentEnd, 'MMM d, yyyy')
+              : 'No trial set'}
+          </p>
+        </div>
+        <button
+          onClick={() => setShowPicker(!showPicker)}
+          disabled={disabled}
+          className="px-3 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+          style={{ color: '#FF7A00', backgroundColor: 'rgba(255, 122, 0, 0.12)' }}
+        >
+          Extend
+        </button>
+      </div>
+      {showPicker && (
+        <div className="space-y-2 mt-2">
+          <div className="flex flex-wrap gap-2">
+            {[7, 14, 30].map(days => (
+              <button
+                key={days}
+                onClick={() => handleQuickExtend(days)}
+                disabled={disabled}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[#FF7A00] transition-colors disabled:opacity-50"
+              >
+                +{days} days
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={customDate}
+              onChange={e => setCustomDate(e.target.value)}
+              className="flex-1 px-2 py-1.5 text-xs border border-[var(--border-default)] rounded-lg bg-[var(--surface-raised)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#FF7A00]"
+            />
+            <button
+              onClick={handleCustomDate}
+              disabled={disabled || !customDate}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg text-white disabled:opacity-50"
+              style={{ backgroundColor: '#FF7A00' }}
+            >
+              Set
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Helper Components ───────────────────────────────────────────────────────
 
 function QuickAction({
@@ -1019,14 +1301,14 @@ function TierBadge({ tier }: { tier: string }) {
 }
 
 function SortHeader({
-  label, sortKey, current, asc, onSort,
+  label, sortKey, current, asc, onSort, className,
 }: {
-  label: string; sortKey: SortKey; current: SortKey; asc: boolean; onSort: (key: SortKey) => void;
+  label: string; sortKey: SortKey; current: SortKey; asc: boolean; onSort: (key: SortKey) => void; className?: string;
 }) {
   const active = current === sortKey;
   return (
     <th
-      className="text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3 cursor-pointer hover:text-[var(--text-primary)] transition-colors select-none"
+      className={cn("text-left text-xs font-medium text-[var(--text-secondary)] px-4 py-3 cursor-pointer hover:text-[var(--text-primary)] transition-colors select-none", className)}
       onClick={() => onSort(sortKey)}
     >
       <span className="inline-flex items-center gap-1">

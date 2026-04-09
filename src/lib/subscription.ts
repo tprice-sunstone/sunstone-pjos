@@ -56,6 +56,7 @@ interface TenantSubscriptionFields {
   subscription_status: SubscriptionStatus;
   trial_ends_at: string | null;
   subscription_period_end: string | null;
+  admin_tier_override?: boolean;
 }
 
 // ============================================================================
@@ -67,6 +68,11 @@ interface TenantSubscriptionFields {
  * If trialing but trial has expired, returns 'starter'.
  */
 export function getSubscriptionTier(tenant: TenantSubscriptionFields): SubscriptionTier {
+  // Admin override — skip all Stripe/trial logic
+  if (tenant.admin_tier_override && tenant.subscription_tier) {
+    return tenant.subscription_tier;
+  }
+
   if (tenant.subscription_status === 'trialing') {
     if (!tenant.trial_ends_at) return 'starter';
     const trialEnd = new Date(tenant.trial_ends_at);
