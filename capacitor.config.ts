@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.sunstonepj.studio',
+  appId: 'com.sunstoneengineering.studio',
   appName: 'Sunstone Studio',
 
   // Remote URL — the app loads from Vercel, not bundled assets

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "989346051520",
+    "project_id": "sunstone-studio",
+    "storage_bucket": "sunstone-studio.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:989346051520:android:0a86e96476cedf2570c425",
+        "android_client_info": {
+          "package_name": "app.sunstonepj.studio"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVAvdSgRvv3lBy03E_NIFSKykYX5bb3QU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
