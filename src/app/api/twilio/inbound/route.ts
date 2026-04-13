@@ -10,6 +10,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { normalizePhone, normalizePhoneDigits, validateTwilioWebhook, sendSMS } from '@/lib/twilio';
 import { logSmsCost, logAnthropicCost } from '@/lib/cost-tracker';
+import { sendMulticastNotification } from '@/lib/firebase-admin';
 
 const TWIML_EMPTY = '<Response></Response>';
 
@@ -139,6 +140,11 @@ export async function POST(request: NextRequest) {
 
     // Log cost
     logSmsCost({ tenantId: tenant.id, operation: 'sms_inbound' });
+
+    // ── Push notification to tenant devices (fire-and-forget) ──
+    notifyTenantOfInbound(tenant.id, clientId, normalizedFrom, body.trim(), supabase).catch((err) =>
+      console.warn('[Inbound] Push notification failed:', err?.message)
+    );
 
     // ── Auto-reply (event mode) ──
     if (tenant.auto_reply_enabled && tenant.auto_reply_message) {
@@ -377,4 +383,63 @@ async function generateSunnySuggestion(
     model: 'claude-sonnet-4-20250514',
     usage: response.usage,
   });
+}
+
+// ============================================================================
+// Push Notification Helper
+// ============================================================================
+
+async function notifyTenantOfInbound(
+  tenantId: string,
+  clientId: string | null,
+  clientPhone: string,
+  messageBody: string,
+  supabase: any
+) {
+  // Look up active push tokens for this tenant
+  const { data: tokenRows } = await supabase
+    .from('push_device_tokens')
+    .select('token')
+    .eq('tenant_id', tenantId)
+    .eq('is_active', true);
+
+  const tokens = (tokenRows || []).map((r: { token: string }) => r.token);
+  if (tokens.length === 0) return;
+
+  // Resolve a display name for the sender
+  let senderName = clientPhone;
+  if (clientId) {
+    const { data: client } = await supabase
+      .from('clients')
+      .select('first_name, last_name')
+      .eq('id', clientId)
+      .single();
+    const full = [client?.first_name, client?.last_name].filter(Boolean).join(' ').trim();
+    if (full) senderName = full;
+  }
+
+  const preview = messageBody.length > 140 ? messageBody.slice(0, 137) + '...' : messageBody;
+
+  const result = await sendMulticastNotification({
+    tokens,
+    title: `New message from ${senderName}`,
+    body: preview,
+    data: {
+      type: 'new_message',
+      ...(clientId ? { clientId } : {}),
+      phoneNumber: clientPhone,
+    },
+  });
+
+  // Deactivate dead tokens so we stop sending to them
+  const deadTokens = result.results
+    .filter((r) => r.errorCode === 'messaging/registration-token-not-registered')
+    .map((r) => r.token);
+
+  if (deadTokens.length > 0) {
+    await supabase
+      .from('push_device_tokens')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .in('token', deadTokens);
+  }
 }

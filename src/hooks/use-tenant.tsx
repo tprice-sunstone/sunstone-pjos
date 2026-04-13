@@ -19,6 +19,7 @@ import {
 } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { hasPermission, type Permission, type TenantRole } from '@/lib/permissions';
+import { initPushNotifications } from '@/lib/push-notifications';
 import type { Tenant, TenantMember } from '@/types';
 
 interface TenantContextValue {
@@ -123,6 +124,16 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchTenant();
   }, [fetchTenant]);
+
+  // Initialize native push notifications once a tenant is confirmed.
+  // initPushNotifications() is idempotent and no-ops on web.
+  useEffect(() => {
+    if (tenant) {
+      initPushNotifications().catch((err) => {
+        console.warn('[push] init error:', err?.message);
+      });
+    }
+  }, [tenant]);
 
   // ── Derived values ────────────────────────────────────────────────────
   const isOwner = !!(tenant && membership && tenant.owner_id === membership.user_id)
