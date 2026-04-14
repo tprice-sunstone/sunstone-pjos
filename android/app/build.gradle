@@ -4,7 +4,7 @@ android {
     namespace = "app.sunstonepj.studio"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "app.sunstonepj.studio"
+        applicationId "com.sunstoneengineering.studio"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

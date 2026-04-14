@@ -9,7 +9,12 @@
       "Bash(npx tsc:*)",
       "Bash(echo \"EXIT=$?\")",
       "Bash(git stash:*)",
-      "Bash(npx cap:*)"
+      "Bash(npx cap:*)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(awk '/^function InventoryItemForm/,/^function [A-Z]/ { print NR\": \"$0 }' /Users/meganatwood/sunstone-pjos/src/app/dashboard/inventory/page.tsx)",
+      "Bash(xargs cat:*)",
+      "Bash(./gradlew assembleDebug)",
+      "Bash(chmod +x /Users/meganatwood/sunstone-pjos/android/gradlew)"
     ]
   }
 }

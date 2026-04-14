@@ -53,5 +53,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+<key>ITSAppUsesNonExemptEncryption</key>
+<false/>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Sunstone Studio needs access to your photo library to save and upload photos.</string>
 </dict>
 </plist>
