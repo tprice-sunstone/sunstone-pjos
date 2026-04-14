@@ -160,7 +160,7 @@ export default function CartDrawer({ onSwitchToShop }: CartDrawerProps) {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-[var(--border-default)] px-5 py-4 space-y-3">
+            <div className="border-t border-[var(--border-default)] px-5 py-4 space-y-3 modal-footer-safe">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-[var(--text-secondary)]">Subtotal</span>
                 <span className="text-lg font-bold text-[var(--text-primary)]">${subtotal.toFixed(2)}</span>

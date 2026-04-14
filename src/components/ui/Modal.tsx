@@ -171,7 +171,7 @@ export function ModalFooter({ className, ...props }: HTMLAttributes<HTMLDivEleme
   return (
     <div
       className={cn(
-        'px-6 pb-6 pt-4 flex items-center justify-end gap-3 border-t border-[var(--border-subtle)]',
+        'px-6 pb-6 pt-4 flex items-center justify-end gap-3 border-t border-[var(--border-subtle)] modal-footer-safe',
         className
       )}
       {...props}

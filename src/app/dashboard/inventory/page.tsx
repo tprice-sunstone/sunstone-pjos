@@ -3199,7 +3199,7 @@ function InventoryItemForm({ tenant, editingItem, onClose, onSaved, onDelete }: 
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-[var(--surface-overlay)] rounded-b-2xl border-t border-[var(--border-subtle)] px-6 py-4 flex items-center gap-3">
+        <div className="sticky bottom-0 bg-[var(--surface-overlay)] rounded-b-2xl border-t border-[var(--border-subtle)] px-6 py-4 flex items-center gap-3 modal-footer-safe">
           {isEditing && editingItem && onDelete && (
             <button
               type="button"
