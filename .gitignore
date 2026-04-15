@@ -41,6 +41,7 @@ next-env.d.ts
 # Capacitor native builds
 android/app/build/
 android/.gradle/
+android/sunstone-release.keystore
 ios/App/Pods/
 ios/DerivedData/
 www/

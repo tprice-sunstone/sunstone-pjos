@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:989346051520:android:0a86e96476cedf2570c425",
+        "mobilesdk_app_id": "1:989346051520:android:1995b29ba5b74e4f70c425",
         "android_client_info": {
-          "package_name": "app.sunstonepj.studio"
+          "package_name": "com.sunstoneengineering.studio"
         }
       },
       "oauth_client": [],
