@@ -114,7 +114,7 @@ export default function TransactionList({ sales, loading, compact }: Transaction
         <thead>
           <tr className="border-b border-[var(--border-default)]">
             <th className="text-left py-2.5 px-3 text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wide w-8" />
-            <th className="text-left py-2.5 px-3 text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wide">Time</th>
+            <th className="text-left py-2.5 px-3 text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wide">Date</th>
             <th className="text-left py-2.5 px-3 text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wide">Client</th>
             {!compact && (
               <th className="text-left py-2.5 px-3 text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wide hidden md:table-cell">Items</th>
@@ -129,7 +129,7 @@ export default function TransactionList({ sales, loading, compact }: Transaction
             const isExpanded = expandedId === sale.id;
             const items = sale.sale_items || [];
             const itemsSummary = items.map((i) => i.name).join(', ');
-            const time = format(new Date(sale.created_at), 'h:mm a');
+            const time = format(new Date(sale.created_at), 'MMM d · h:mm a');
 
             return (
               <>
