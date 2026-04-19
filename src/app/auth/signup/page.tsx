@@ -80,6 +80,7 @@ function SignupForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: authData.user.id,
+          email: authData.user.email,
           businessName: businessName.trim(),
           firstName: firstName.trim(),
           referralCode: referralCode || undefined,

@@ -7,7 +7,7 @@
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase, createServiceRoleClient } from '@/lib/supabase/server';
+import { createServiceRoleClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 import { provisionPhoneNumber, sendSMS } from '@/lib/twilio';
 import { sendReferralSignupEmail } from '@/lib/ambassador-emails';
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
-    const { userId, businessName, firstName, referralCode } = await request.json();
+    const { userId, businessName, firstName, referralCode, email } = await request.json();
 
     if (!userId || !businessName) {
       return NextResponse.json(
@@ -33,15 +33,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Verify caller identity — userId must match the authenticated user ──
-    const authClient = await createServerSupabase();
-    const { data: { user } } = await authClient.auth.getUser();
-    if (!user || user.id !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
     // Use service role client — bypasses RLS entirely
     const supabase = await createServiceRoleClient();
+
+    // ── Verify user exists in Supabase Auth via service role ──
+    // When email confirmation is enabled, auth.signUp() does not create a session,
+    // so cookie-based auth checks fail. Instead, verify userId via admin API.
+    const { data: authUser, error: authLookupError } = await supabase.auth.admin.getUserById(userId);
+    if (authLookupError || !authUser?.user) {
+      console.error('[signup] User not found in auth:', userId, authLookupError);
+      return NextResponse.json({ error: 'Invalid user' }, { status: 400 });
+    }
+
+    // Security: if the client sent an email, verify it matches the auth record
+    if (email && authUser.user.email?.toLowerCase() !== email.toLowerCase()) {
+      console.error('[signup] Email mismatch for userId:', userId);
+      return NextResponse.json({ error: 'Email mismatch' }, { status: 400 });
+    }
+
+    const user = authUser.user;
 
     // Create slug from business name
     const slug =
