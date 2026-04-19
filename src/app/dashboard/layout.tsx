@@ -21,7 +21,8 @@ import QuickReplyToast from '@/components/QuickReplyToast';
 import DemoBanner from '@/components/DemoBanner';
 import { getSubscriptionTier, isTrialActive } from '@/lib/subscription';
 import { getCrmStatus } from '@/lib/crm-status';
-import { canShowBillingUI, BILLING_WEB_URL } from '@/lib/billing-gate';
+import { canShowBillingUI } from '@/lib/billing-gate';
+import NativeInactiveOverlay from '@/components/NativeInactiveOverlay';
 
 // ============================================================================
 // Unread message count hook (polls every 30s)
@@ -851,6 +852,9 @@ function TrialBanner() {
 
   if (!tenant) return null;
 
+  // Hide trial banners entirely on native — no pricing/upgrade messaging allowed
+  if (!canShowBillingUI()) return null;
+
   const trialActive = isTrialActive(tenant);
   const hasActiveSubscription = tenant.subscription_status === 'active';
 
@@ -903,21 +907,12 @@ function TrialBanner() {
           </svg>
           <span className="font-medium">{message}</span>
         </div>
-        {canShowBillingUI() ? (
-          <Link
-            href="/dashboard/settings?tab=subscription"
-            className={`shrink-0 ml-4 text-sm font-semibold ${textClass} hover:underline underline-offset-2`}
-          >
-            {buttonLabel}
-          </Link>
-        ) : (
-          <button
-            onClick={() => window.open(BILLING_WEB_URL, '_blank')}
-            className={`shrink-0 ml-4 text-sm font-semibold ${textClass} hover:underline underline-offset-2`}
-          >
-            {buttonLabel}
-          </button>
-        )}
+        <Link
+          href="/dashboard/settings?tab=subscription"
+          className={`shrink-0 ml-4 text-sm font-semibold ${textClass} hover:underline underline-offset-2`}
+        >
+          {buttonLabel}
+        </Link>
       </div>
     );
   }
@@ -1053,27 +1048,7 @@ function TrialExpiredOverlay() {
             </div>
           </>
         ) : (
-          <>
-            {/* Native app — redirect to web for billing */}
-            <p className="text-sm text-[var(--text-secondary)]">
-              To choose a plan, visit sunstonepj.app in your browser.
-            </p>
-            <button
-              onClick={() => window.open(BILLING_WEB_URL, '_blank')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent-primary)] text-white font-semibold text-sm hover:opacity-90 transition-opacity"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-              </svg>
-              Manage Subscription
-            </button>
-            <button
-              onClick={handleSignOut}
-              className="text-sm text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-            >
-              Sign Out
-            </button>
-          </>
+          <NativeInactiveOverlay />
         )}
       </div>
     </div>
