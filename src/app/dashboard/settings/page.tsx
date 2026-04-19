@@ -328,6 +328,33 @@ function SettingsPage() {
     setOpenSection((prev) => (prev === id ? null : id));
   };
 
+  // ── Account deletion ──
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      const res = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmation: 'DELETE' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Failed to delete account');
+        return;
+      }
+      toast.success('Account deleted');
+      window.location.href = '/auth/login';
+    } catch {
+      toast.error('An error occurred while deleting your account');
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   // ── Business info ──
   const [businessName, setBusinessName] = useState('');
   const [businessPhone, setBusinessPhone] = useState('');
@@ -2591,6 +2618,71 @@ function SettingsPage() {
           </div>
         </div>
       </AccordionSection>
+
+      {/* ================================================================ */}
+      {/* Delete Account                                                    */}
+      {/* ================================================================ */}
+      <div className="mt-8 border border-error-200 rounded-2xl p-5 bg-[var(--surface-base)]">
+        <div className="flex items-start gap-3">
+          <svg className="w-5 h-5 text-error-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
+          </svg>
+          <div className="flex-1">
+            <h3 className="text-base font-semibold text-error-600">Delete Account</h3>
+            <p className="text-sm text-[var(--text-secondary)] mt-1">
+              Permanently delete your Sunstone Studio account. This action cannot be undone. Financial records may be retained for legal and tax purposes.
+            </p>
+            <Button
+              variant="danger"
+              size="sm"
+              className="mt-3"
+              onClick={() => setShowDeleteAccountModal(true)}
+            >
+              Delete My Account
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal isOpen={showDeleteAccountModal} onClose={() => { setShowDeleteAccountModal(false); setDeleteConfirmText(''); }} size="sm">
+        <ModalHeader>
+          <h2 className="text-lg font-semibold text-error-600">Delete Account?</h2>
+        </ModalHeader>
+        <ModalBody className="space-y-4">
+          <div className="bg-error-50 border border-error-200 rounded-xl p-4">
+            <p className="text-sm text-error-600 font-medium">This is permanent and cannot be undone.</p>
+            <ul className="mt-2 text-sm text-error-600 list-disc list-inside space-y-1">
+              {isOwner && <li>Your entire business account will be deleted</li>}
+              {isOwner && <li>All team members will lose access</li>}
+              <li>Your subscription will be canceled</li>
+              <li>You will be signed out immediately</li>
+            </ul>
+          </div>
+          <Input
+            label='Type "DELETE" to confirm'
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            placeholder="DELETE"
+          />
+        </ModalBody>
+        <ModalFooter>
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" size="sm" onClick={() => { setShowDeleteAccountModal(false); setDeleteConfirmText(''); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={deleteConfirmText !== 'DELETE' || deletingAccount}
+              loading={deletingAccount}
+              onClick={handleDeleteAccount}
+            >
+              Delete Permanently
+            </Button>
+          </div>
+        </ModalFooter>
+      </Modal>
 
       {/* ================================================================ */}
       {/* Invite Modal                                                     */}
