@@ -77,6 +77,13 @@ function LoginPageInner() {
           </p>
         </div>
 
+        {/* Account deleted confirmation */}
+        {searchParams.get('deleted') === '1' && (
+          <div className="mb-4 rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800 text-center">
+            Your account has been deleted.
+          </div>
+        )}
+
         {/* Login Card */}
         <div className="bg-surface-raised border border-border-default rounded-xl p-8 shadow-sm">
           <form onSubmit={handleLogin} className="space-y-5">

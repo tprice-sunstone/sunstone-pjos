@@ -346,8 +346,14 @@ function SettingsPage() {
         toast.error(data.error || 'Failed to delete account');
         return;
       }
+
+      // Sign out client-side to clear Supabase session cookies.
+      // Without this, the browser retains auth cookies and middleware
+      // redirects the user back to /dashboard instead of /auth/login.
+      await supabase.auth.signOut();
+
       toast.success('Account deleted');
-      window.location.href = '/auth/login';
+      window.location.replace('/auth/login?deleted=1');
     } catch {
       toast.error('An error occurred while deleting your account');
     } finally {

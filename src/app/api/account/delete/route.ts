@@ -35,7 +35,14 @@ export async function POST(request: NextRequest) {
 
     if (!member) {
       // No membership — just delete the auth user
-      await serviceClient.auth.admin.deleteUser(user.id);
+      const { error: deleteAuthError } = await serviceClient.auth.admin.deleteUser(user.id);
+      if (deleteAuthError) {
+        console.error('[AccountDelete] Failed to delete auth user:', deleteAuthError);
+        return NextResponse.json(
+          { error: 'Account data removed but sign-out failed. Please contact support.' },
+          { status: 500 }
+        );
+      }
       return NextResponse.json({ ok: true, scope: 'self' });
     }
 
@@ -126,7 +133,14 @@ export async function POST(request: NextRequest) {
         }
 
         // Delete the auth user
-        await serviceClient.auth.admin.deleteUser(user.id);
+        const { error: deleteAuthError } = await serviceClient.auth.admin.deleteUser(user.id);
+        if (deleteAuthError) {
+          console.error('[AccountDelete] Failed to delete auth user:', deleteAuthError);
+          return NextResponse.json(
+            { error: 'Account data removed but sign-out failed. Please contact support.' },
+            { status: 500 }
+          );
+        }
 
         return NextResponse.json({ ok: true, scope: 'tenant' });
       }
@@ -140,7 +154,14 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id);
 
     // Delete the auth user
-    await serviceClient.auth.admin.deleteUser(user.id);
+    const { error: deleteAuthError } = await serviceClient.auth.admin.deleteUser(user.id);
+    if (deleteAuthError) {
+      console.error('[AccountDelete] Failed to delete auth user:', deleteAuthError);
+      return NextResponse.json(
+        { error: 'Account data removed but sign-out failed. Please contact support.' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ ok: true, scope: 'self' });
   } catch (error: any) {
