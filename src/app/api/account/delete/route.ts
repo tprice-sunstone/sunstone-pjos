@@ -34,7 +34,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!member) {
-      // No membership — just delete the auth user
+      // No membership — break any stale FK links, then delete the auth user
+      await serviceClient.from('tenants').update({ owner_id: null }).eq('owner_id', user.id);
+
       const { error: deleteAuthError } = await serviceClient.auth.admin.deleteUser(user.id);
       if (deleteAuthError) {
         console.error('[AccountDelete] Failed to delete auth user:', deleteAuthError);
@@ -110,10 +112,17 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Soft-delete tenant
+        // Soft-delete tenant, recording who initiated it
         await serviceClient
           .from('tenants')
           .update({ deleted_at: now, deleted_by: user.id })
+          .eq('id', member.tenant_id);
+
+        // Break FK links to auth.users so deleteUser() won't hit constraint
+        // (owner_id and deleted_by both reference auth.users via FK)
+        await serviceClient
+          .from('tenants')
+          .update({ owner_id: null, deleted_by: null })
           .eq('id', member.tenant_id);
 
         // Soft-delete all members + anonymize PII
@@ -152,6 +161,13 @@ export async function POST(request: NextRequest) {
       .update({ deleted_at: now })
       .eq('tenant_id', member.tenant_id)
       .eq('user_id', user.id);
+
+    // Break FK on tenants.owner_id if this user happens to be the owner
+    await serviceClient
+      .from('tenants')
+      .update({ owner_id: null })
+      .eq('id', member.tenant_id)
+      .eq('owner_id', user.id);
 
     // Delete the auth user
     const { error: deleteAuthError } = await serviceClient.auth.admin.deleteUser(user.id);
