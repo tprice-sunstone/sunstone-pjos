@@ -11,7 +11,6 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 import { provisionPhoneNumber, sendSMS } from '@/lib/twilio';
 import { sendReferralSignupEmail } from '@/lib/ambassador-emails';
-import { sendOnboardingEmail } from '@/lib/emails/onboarding-emails';
 
 const RATE_LIMIT = { prefix: 'signup', limit: 5, windowSeconds: 300 };
 
@@ -194,37 +193,12 @@ export async function POST(request: NextRequest) {
       console.warn('[Signup] Auto-provision phone failed:', err.message)
     );
 
-    // 6. Send welcome onboarding email immediately (non-blocking)
+    // 6. Welcome email is now sent after email confirmation (in /auth/callback)
+
+    // 7. Send Sunny welcome SMS if artist has a phone number (non-blocking)
     const parsedFirst = firstName
       ? firstName.trim().split(/\s+/)[0] || firstName.trim()
       : null;
-    const ownerEmail = user.email;
-
-    if (ownerEmail) {
-      (async () => {
-        try {
-          await sendOnboardingEmail(
-            {
-              businessName,
-              ownerEmail,
-              ownerFirstName: parsedFirst,
-              tenantCreatedAt: new Date(),
-            },
-            'welcome'
-          );
-          // Mark as sent so cron doesn't re-send
-          await supabase
-            .from('tenants')
-            .update({ onboarding_welcome_sent_at: new Date().toISOString() })
-            .eq('id', tenant.id);
-          console.log(`[Signup] Welcome email sent to ${ownerEmail}`);
-        } catch (emailErr: any) {
-          console.warn('[Signup] Welcome email failed (non-fatal):', emailErr.message);
-        }
-      })();
-    }
-
-    // 7. Send Sunny welcome SMS if artist has a phone number (non-blocking)
     const artistPhone = user.phone || (user.user_metadata?.phone as string);
     if (artistPhone) {
       (async () => {
