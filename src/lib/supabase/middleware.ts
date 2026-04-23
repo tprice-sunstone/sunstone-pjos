@@ -67,6 +67,60 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // ---------------------------------------------------------------------------
+  // Native subscription lockout — silently destroy session for expired users.
+  // Apple Build 4: The app must be completely subscription-blind. If the user's
+  // subscription is expired on native, we wipe their session so they land on a
+  // clean login screen with zero billing/subscription messaging.
+  // Only applies to native + authenticated + dashboard routes.
+  // Fails open: if the DB query errors, let the user through.
+  // ---------------------------------------------------------------------------
+  if (isNative && user && path.startsWith('/dashboard')) {
+    try {
+      const { data: member } = await supabase
+        .from('tenant_members')
+        .select('tenant_id, tenants(subscription_status, trial_ends_at, stripe_subscription_id, admin_tier_override)')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+
+      const tenant = (member as any)?.tenants;
+
+      if (tenant) {
+        const hasActiveSubscription =
+          tenant.subscription_status === 'active' ||
+          tenant.subscription_status === 'past_due';
+        const hasStripeSubscription = !!tenant.stripe_subscription_id;
+        const isTrialing =
+          tenant.subscription_status === 'trialing' &&
+          tenant.trial_ends_at &&
+          new Date(tenant.trial_ends_at) > new Date();
+        const hasAdminOverride = !!tenant.admin_tier_override;
+
+        // If none of the "allow" conditions are met, lock them out
+        if (!hasActiveSubscription && !hasStripeSubscription && !isTrialing && !hasAdminOverride) {
+          // Destroy auth session by clearing Supabase cookies
+          const url = request.nextUrl.clone();
+          url.pathname = '/auth/login';
+          url.search = '';
+          const redirectResponse = NextResponse.redirect(url);
+
+          // Delete all Supabase auth cookies to destroy the session
+          for (const cookie of request.cookies.getAll()) {
+            if (cookie.name.startsWith('sb-')) {
+              redirectResponse.cookies.delete(cookie.name);
+            }
+          }
+
+          return redirectResponse;
+        }
+      }
+      // If no tenant found (e.g. still in onboarding), let them through
+    } catch {
+      // Fail open — don't lock out paying customers due to a DB error
+    }
+  }
+
   // Redirect unauthenticated users to login (except public routes)
   const isPublicRoute =
     request.nextUrl.pathname.startsWith('/auth') ||

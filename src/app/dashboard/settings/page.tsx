@@ -39,7 +39,7 @@ import { getCrmStatus } from '@/lib/crm-status';
 import SunnyTutorial from '@/components/SunnyTutorial';
 import ProductTypesSection from '@/components/settings/ProductTypesSection';
 import SuppliersSection from '@/components/settings/SuppliersSection';
-import { canShowBillingUI, NATIVE_SUPPORT_EMAIL, NATIVE_INACTIVE_MESSAGE } from '@/lib/billing-gate';
+import { canShowBillingUI } from '@/lib/billing-gate';
 
 // ============================================================================
 // Constants
@@ -1495,9 +1495,9 @@ function SettingsPage() {
       </AccordionSection>
 
       {/* ================================================================ */}
-      {/* Section 3: Plan & Billing                                        */}
+      {/* Section 3: Plan & Billing (hidden entirely on native iOS/Android) */}
       {/* ================================================================ */}
-      <AccordionSection
+      {canShowBillingUI() && <AccordionSection
         icon={IconBilling}
         title="Plan & Billing"
         summary={billingSummary}
@@ -1555,18 +1555,9 @@ function SettingsPage() {
                   <p className="text-sm text-error-600 mt-1">
                     Your last payment didn&apos;t go through. Please update your payment method to keep your subscription active.
                   </p>
-                  {canShowBillingUI() ? (
-                    <Button variant="danger" className="mt-3" onClick={handleManageSubscription}>
-                      Update Payment Method
-                    </Button>
-                  ) : (
-                    <a
-                      href={`mailto:${NATIVE_SUPPORT_EMAIL}`}
-                      className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-error-600 hover:underline"
-                    >
-                      Contact Support
-                    </a>
-                  )}
+                  <Button variant="danger" className="mt-3" onClick={handleManageSubscription}>
+                    Update Payment Method
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1584,11 +1575,9 @@ function SettingsPage() {
                 </span>
                 <span className="text-xs text-success-600 font-medium">Active</span>
               </div>
-              {canShowBillingUI() && (
-                <Button variant="secondary" onClick={handleManageSubscription}>
-                  Manage Subscription
-                </Button>
-              )}
+              <Button variant="secondary" onClick={handleManageSubscription}>
+                Manage Subscription
+              </Button>
             </div>
           )}
 
@@ -1597,23 +1586,13 @@ function SettingsPage() {
             <div className="bg-error-50 border border-error-200 rounded-2xl p-5">
               <h3 className="text-base font-semibold text-error-600">No Active Plan</h3>
               <p className="text-sm text-error-600 mt-1">
-                {canShowBillingUI()
-                  ? 'Your trial has ended. Choose a plan below to unlock your POS, CRM, reports, and all features. Your data is safe and waiting.'
-                  : NATIVE_INACTIVE_MESSAGE}
+                Your trial has ended. Choose a plan below to unlock your POS, CRM, reports, and all features. Your data is safe and waiting.
               </p>
-              {!canShowBillingUI() && (
-                <a
-                  href={`mailto:${NATIVE_SUPPORT_EMAIL}`}
-                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-                >
-                  Contact Support
-                </a>
-              )}
             </div>
           )}
 
           {/* Plan cards — show when no active subscription, OR trialing without a plan selected (web only) */}
-          {canShowBillingUI() && (!hasActiveSubscription || (trialActive && !tenant.stripe_subscription_id)) && (
+          {(!hasActiveSubscription || (trialActive && !tenant.stripe_subscription_id)) && (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Pro card */}
@@ -1685,21 +1664,6 @@ function SettingsPage() {
             </>
           )}
 
-          {/* Native app — neutral inactive message */}
-          {!canShowBillingUI() && (!hasActiveSubscription || (trialActive && !tenant.stripe_subscription_id)) && (
-            <div className="border border-[var(--border-default)] rounded-2xl p-5 bg-[var(--surface-base)] text-center space-y-3">
-              <p className="text-sm text-[var(--text-secondary)]">
-                {NATIVE_INACTIVE_MESSAGE}
-              </p>
-              <a
-                href={`mailto:${NATIVE_SUPPORT_EMAIL}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent-primary)] text-white font-semibold text-sm hover:opacity-90 transition-opacity"
-              >
-                Contact Support
-              </a>
-            </div>
-          )}
-
           {/* Plan selected during trial — show manage options */}
           {trialActive && tenant.stripe_subscription_id && (
             <div className="flex items-center justify-between p-4 rounded-xl border border-success-200 bg-success-50">
@@ -1710,11 +1674,9 @@ function SettingsPage() {
                 <span className="text-sm text-[var(--text-secondary)]">Selected &mdash; starts after trial</span>
               </div>
               <div className="flex gap-2">
-                {canShowBillingUI() && (
-                  <Button variant="secondary" size="sm" onClick={handleManageSubscription}>
-                    Change Plan
-                  </Button>
-                )}
+                <Button variant="secondary" size="sm" onClick={handleManageSubscription}>
+                  Change Plan
+                </Button>
               </div>
             </div>
           )}
@@ -1747,18 +1709,9 @@ function SettingsPage() {
                     See what&rsquo;s included &rarr;
                   </a>
                 </div>
-                {canShowBillingUI() ? (
-                  <Button variant="secondary" className="shrink-0" onClick={handleCrmCheckout} loading={crmCheckingOut}>
-                    Add CRM
-                  </Button>
-                ) : (
-                  <a
-                    href={`mailto:${NATIVE_SUPPORT_EMAIL}`}
-                    className="shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--accent-primary)] hover:underline"
-                  >
-                    Contact Support
-                  </a>
-                )}
+                <Button variant="secondary" className="shrink-0" onClick={handleCrmCheckout} loading={crmCheckingOut}>
+                  Add CRM
+                </Button>
               </div>
             </div>
           ) : !hasActiveSubscription && !trialActive ? (
@@ -1856,7 +1809,7 @@ function SettingsPage() {
             </div>
           </div>
         </div>
-      </AccordionSection>
+      </AccordionSection>}
 
       {/* ================================================================ */}
       {/* Section 4: Tax & Receipts                                     */}

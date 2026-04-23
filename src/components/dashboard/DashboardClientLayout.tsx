@@ -22,7 +22,6 @@ import DemoBanner from '@/components/DemoBanner';
 import { getSubscriptionTier, isTrialActive } from '@/lib/subscription';
 import { getCrmStatus } from '@/lib/crm-status';
 import { canShowBillingUI } from '@/lib/billing-gate';
-import NativeInactiveOverlay from '@/components/NativeInactiveOverlay';
 
 // ============================================================================
 // Unread message count hook (polls every 30s)
@@ -926,6 +925,10 @@ function TrialExpiredOverlay() {
 
   if (!tenant) return null;
 
+  // On native, middleware silently destroys the session for expired users.
+  // Never show any trial/subscription overlay in the native shell.
+  if (!canShowBillingUI()) return null;
+
   // Check if lockout applies
   const trialEnd = tenant.trial_ends_at ? new Date(tenant.trial_ends_at) : null;
   const isTrialExpired = !trialEnd || trialEnd <= new Date();
@@ -982,69 +985,63 @@ function TrialExpiredOverlay() {
           </p>
         </div>
 
-        {canShowBillingUI() ? (
-          <>
-            {/* Plan cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
-              {/* Starter */}
-              <button
-                onClick={() => handleSubscribe('starter')}
-                disabled={subscribing}
-                className="border border-[var(--border-default)] rounded-xl p-4 bg-[var(--surface-base)] hover:border-[var(--accent-300)] transition-colors text-left disabled:opacity-60"
-              >
-                <p className="font-semibold text-[var(--text-primary)]">Starter</p>
-                <p className="text-lg font-bold text-[var(--text-primary)]">$99<span className="text-sm font-normal text-[var(--text-tertiary)]">/mo</span></p>
-                <p className="text-xs text-[var(--text-tertiary)] mt-1">3% fee</p>
-              </button>
+        {/* Plan cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+          {/* Starter */}
+          <button
+            onClick={() => handleSubscribe('starter')}
+            disabled={subscribing}
+            className="border border-[var(--border-default)] rounded-xl p-4 bg-[var(--surface-base)] hover:border-[var(--accent-300)] transition-colors text-left disabled:opacity-60"
+          >
+            <p className="font-semibold text-[var(--text-primary)]">Starter</p>
+            <p className="text-lg font-bold text-[var(--text-primary)]">$99<span className="text-sm font-normal text-[var(--text-tertiary)]">/mo</span></p>
+            <p className="text-xs text-[var(--text-tertiary)] mt-1">3% fee</p>
+          </button>
 
-              {/* Pro — recommended */}
-              <button
-                onClick={() => handleSubscribe('pro')}
-                disabled={subscribing}
-                className="border-2 border-[var(--accent-primary)] rounded-xl p-4 bg-[var(--surface-base)] hover:bg-[var(--accent-50)] transition-colors text-left relative disabled:opacity-60"
-              >
-                <span className="absolute -top-2.5 right-3 text-[10px] font-bold uppercase tracking-wider bg-[var(--accent-primary)] text-white px-2 py-0.5 rounded-full">
-                  Recommended
-                </span>
-                <p className="font-semibold text-[var(--text-primary)]">Pro</p>
-                <p className="text-lg font-bold text-[var(--text-primary)]">$169<span className="text-sm font-normal text-[var(--text-tertiary)]">/mo</span></p>
-                <p className="text-xs text-[var(--text-tertiary)] mt-1">1.5% fee, unlimited AI</p>
-              </button>
+          {/* Pro — recommended */}
+          <button
+            onClick={() => handleSubscribe('pro')}
+            disabled={subscribing}
+            className="border-2 border-[var(--accent-primary)] rounded-xl p-4 bg-[var(--surface-base)] hover:bg-[var(--accent-50)] transition-colors text-left relative disabled:opacity-60"
+          >
+            <span className="absolute -top-2.5 right-3 text-[10px] font-bold uppercase tracking-wider bg-[var(--accent-primary)] text-white px-2 py-0.5 rounded-full">
+              Recommended
+            </span>
+            <p className="font-semibold text-[var(--text-primary)]">Pro</p>
+            <p className="text-lg font-bold text-[var(--text-primary)]">$169<span className="text-sm font-normal text-[var(--text-tertiary)]">/mo</span></p>
+            <p className="text-xs text-[var(--text-tertiary)] mt-1">1.5% fee, unlimited AI</p>
+          </button>
 
-              {/* Business */}
-              <button
-                onClick={() => handleSubscribe('business')}
-                disabled={subscribing}
-                className="border border-[var(--border-default)] rounded-xl p-4 bg-[var(--surface-base)] hover:border-[var(--accent-300)] transition-colors text-left disabled:opacity-60"
-              >
-                <p className="font-semibold text-[var(--text-primary)]">Business</p>
-                <p className="text-lg font-bold text-[var(--text-primary)]">$279<span className="text-sm font-normal text-[var(--text-tertiary)]">/mo</span></p>
-                <p className="text-xs text-[var(--text-tertiary)] mt-1">0% fee, unlimited team</p>
-              </button>
-            </div>
+          {/* Business */}
+          <button
+            onClick={() => handleSubscribe('business')}
+            disabled={subscribing}
+            className="border border-[var(--border-default)] rounded-xl p-4 bg-[var(--surface-base)] hover:border-[var(--accent-300)] transition-colors text-left disabled:opacity-60"
+          >
+            <p className="font-semibold text-[var(--text-primary)]">Business</p>
+            <p className="text-lg font-bold text-[var(--text-primary)]">$279<span className="text-sm font-normal text-[var(--text-tertiary)]">/mo</span></p>
+            <p className="text-xs text-[var(--text-tertiary)] mt-1">0% fee, unlimited team</p>
+          </button>
+        </div>
 
-            <p className="text-xs text-[var(--text-tertiary)]">
-              All plans include your existing data, inventory, and client records. Add CRM for $69/mo.
-            </p>
+        <p className="text-xs text-[var(--text-tertiary)]">
+          All plans include your existing data, inventory, and client records. Add CRM for $69/mo.
+        </p>
 
-            <div className="flex items-center justify-center gap-4 text-sm">
-              <Link
-                href="/dashboard/settings?tab=subscription"
-                className="text-[var(--accent-600)] hover:underline font-medium"
-              >
-                Compare Plans
-              </Link>
-              <button
-                onClick={handleSignOut}
-                className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-              >
-                Sign Out
-              </button>
-            </div>
-          </>
-        ) : (
-          <NativeInactiveOverlay />
-        )}
+        <div className="flex items-center justify-center gap-4 text-sm">
+          <Link
+            href="/dashboard/settings?tab=subscription"
+            className="text-[var(--accent-600)] hover:underline font-medium"
+          >
+            Compare Plans
+          </Link>
+          <button
+            onClick={handleSignOut}
+            className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
     </div>
   );
