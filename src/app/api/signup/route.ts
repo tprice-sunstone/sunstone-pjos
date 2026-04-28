@@ -4,6 +4,9 @@
 // Creates tenant + tenant_member using service role (bypasses RLS).
 // Sets 30-day Pro trial on new tenants.
 // Stores first_name in auth user metadata.
+//
+// HARDENED: If tenant or tenant_member creation fails, rolls back all prior
+// steps (including deleting the auth user) so the user can retry cleanly.
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -64,7 +67,7 @@ export async function POST(request: NextRequest) {
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + 30);
 
-    // 1. Create tenant with 30-day Pro trial
+    // ── Step 1: Create tenant ────────────────────────────────────────────
     const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
       .insert({
@@ -90,14 +93,29 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (tenantError) {
-      console.error('Tenant creation failed:', tenantError);
+      console.error('[signup] FAILED at step 1 (tenant creation)', {
+        userId,
+        email: user.email,
+        error: tenantError.message,
+        code: tenantError.code,
+      });
+      // Rollback: delete the orphaned auth user so they can sign up again
+      const { error: deleteErr } = await supabase.auth.admin.deleteUser(userId);
+      if (deleteErr) {
+        console.error('[signup] ROLLBACK FAILED — could not delete auth user', {
+          userId,
+          deleteError: deleteErr.message,
+        });
+      } else {
+        console.log('[signup] Rolled back auth user after tenant creation failure', { userId });
+      }
       return NextResponse.json(
-        { error: 'Failed to create account' },
+        { error: 'Account setup failed — please try signing up again. If this persists, contact support.' },
         { status: 500 }
       );
     }
 
-    // 2. Create tenant member
+    // ── Step 2: Create tenant member ─────────────────────────────────────
     const { error: memberError } = await supabase
       .from('tenant_members')
       .insert({
@@ -108,22 +126,56 @@ export async function POST(request: NextRequest) {
       });
 
     if (memberError) {
-      console.error('Member creation failed:', memberError);
-      // Non-fatal — use-tenant hook will auto-repair
+      console.error('[signup] FAILED at step 2 (tenant_members creation)', {
+        userId,
+        tenantId: tenant.id,
+        error: memberError.message,
+        code: memberError.code,
+      });
+      // Rollback: delete tenant, then delete auth user
+      const { error: tenantDeleteErr } = await supabase
+        .from('tenants')
+        .delete()
+        .eq('id', tenant.id);
+      if (tenantDeleteErr) {
+        console.error('[signup] ROLLBACK FAILED — could not delete tenant', {
+          tenantId: tenant.id,
+          error: tenantDeleteErr.message,
+        });
+      }
+      const { error: authDeleteErr } = await supabase.auth.admin.deleteUser(userId);
+      if (authDeleteErr) {
+        console.error('[signup] ROLLBACK FAILED — could not delete auth user', {
+          userId,
+          error: authDeleteErr.message,
+        });
+      } else {
+        console.log('[signup] Rolled back auth user + tenant after member creation failure', {
+          userId,
+          tenantId: tenant.id,
+        });
+      }
+      return NextResponse.json(
+        { error: 'Account setup failed — please try signing up again. If this persists, contact support.' },
+        { status: 500 }
+      );
     }
 
-    // 3. Store name in auth user metadata (full name + parsed first name)
+    // ── Step 3: Store name in auth user metadata (non-fatal) ─────────────
     if (firstName) {
       const parsedFirst = firstName.trim().split(/\s+/)[0] || firstName.trim();
       const { error: metaError } = await supabase.auth.admin.updateUserById(userId, {
         user_metadata: { full_name: firstName.trim(), first_name: parsedFirst },
       });
       if (metaError) {
-        console.warn('Failed to set name metadata:', metaError.message);
+        console.warn('[signup] Non-fatal: failed to set name metadata', {
+          userId,
+          error: metaError.message,
+        });
       }
     }
 
-    // 4. Referral attribution (non-blocking)
+    // ── Step 4: Referral attribution (non-blocking) ──────────────────────
     if (referralCode) {
       try {
         const { data: ambassador } = await supabase
@@ -184,18 +236,18 @@ export async function POST(request: NextRequest) {
           }).catch(() => {});
         }
       } catch (refErr) {
-        console.warn('[Signup] Referral attribution failed (non-fatal):', refErr);
+        console.warn('[signup] Referral attribution failed (non-fatal):', refErr);
       }
     }
 
-    // 5. Auto-provision dedicated phone number (non-blocking)
+    // ── Step 5: Auto-provision dedicated phone number (non-blocking) ─────
     provisionPhoneNumber(tenant.id).catch(err =>
-      console.warn('[Signup] Auto-provision phone failed:', err.message)
+      console.warn('[signup] Auto-provision phone failed:', err.message)
     );
 
     // 6. Welcome email is now sent after email confirmation (in /auth/callback)
 
-    // 7. Send Sunny welcome SMS if artist has a phone number (non-blocking)
+    // ── Step 7: Send Sunny welcome SMS (non-blocking) ────────────────────
     const parsedFirst = firstName
       ? firstName.trim().split(/\s+/)[0] || firstName.trim()
       : null;
@@ -210,18 +262,18 @@ export async function POST(request: NextRequest) {
             tenantId: tenant.id,
             skipConsentCheck: true,
           });
-          console.log(`[Signup] Sunny welcome SMS sent to ${artistPhone}`);
+          console.log(`[signup] Sunny welcome SMS sent to ${artistPhone}`);
         } catch (smsErr: any) {
-          console.warn('[Signup] Sunny SMS failed (non-fatal):', smsErr.message);
+          console.warn('[signup] Sunny SMS failed (non-fatal):', smsErr.message);
         }
       })();
     }
 
     return NextResponse.json({ tenantId: tenant.id });
   } catch (error: any) {
-    console.error('Signup API error:', error);
+    console.error('[signup] Unhandled error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Something went wrong during signup. Please try again or contact support.' },
       { status: 500 }
     );
   }

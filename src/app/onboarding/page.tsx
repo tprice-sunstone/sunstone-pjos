@@ -153,6 +153,101 @@ function AnimatedCheck({ delay = 0, size = 20 }: { delay?: number; size?: number
 }
 
 // ============================================================================
+// Workspace Recovery — shown when a logged-in user has no tenant
+// ============================================================================
+
+function WorkspaceRecovery({ onCreated }: { onCreated: () => Promise<void> }) {
+  const router = useRouter();
+  const [businessName, setBusinessName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!businessName.trim()) return;
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/signup/recover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessName: businessName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to create workspace');
+      }
+      // Re-fetch tenant context and let onboarding flow continue
+      await onCreated();
+    } catch (err: any) {
+      setError(err?.message || 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 bg-[var(--surface-base)]">
+      <div className="w-full max-w-[420px]">
+        <div className="text-center mb-8">
+          <h1 className="font-display text-4xl font-bold text-[var(--accent-primary)] tracking-tight">
+            Sunstone
+          </h1>
+        </div>
+
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] shadow-sm p-8 space-y-6">
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+              Create Your Workspace
+            </h2>
+            <p className="text-sm text-[var(--text-secondary)]">
+              It looks like your workspace wasn&apos;t set up completely. Enter your business name below to get started.
+            </p>
+          </div>
+
+          <form onSubmit={handleCreate} className="space-y-4">
+            {error && (
+              <div className="rounded-lg bg-[var(--error-50)] border border-[var(--error-500)]/20 px-4 py-3 text-sm text-[var(--error-600)]">
+                {error}
+              </div>
+            )}
+
+            <Input
+              label="Business Name"
+              type="text"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="My Jewelry Studio"
+              required
+              autoFocus
+            />
+
+            <Button
+              type="submit"
+              variant="primary"
+              loading={loading}
+              className="w-full min-h-[48px]"
+            >
+              Create Workspace
+            </Button>
+          </form>
+
+          <div className="text-center">
+            <button
+              onClick={() => router.push('/auth/login')}
+              className="text-sm text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
+            >
+              Sign in with a different account
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Onboarding Flow
 // ============================================================================
 
@@ -407,16 +502,7 @@ function OnboardingFlow() {
   }
 
   if (!tenant) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--surface-base)]">
-        <div className="text-center space-y-3">
-          <p className="text-text-secondary">Unable to load your workspace.</p>
-          <Button variant="ghost" onClick={() => router.push('/auth/login')}>
-            Back to Login
-          </Button>
-        </div>
-      </div>
-    );
+    return <WorkspaceRecovery onCreated={refetch} />;
   }
 
   const progress = (step / (TOTAL_STEPS - 1)) * 100;
