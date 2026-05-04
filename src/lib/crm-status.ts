@@ -11,6 +11,8 @@ interface CrmStatusInput {
   crm_trial_end?: string | null;
   crm_subscription_id?: string | null;
   crm_deactivated_at?: string | null;
+  admin_tier_override?: boolean;
+  subscription_tier?: string | null;
 }
 
 export interface CrmStatus {
@@ -23,6 +25,11 @@ export interface CrmStatus {
 export function getCrmStatus(tenant: CrmStatusInput | null | undefined): CrmStatus {
   if (!tenant) {
     return { active: false, reason: 'none', daysLeft: null, trialExpired: false };
+  }
+
+  // Admin override with Pro/Business tier — CRM always active
+  if (tenant.admin_tier_override && (tenant.subscription_tier === 'pro' || tenant.subscription_tier === 'business')) {
+    return { active: true, reason: 'subscribed', daysLeft: null, trialExpired: false };
   }
 
   // Explicitly deactivated
